@@ -1,0 +1,16 @@
+{
+  "name": "Heltec_ESP8266",
+  "keywords": "heltec, esp8266, wifi kit, oled",
+  "description": "A library for Heltec ESP8266 based board",
+  "repository":{
+    "type": "git",
+    "url": "https://github.com/HelTecAutomation/Heltec_ESP8266.git"
+  },
+  "authors":{
+        "name": "Heltec Automation(TM)",
+        "email": "support@heltec.cn"
+   },
+  "version": "1.0.2",
+  "frameworks": "arduino",
+  "platforms": "espressif8266"
+}
