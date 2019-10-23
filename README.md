@@ -10,12 +10,12 @@ https://opensource.org/licenses/mit-license.php
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
 without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
-Maintained by Maarten Westenberg (mw12554@hotmail.com)
+Maintained by Maarten Westenberg (mw12554@hotmail.com) 
 
 
 # Description
 
-First of all: PLEASE READ THIS FILE AND HTTP://THINGS4U.GITHUB.IO it should contain most of the 
+First of all: PLEASE READ THIS FILE AND [Documentation](http://THINGS4U.GITHUB.IO/UserGuide/One Channel Gateway/UserManual 5.html) it should contain most of the 
 information you need to get going.
 Unfortunately I do not have the time to follow up on all emails, and as most information including pin-outs 
 etc etc are contained on these pages I hope you have the time to read them before posting any questions.
