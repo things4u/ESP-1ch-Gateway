@@ -28,11 +28,11 @@
 #error "Please make sure that either _UDPROUTER or _TTNROUTER are defined but not both"
 #endif
 
-// The following functions ae defined in this modue:
+// The following functions ae defined in this module:
 // int readUdp(int Packetsize)
 // int sendUdp(IPAddress server, int port, uint8_t *msg, int length)
-// bool connectUdp()
-// void pullData()
+// bool connectUdp();
+// void pullData();
 // void sendstat();
 
 // ----------------------------------------------------------------------------
@@ -44,7 +44,8 @@
 // Returns
 //	Boollean indicating success or not
 // ----------------------------------------------------------------------------
-bool connectUdp() {
+bool connectUdp() 
+{
 
 	bool ret = false;
 	unsigned int localPort = _LOCUDPPORT;			// To listen to return messages from WiFi
@@ -67,6 +68,7 @@ bool connectUdp() {
 	}
 	return(ret);
 }// connectUdp
+
 
 // ----------------------------------------------------------------------------
 // readUdp()
@@ -150,11 +152,11 @@ int readUdp(int packetSize)
 		ident = buff_down[3];
 
 #if DUSB>=1
-	if ((debug>1) && (pdebug & P_MAIN)) {
-		Serial.print(F("M readUdp:: message waiting="));
-		Serial.print(ident);
-		Serial.println();
-	}
+		if ((debug>1) && (pdebug & P_MAIN)) {
+			Serial.print(F("M readUdp:: message waiting="));
+			Serial.print(ident);
+			Serial.println();
+		}
 #endif
 		// now parse the message type from the server (if any)
 		switch (ident) {

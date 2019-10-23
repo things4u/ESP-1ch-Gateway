@@ -103,7 +103,7 @@ There are two ways of changing the configuration of the single channel gateway:
 
 ## Editing the ESP-sc-gway.h file
 
-The ESP-sc-gway.h file contains all the user configurable settings. All have their definitions set through #define statements. 
+The ESP-sc-gway.h file contains the user configurable settings. All have their definitions set through #define statements. 
 In general, setting a #define to 1 will enable the function and setting it to 0 will disable it. 
 
 Also, some settings cn be initialised by setting their value with a #define but can be changed at runtime in the web interface.
@@ -114,6 +114,11 @@ However the memory available for heap and variables is limited to about 80K byte
 The user is advised to turn off functions not used in order to save on memory usage. 
 If the heap drops below 18 KBytes some functions may not behave as expected (in extreme case the program may crash).
 
+## Editing the sensor.h file
+
+The sensor.h file is used to set the structure of known sensors to the 1-channel gateway.
+When the gateway is not just used as a gateway but also for debugging purposes, the used can specify not only
+the name of the sensor node but also decrypt for certain nodes the message.
 
 ### Setting USB
 

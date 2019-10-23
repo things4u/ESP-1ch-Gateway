@@ -21,6 +21,7 @@
 //
 // ----------------------------------------------------------------------------------------
 
+// This file describes the includes necessary for ESP Filesystem.
 // At this moment there is only one record written to the ESP8266
 // filesystem. We can add more info, which makes the gateway even more usable,
 // however for large data we should only append to the existing file used.

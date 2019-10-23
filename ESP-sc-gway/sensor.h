@@ -1,6 +1,6 @@
 // sensor.h; 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.0
+// Version 6.1.0 a
 // Date: 2019-10-20
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway

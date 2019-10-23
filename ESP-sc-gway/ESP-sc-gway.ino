@@ -26,6 +26,8 @@
 //
 // ----------------------------------------------------------------------------------------
 
+// The followion file contains most of the definitions
+// used in other files. It should be the first file.
 #include "ESP-sc-gway.h"									// This file contains configuration of GWay
 
 #if defined (ARDUINO_ARCH_ESP32) || defined(ESP32)
@@ -217,7 +219,9 @@ void setupWWW();											// _wwwServer.ino forward
 static void printIP(IPAddress ipa, const char sep, String& response);	// _wwwServer.ino
 
 void SerialTime();											// _utils.ino forward
-
+void SerialStat(uint8_t intr);								// _utils.ino
+void printHexDigit(uint8_t digit);							// XXX utils.ino
+int inDecodes(char * id);									// XXX
 
 void init_oLED();											// oLED.ino
 void acti_oLED();
@@ -232,7 +236,11 @@ void cadScanner();											// _loraModem.ino
 
 void stateMachine();										// _stateMachine.ino
 
-void SerialStat(uint8_t intr);								// _utils.ino
+bool connectUdp();											// _udpSemtech.ino
+int readUdp(int packetSize);								// XXX
+int sendUdp(IPAddress server, int port, uint8_t *msg, int length);
+void sendstat();											// XXX
+void pullData();											// XXX
 
 #if MUTEX==1
 // Forward declarations
@@ -242,7 +250,7 @@ void ICACHE_FLASH_ATTR ReleaseMutex(int *mutex);
 #endif
 
 // ----------------------------------------------------------------------------
-// DIE is not use actively in the source code anymore.
+// DIE is not used actively in the source code anymore.
 // It is replaced by a Serial.print command so we know that we have a problem
 // somewhere.
 // There are at least 3 other ways to restart the ESP. Pick one if you want.

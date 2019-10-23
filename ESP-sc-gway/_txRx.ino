@@ -725,7 +725,9 @@ int receivePacket()
 					}
 					Serial.println();
 				}
+#endif //DUSB
 			}
+#if DUSB>=1
 			else if (( debug>=2 ) && ( pdebug & P_RX )) {
 					Serial.println(F("receivePacket:: No Index"));
 			}

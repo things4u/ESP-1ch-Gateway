@@ -213,8 +213,6 @@
 //
 // Default for testing: Switched off
 #define _THINGSERVER "westenberg.org"		// Server URL of the LoRa-udp.js handler
-//#define _THINGPORT 57084					// dash.westenberg.org:8057
-//#define _THINGSERVER "capgemini.thethings.industries"		// Server URL of the LoRa-udp.js handler
 #define _THINGPORT 1700						// Port 1700 is old compatibility
 
 

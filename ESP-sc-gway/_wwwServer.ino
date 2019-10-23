@@ -135,20 +135,20 @@ void wwwFile(String fn) {
 #endif
 
 #if DUSB>=1
-		File f = SPIFFS.open(fn, "r");					// Open the file for reading
+	File f = SPIFFS.open(fn, "r");					// Open the file for reading
 		
-		int j;
-		for (j=0; j<LOGFILEREC; j++) {
+	int j;
+	for (j=0; j<LOGFILEREC; j++) {
 			
-			String s=f.readStringUntil('\n');
-			if (s.length() == 0) {
-				Serial.print(F("wwwFile:: String length 0"));
-				break;
-			}
-			server.sendContent(s.substring(12));		// Skip the first 12 Gateway specific binary characters
-			server.sendContent("\n");
-			yield();
+		String s=f.readStringUntil('\n');
+		if (s.length() == 0) {
+			Serial.print(F("wwwFile:: String length 0"));
+			break;
 		}
+		server.sendContent(s.substring(12));		// Skip the first 12 Gateway specific binary characters
+		server.sendContent("\n");
+		yield();
+	}
 #endif
 	
 }
