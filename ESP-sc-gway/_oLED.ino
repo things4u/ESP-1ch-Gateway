@@ -60,15 +60,21 @@ void acti_oLED()
 	
 #if OLED==1
 	display.setFont(ArialMT_Plain_16);
-	display.drawString(0, 16, "READY,  SSID=");
-	display.drawString(0, 32, WiFi.SSID());
+	display.drawString(0, 0, "READY,  SSID=");
+	display.drawString(0, 16, WiFi.SSID());
+	display.drawString(0, 32, "WiFi=");
+	display.drawString(0, 48, WiFi.localIP().toString().c_str() );
 #elif OLED==2
 	display.setFont(ArialMT_Plain_16);
-	display.drawString(0, 16, "READY,  SSID=");
-	display.drawString(0, 32, WiFi.SSID());
+	display.drawString(0, 0, "READY,  SSID=");
+	display.drawString(0, 16, WiFi.SSID());
+	display.drawString(0, 32, "WiFi=");
+	display.drawString(0, 48, WiFi.localIP().toString().c_str() );
 #endif
 
 	display.display();
+	
+	delay(4000);
 }
 
 // --------------------------------------------------------------------

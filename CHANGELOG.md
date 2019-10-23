@@ -19,6 +19,7 @@ Maintained by Maarten Westenberg (mw12554@hotmail.com)
 Make ready for Publishing (October 20, 2019)
 - Edit all files and make ready for publising to Github
 - Change the country/region setting of the Gateway (As a result you probably have to update most of the package).
+- Upon connecting over WiFi, display the address for 4 seconds before starting the Gateway function.
 
 New features in version 5.3.4 (March 25, 2019)
 - Make use of the latest Arduino IDE available version 1.8.21

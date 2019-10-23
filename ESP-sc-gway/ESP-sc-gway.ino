@@ -220,12 +220,12 @@ static void printIP(IPAddress ipa, const char sep, String& response);	// _wwwSer
 
 void SerialTime();											// _utils.ino forward
 void SerialStat(uint8_t intr);								// _utils.ino
-void printHexDigit(uint8_t digit);							// XXX utils.ino
-int inDecodes(char * id);									// XXX
+void printHexDigit(uint8_t digit);							// _utils.ino
+int inDecodes(char * id);									// _utils.ino
 
 void init_oLED();											// oLED.ino
-void acti_oLED();
-void addr_oLED();
+void acti_oLED();											// oLED.ino
+void addr_oLED();											// oLED.ino
 
 void setupOta(char *hostname);								// _otaServer.ino
 
@@ -237,10 +237,10 @@ void cadScanner();											// _loraModem.ino
 void stateMachine();										// _stateMachine.ino
 
 bool connectUdp();											// _udpSemtech.ino
-int readUdp(int packetSize);								// XXX
-int sendUdp(IPAddress server, int port, uint8_t *msg, int length);
-void sendstat();											// XXX
-void pullData();											// XXX
+int readUdp(int packetSize);								// _udpSemtech.ino
+int sendUdp(IPAddress server, int port, uint8_t *msg, int length);	// _udpSemtech.ino
+void sendstat();											// _udpSemtech.ino
+void pullData();											// _udpSemtech.ino
 
 #if MUTEX==1
 // Forward declarations
@@ -483,7 +483,7 @@ void setup() {
 #endif
 
 #if OLED>=1
-	init_oLED();											// Display "STARTING" on OLED
+	init_oLED();											// When done display "STARTING" on OLED
 #endif
 
 	delay(500);
@@ -542,8 +542,8 @@ void setup() {
 	Serial.print(F(" on IP="));
 	Serial.print(WiFi.localIP());
 	Serial.println();
-	delay(200);
 	
+	delay(500);
 	// If we are here we are connected to WLAN
 	
 #if defined(_UDPROUTER)
