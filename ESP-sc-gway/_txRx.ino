@@ -13,7 +13,7 @@
 //
 // NO WARRANTY OF ANY KIND IS PROVIDED
 //
-// Author: Maarten Westenberg (mw12554@hotmail.com)
+// Author: Maarten Westenberg (mw12554@hotmail.com) 
 //
 // This file contains the LoRa modem specific code enabling to receive
 // and transmit packages/messages.

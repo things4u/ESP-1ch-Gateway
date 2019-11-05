@@ -255,7 +255,7 @@ struct pins {
 #elif _PIN_OUT==5
 // ----------------------------------------------------------------------------
 // For ESP32/TTGO based board for EU32 with 0.9" OLED
-// NOTE: This board shoudl be same as general type TTGO (nr 4)
+// NOTE: This board should be same as general type TTGO (nr 4)
 // but for the moment we include this as a separate item
 //
 // SCK  == GPIO5/ PIN5
@@ -283,7 +283,7 @@ struct pins {
 // MOSI 13 / D7
 // CLK  14 / D5
 // SS   16 / D0
-#error "Pin Definitions _PIN_OUT must be 1(HALLARD) or 2 (COMRESULT)"
+#error "Pin Definitions _PIN_OUT must be defined in loraModem.h"
 #endif
 
 // stat_t contains the statistics that are kept by message. 

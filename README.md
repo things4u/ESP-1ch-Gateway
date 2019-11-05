@@ -1,6 +1,6 @@
 # Single Channel LoRaWAN Gateway
 
-Version 6.0.1, October 20, 2019  
+Version 6.1.0, October 20, 2019  
 Author: M. Westenberg (mw12554@hotmail.com)  
 Copyright: M. Westenberg (mw12554@hotmail.com)  
 
@@ -15,7 +15,7 @@ Maintained by Maarten Westenberg (mw12554@hotmail.com)
 
 # Description
 
-First of all: PLEASE READ THIS FILE AND [Documentation](http://THINGS4U.GITHUB.IO/UserGuide/One Channel Gateway/UserManual 5.html) it should contain most of the 
+First of all: PLEASE READ THIS FILE AND [Documentation](https://things4u.github.io/Projects/SingleChannelGateway/UserGuide/Introduction%206.html) it should contain most of the 
 information you need to get going.
 Unfortunately I do not have the time to follow up on all emails, and as most information including pin-outs 
 etc etc are contained on these pages I hope you have the time to read them before posting any questions.
@@ -49,7 +49,9 @@ under the Gateway chapter.
 
 ## testing
 
-The single channel gateway has been tested on a gateway with the Wemos D1 Mini, using a HopeRF RFM95W transceiver.  
+The single channel gateway has been tested on a gateway with the Wemos D1 Mini, 
+using a HopeRF RFM95W transceiver.  Tests were done on 868 version of LoRa and some 
+testing on 433 MHz.
 The LoRa nodes tested againts this gateway are:
 
 - TeensyLC with HopeRF RFM95 radio
@@ -82,8 +84,24 @@ with this sketch in the libraries folder can be found by the compiler
 6. If not yet done: Load the support for ESP8266 in your IDE. <Tools><Board><Board Manager...>
 7. Load the other necessary libraries that are not shipped with this sketch in your IDE. 
 Goto <Sketch><Include Library><Manage Libraries...> in the IDE to do so. 
-- ArduinoJson (version 5.13.1)
+- ArduinoJson (version 6.13.0)
 - WifiManager (Version 0.12.0 by Tzapu)
+- LoRaCode (Version unknown, see library shipped)
+- gBase64
+
+Through Library Manager:
+
+- SPI (Version 1.0.0)
+- SPIFFS (Version 1.0.0)
+- Streaming (Version 1.1.0)
+- Ticker (Version 1.1.0)
+- Time (Version 1.5.0)
+- TinyGPS++ (Version 1.0.0)
+- Update (Version 1.0.0)
+- Webserver (Version 1.0.0)
+- WiFiClientSecure (Version 1.0.0)
+- WifiEsp (Version 2.2.2)
+- Wire (Version 1.0.1)
 8. Compile the code and download the executable over USB to the gateway. If all is right, you should
 see the gateway starting up on the Serial Monitor.
 9. Note the IP address that the device receives from your router. Use that IP address in a browser on 
@@ -392,6 +410,10 @@ However, these libraries are not part of the single-channel Gateway software.
 
 See http://things4u.github.io in the hardware section for building and connection instructions.
 
+# Dependencies
+
+The following dependencies are valid for the Single Channel gateway:
+- ArduinoJson 6, version 6.10.0 of Benoit Blanchon
 
 # To-DO
 
@@ -401,7 +423,7 @@ The following things are still on my wish list to make to the single channel gat
   the gateway through downlink messages (such as setting the SF)
 - Support for ESP32 and RFM95 on 433 MHz
 - Use the SPIFFS for storing .css files
-- Look at CLass B and C support
+- Look at Class B and C support
 
 
 
