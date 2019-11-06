@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.0
-// Date: 2019-10-20
+// Version 6.1.1
+// Date: 2019-11-06
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -49,20 +49,20 @@ bool connectUdp()
 
 	bool ret = false;
 	unsigned int localPort = _LOCUDPPORT;			// To listen to return messages from WiFi
-#if DUSB>=1
+#if _DUSB>=1
 	if (debug>=1) {
 		Serial.print(F("Local UDP port="));
 		Serial.println(localPort);
 	}
 #endif	
 	if (Udp.begin(localPort) == 1) {
-#if DUSB>=1
+#if _DUSB>=1
 		if (debug>=1) Serial.println(F("Connection successful"));
 #endif
 		ret = true;
 	}
 	else{
-#if DUSB>=1
+#if _DUSB>=1
 		if (debug>=1) Serial.println("Connection failed");
 #endif
 	}
@@ -97,7 +97,7 @@ int readUdp(int packetSize)
 
 //	if ((WiFi.status() != WL_CONNECTED) &&& (WlanConnect(10) < 0)) {
 	if (WlanConnect(10) < 0) {
-#if DUSB>=1
+#if _DUSB>=1
 			Serial.print(F("readUdp: ERROR connecting to WLAN"));
 			if (debug>=2) Serial.flush();
 #endif
@@ -109,7 +109,7 @@ int readUdp(int packetSize)
 	yield();
 	
 	if (packetSize > RX_BUFF_SIZE) {
-#if DUSB>=1
+#if _DUSB>=1
 		Serial.print(F("readUdp:: ERROR package of size: "));
 		Serial.println(packetSize);
 #endif
@@ -120,7 +120,7 @@ int readUdp(int packetSize)
 	// We assume here that we know the originator of the message
 	// In practice however this can be any sender!
 	if (Udp.read(buff_down, packetSize) < packetSize) {
-#if DUSB>=1
+#if _DUSB>=1
 		Serial.println(F("A readUdp:: Reading less chars"));
 		return(-1);
 #endif
@@ -134,7 +134,7 @@ int readUdp(int packetSize)
 
 	if (remotePortNo == 123) {
 		// This is an NTP message arriving
-#if DUSB>=1
+#if _DUSB>=1
 		if ( debug>=0 ) {
 			Serial.println(F("A readUdp:: NTP msg rcvd"));
 		}
@@ -151,7 +151,7 @@ int readUdp(int packetSize)
 		token = buff_down[2]*256 + buff_down[1];
 		ident = buff_down[3];
 
-#if DUSB>=1
+#if _DUSB>=1
 		if ((debug>1) && (pdebug & P_MAIN)) {
 			Serial.print(F("M readUdp:: message waiting="));
 			Serial.print(ident);
@@ -165,7 +165,7 @@ int readUdp(int packetSize)
 		// server. As this function is used for downstream only, this option
 		// will never be selected but is included as a reference only
 		case PKT_PUSH_DATA: // 0x00 UP
-#if DUSB>=1
+#if _DUSB>=1
 			if (debug >=1) {
 				Serial.print(F("PKT_PUSH_DATA:: size ")); Serial.print(packetSize);
 				Serial.print(F(" From ")); Serial.print(remoteIpNo);
@@ -184,7 +184,7 @@ int readUdp(int packetSize)
 		// This message is sent by the server to acknowledge receipt of a
 		// (sensor) message sent with the code above.
 		case PKT_PUSH_ACK:	// 0x01 DOWN
-#if DUSB>=1
+#if _DUSB>=1
 			if (( debug>=2) && (pdebug & P_MAIN )) {
 				Serial.print(F("M PKT_PUSH_ACK:: size ")); 
 				Serial.print(packetSize);
@@ -200,7 +200,7 @@ int readUdp(int packetSize)
 		break;
 	
 		case PKT_PULL_DATA:	// 0x02 UP
-#if DUSB>=1
+#if _DUSB>=1
 			Serial.print(F(" Pull Data"));
 			Serial.println();
 #endif
@@ -209,7 +209,7 @@ int readUdp(int packetSize)
 		// This message type is used to confirm OTAA message to the node
 		// XXX This message format may also be used for other downstream communication
 		case PKT_PULL_RESP:	// 0x03 DOWN
-#if DUSB>=1
+#if _DUSB>=1
 			if (( debug>=0 ) && ( pdebug & P_MAIN )) {
 				Serial.println(F("M readUdp:: PKT_PULL_RESP received"));
 			}
@@ -221,7 +221,7 @@ int readUdp(int packetSize)
 			sendTime = micros();					// record when we started sending the message
 			
 			if (sendPacket(data, packetSize-4) < 0) {
-#if DUSB>=1
+#if _DUSB>=1
 				if ( debug>=0 ) {
 					Serial.println(F("A readUdp:: Error: PKT_PULL_RESP sendPacket failed"));
 				}
@@ -244,7 +244,7 @@ int readUdp(int packetSize)
 			buff[10]=MAC_array[4];
 			buff[11]=MAC_array[5];
 			buff[12]=0;
-#if DUSB>=1
+#if _DUSB>=1
 			if (( debug >= 2 ) && ( pdebug & P_MAIN )) {
 				Serial.println(F("M readUdp:: TX buff filled"));
 			}
@@ -252,13 +252,13 @@ int readUdp(int packetSize)
 			// Only send the PKT_PULL_ACK to the UDP socket that just sent the data!!!
 			Udp.beginPacket(remoteIpNo, remotePortNo);
 			if (Udp.write((unsigned char *)buff, 12) != 12) {
-#if DUSB>=1
+#if _DUSB>=1
 				if (debug>=0)
 					Serial.println("A readUdp:: Error: PKT_PULL_ACK UDP write");
 #endif
 			}
 			else {
-#if DUSB>=1
+#if _DUSB>=1
 				if (( debug>=0 ) && ( pdebug & P_TX )) {
 					Serial.print(F("M PKT_TX_ACK:: micros="));
 					Serial.println(micros());
@@ -267,7 +267,7 @@ int readUdp(int packetSize)
 			}
 
 			if (!Udp.endPacket()) {
-#if DUSB>=1
+#if _DUSB>=1
 				if (( debug>=0 ) && ( pdebug & P_MAIN )) {
 					Serial.println(F("M PKT_PULL_DATALL Error Udp.endpaket"));
 				}
@@ -275,7 +275,7 @@ int readUdp(int packetSize)
 			}
 			
 			yield();
-#if DUSB>=1
+#if _DUSB>=1
 			if (( debug >=1 ) && (pdebug & P_MAIN )) {
 				Serial.print(F("M PKT_PULL_RESP:: size ")); 
 				Serial.print(packetSize);
@@ -293,7 +293,7 @@ int readUdp(int packetSize)
 		break;
 	
 		case PKT_PULL_ACK:	// 0x04 DOWN; the server sends a PULL_ACK to confirm PULL_DATA receipt
-#if DUSB>=1
+#if _DUSB>=1
 			if (( debug >= 2 ) && (pdebug & P_MAIN )) {
 				Serial.print(F("M PKT_PULL_ACK:: size ")); Serial.print(packetSize);
 				Serial.print(F(" From ")); Serial.print(remoteIpNo);
@@ -315,13 +315,13 @@ int readUdp(int packetSize)
 #else
 
 #endif
-#if DUSB>=1
+#if _DUSB>=1
 			Serial.print(F(", ERROR ident not recognized="));
 			Serial.println(ident);
 #endif
 		break;
 		}
-#if DUSB>=2
+#if _DUSB>=2
 		if (debug>=1) {
 			Serial.print(F("readUdp:: returning=")); 
 			Serial.println(packetSize);
@@ -351,7 +351,7 @@ int sendUdp(IPAddress server, int port, uint8_t *msg, int length) {
 
 	// Check whether we are conected to Wifi and the internet
 	if (WlanConnect(3) < 0) {
-#if DUSB>=1
+#if _DUSB>=1
 		if (( debug>=0 ) && ( pdebug & P_MAIN )) {
 			Serial.print(F("M sendUdp: ERROR connecting to WiFi"));
 			Serial.flush();
@@ -365,13 +365,13 @@ int sendUdp(IPAddress server, int port, uint8_t *msg, int length) {
 	yield();
 
 	//send the update
-#if DUSB>=1
+#if _DUSB>=1
 	if (( debug>=3 ) && ( pdebug & P_MAIN )) {
 		Serial.println(F("M WiFi connected"));
 	}
 #endif	
 	if (!Udp.beginPacket(server, (int) port)) {
-#if DUSB>=1
+#if _DUSB>=1
 		if (( debug>=1 ) && ( pdebug & P_MAIN )) {
 			Serial.println(F("M sendUdp:: Error Udp.beginPacket"));
 		}
@@ -383,7 +383,7 @@ int sendUdp(IPAddress server, int port, uint8_t *msg, int length) {
 	
 
 	if (Udp.write((unsigned char *)msg, length) != length) {
-#if DUSB>=1
+#if _DUSB>=1
 		if (( debug<=1 ) && ( pdebug & P_MAIN )) {
 			Serial.println(F("M sendUdp:: Error write"));
 		}
@@ -395,7 +395,7 @@ int sendUdp(IPAddress server, int port, uint8_t *msg, int length) {
 	yield();
 	
 	if (!Udp.endPacket()) {
-#if DUSB>=1
+#if _DUSB>=1
 		if (debug>=1) {
 			Serial.println(F("sendUdp:: Error Udp.endPacket"));
 			Serial.flush();
@@ -455,7 +455,7 @@ void pullData() {
 	yield();
 #endif
 
-#if DUSB>=1
+#if _DUSB>=1
 	if (pullPtr != pullDataReq) {
 		Serial.println(F("pullPtr != pullDatReq"));
 		Serial.flush();
@@ -466,7 +466,7 @@ void pullData() {
 	sendUdp(thingServer, _THINGPORT, pullDataReq, pullIndex);
 #endif
 
-#if DUSB>=1
+#if _DUSB>=1
     if (( debug>=2 ) && ( pdebug & P_MAIN )) {
 		yield();
 		Serial.print(F("M PKT_PULL_DATA request, len=<"));
@@ -542,7 +542,7 @@ void sendstat() {
     stat_index += j;
     status_report[stat_index] = 0; 							// add string terminator, for safety
 
-#if DUSB>=1
+#if _DUSB>=1
     if (( debug>=2 ) && ( pdebug & P_MAIN )) {
 		Serial.print(F("M stat update: <"));
 		Serial.print(stat_index);
@@ -551,7 +551,7 @@ void sendstat() {
 	}
 #endif	
 	if (stat_index > STATUS_SIZE) {
-#if DUSB>=1
+#if _DUSB>=1
 		Serial.println(F("A sendstat:: ERROR buffer too big"));
 #endif
 		return;

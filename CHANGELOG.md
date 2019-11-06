@@ -1,6 +1,6 @@
 # Single Channel LoRaWAN Gateway
 
-Version 6.0.1, October 20, 2019	  
+Version 6.1.1, November 6	, 2019	  
 Author: M. Westenberg (mw12554@hotmail.com)  
 Copyright: M. Westenberg (mw12554@hotmail.com)  
 
@@ -16,15 +16,27 @@ Maintained by Maarten Westenberg (mw12554@hotmail.com)
 
 # Release Notes
 
-Make ready for Publishing (October 20, 2019)
-- Edit all files and make ready for publising to Github
-- Change the country/region setting of the Gateway (As a result you probably have to update most of the package).
+Features release 6.1.0 (October 20, 2019)
+- Changed name of the ESP-sc-gway.h file into configGway.h and removed most privacy info. 
+  This way, whis fie does need less editing 
+and allows faster releasing
+- Removed lib from the library directory for libs that are present in the library manager of the node.
+- Changed name of sensor.h file into configNode.h and added all privacy configuration info such as SSID, 
+  WiFi password, node data etc.
+- Display the IP of the Gateway node 5 seconds prior to passing the first message. 
+So please keep on the line if you do not know your IP.
+- Edit all files and make ready for publising to Github with correct version number
+- Change the country/region setting of the Gateway (As a result you probably have to update most of 
+  the package).
 - Upon connecting over WiFi, display the address for 4 seconds before starting the Gateway function.
+- Made a (not complete) list of lib info in teh README.md document.
+- Correct (again) some typos
 
 New features in version 5.3.4 (March 25, 2019)
 - Make use of the latest Arduino IDE available version 1.8.21
-- Added new iteams to the statc function so that it now has all the Package Statistics. Fieds are such as: mesg_ttl, msg_ttl_0 etc. Removed reference to the old counters.
-- Changed Json version in the IDE to ArduinoJSON 6 in _txRx.ino
+- Added new iteams to the statc function so that it now has all the Package Statistics. 
+  Fields are such as: mesg_ttl, msg_ttl_0 etc. Removed reference to the old counters.
+- !!! Changed Json version in the IDE to ArduinoJSON 6 in _txRx.ino
 - Larger message history for ESP32 based on free heap
 
 New features in version 5.3.3 (August 25, 2018)
@@ -40,17 +52,17 @@ New features in version 5.3.2 (July 07, 2018)
 - Support for local decoding of sensor messages received by the gateway. 
 	Use #define _LOCALSERVER 1, to enable this functionality. Also specify for each node that you want
 	to inspect the messages from the NwkSKey and AppSKey in the sensor.h file.
-	NOTE: the heap of the ESP32 is much larger than of the ESP8266. SO please be careful not to add too many 
-		features to the "old" gateway modules
+	NOTE: the heap of the ESP32 is much larger than of the ESP8266. SO please be careful not to add 
+	too many features to the "old" gateway modules
 - As a result reworked the sensor functions and changes such as adding/changing DevAddrm NwkSKEY 
 	and AppSKey parameters to several functions
 - Several in-line documentaton enhancements and typos were fixed
 
 New features in version 5.3.1 (June 30, 2018)
 - Included support for T-Beam board including on board GPS sensor (_sensor.ino). #define GATEWAYNODE 1 will
-	turn the gateway into a node as well. Remember to set the address etc in ESP-sc-gway.h.
+	turn the gateway into a node as well. Remember to set the address etc in configGway.h.
 - First version to explore possibilities of 433 MHz LoRa frequencies. 
-	Included frequency setting in the ESP-sc-gway.h file
+	Included frequency setting in the configGway.h file
 - Changes to the WiFi inplementation. The gateway does now store the SSID and password.
 - 
 
@@ -65,18 +77,21 @@ New features in version 5.2.1 (June 6, 2018)
 
 New features in version 5.2.0 (May 30, 2018)
 - Enable support for ESP32 from TTGO, several code changes where ESP32 differs from ESP8266. 
-OLED is supported but NOT tested. Some hardware specific reporting functions of the WebGUI do not work yet.
+	OLED is supported but NOT tested. Some hardware specific reporting functions of the WebGUI 
+	do not work yet.
 - Include new ESP32WebServer library for support of ESP32
 - Made pin configuration definitions in Gateway.h file, and support in loraModem.h and .ino files.
 
 New features in version 5.1.1 (May 17, 2018)
 - The LOG button in the GUI now opens a txt .CSV file in the browser with loggin details.
-- Improved debugging in WebGUI, not only based on debug level but also on part of the software we want to debug.
+- Improved debugging in WebGUI, not only based on debug level but also on part of the software 
+	we want to debug.
 - Clean up of StateMachine
 - Enable filesystem formatting from the GUI
 
 New features in version 5.1.0 (May 03, 2018)
-- Improved debuggin in WebGUI, not only based on debug level but also on part of the software we want to debug.
+- Improved debuggin in WebGUI, not only based on debug level but also on part of the software 
+	we want to debug.
 - Clean up of StateMachine
 
 New features in version 5.0.9 (Apr 08, 2018)
@@ -131,7 +146,7 @@ New features in version 5.0.1 (November 18, 2017)
 - For each SF, percentage of such packages received of total packages
 - OTAA and downlink work (again) although not always
 - Nober of packages per hour displayed in webserver
-- All Serial communication only when DUSB==1 is defined at compile time
+- All Serial communication only when _DUSB==1 is defined at compile time
 
 New features in version 4.0.9 (August 11, 2017)
 
@@ -140,7 +155,7 @@ New features in version 4.0.9 (August 11, 2017)
 
 New features in version 4.0.8 (August 05, 2017)
 
-- This release updates for memory leaks in NTP routines (see ESP-sc-gway.h file for NTP_INTR
+- This release updates for memory leaks in NTP routines (see configGway.h file for NTP_INTR
 - OLED support contributed by Dorijan Morelj (based on Adreas Spies' release)
 
 New features in version 4.0.7 (July 22, 2017)
@@ -159,7 +174,8 @@ New features in version 4.0.4 (June 24, 2017):
 New features in version 4.0.3 (June 22, 2017):
 
 - Added CMAC functions so that the sensor functions work as expected over TTN
-- Webserver prints a page in chunks now, so that memory usage is lower and more heap is left over for variables
+- Webserver prints a page in chunks now, so that memory usage is lower and more heap is left over 
+for variables
 - Webserver does refresh every 60 seconds
 - Implemented suggested change of M. for answer to PKT_PULL_RESP
 - Updated README.md to correctly displa all headers
@@ -170,8 +186,8 @@ New features in version 4.0.0 (January 26, 2017)):
 - Implement both CAD (Channel Activity Detection) and HOP functions (HOP being experimental)
 - Message history visible in web interface
 - Repaired the WWW server memory leak (due to String assignments)
-- Still works on one interrupt line (GPIO15), or can be configured to work with 2 interrupt lines for dio0 and dio1
-  for two or more interrupt lines (better performance for automatic SF setting?)
+- Still works on one interrupt line (GPIO15), or can be configured to work with 2 interrupt lines 
+  for dio0 and dio1 for two or more interrupt lines (better performance for automatic SF setting?)
 - Webserver with debug level 3 and level 4 (for interrupt testing).
   dynamic setting thorugh the web interface. Level 3 and 4 will show more info
   on sf, rssi, interrupt flags etc.
@@ -181,19 +197,23 @@ New features in version 4.0.0 (January 26, 2017)):
 New features in version 3.3.0 (January 1, 2017)):
 
 - Redesign of the Webserver interface
-- Use of the SPIFFS filesystem to store SSID, Frequency, Spreading Factor and Framecounter to survice reboots and resets of the ESP8266
+- Use of the SPIFFS filesystem to store SSID, Frequency, Spreading Factor and Framecounter to 
+survice reboots and resets of the ESP8266
 - Possibility to set the Spreading Factor dynamically throug the web interface
 - Possibility to set the Frequency in the web interface
 - Reset the Framecounter in te webinterface
 
 New features in version 3.2.2 (December 29, 2016)):
 
-- Repair the situation where WIFIMANAGER was set to 0 in the ESP-sc-gway.h file. The sketch would not compile which is now repaired
-- The compiler would issue a set of warnings related to the ssid and passw setting in the ESP-sc-gway.h file. Compiler was complaining (and it should) because char* were statically initialised and modified in the code.
+- Repair the situation where WIFIMANAGER was set to 0 in the configGway.h file. 
+The sketch would not compile which is now repaired
+- The compiler would issue a set of warnings related to the ssid and passw setting in the configGway.h file. 
+Compiler was complaining (and it should) because char* were statically initialised and modified in the code.
 
 New features in version 3.2.1 (December 20, 2016)):
 
-- Repair the status messages to the server. All seconds, minutes, hours etc. are now reported in 2 digits. The year is reported in 4 digits.
+- Repair the status messages to the server. All seconds, minutes, hours etc. are now reported in 2 digits. 
+The year is reported in 4 digits.
 
 New features in version 3.2.0 (December 08, 2016)):
 
@@ -201,9 +221,14 @@ New features in version 3.2.0 (December 08, 2016)):
 
 New features in version 3.1 (September 29, 2016)):
 
-- In the ESP-sc-gway.h it is possible to set the gateway as sensor node as well. Just set the DevAddr and AppSKey in the _sensor.ino file and be able to forward any sensor or other values to the server as if they were coming from a LoRa node.
-- If the #define _STRICT_1CH is set (to 1) then the system will be able to send downlink messages to LoRa nodes that are strict 1-channel devices (all frequencies but frequency 0 are disabled and Spreading Factor (SF) is fixed to one value).
-- Code clean-up. The code has been made smaller in the area of loraWait() functions and where the radio is initiated for receiving of transmitting messages.
+- In the configGway.h it is possible to set the gateway as sensor node as well. 
+	Just set the DevAddr and AppSKey in the _sensor.ino file and be able to forward any sensor or other 
+	values to the server as if they were coming from a LoRa node.
+- If the #define _STRICT_1CH is set (to 1) then the system will be able to send downlink messages 
+	to LoRa nodes that are strict 1-channel devices (all frequencies but frequency 0 are disabled 
+	and Spreading Factor (SF) is fixed to one value).
+- Code clean-up. The code has been made smaller in the area of loraWait() functions and where the 
+	radio is initiated for receiving of transmitting messages.
 - Several small bug fixes
 - Licensing, the license has been changed to MIT
 
@@ -238,4 +263,5 @@ Not (yet) supported:
 # License
 
 The source files of the gateway sketch in this repository is made available under the MIT
-license. The libraries included in this repository are included for convenience only and all have their own license, and are not part of the ESP 1ch gateway code.
+license. The libraries included in this repository are included for convenience only and 
+all have their own license, and are not part of the ESP 1ch gateway code.

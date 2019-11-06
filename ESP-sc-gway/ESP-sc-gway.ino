@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.0
-// Date: 2019-10-20
+// Version 6.1.1
+// Date: 2019-11-06
 // Author: Maarten Westenberg (mw12554@hotmail.com)
 //
 // Based on work done by Thomas Telkamp for Raspberry PI 1-ch gateway and many others.
@@ -28,7 +28,8 @@
 
 // The followion file contains most of the definitions
 // used in other files. It should be the first file.
-#include "ESP-sc-gway.h"									// This file contains configuration of GWay
+#include "configGway.h"									// This file contains configuration of GWay
+#include "configNode.h"									// Contains the AVG data of Wifi etc.
 
 #if defined (ARDUINO_ARCH_ESP32) || defined(ESP32)
 #define ESP32_ARCH 1
@@ -57,7 +58,6 @@
 // Local include files
 #include "loraModem.h"
 #include "loraFiles.h"
-#include "sensor.h"
 #include "oLED.h"
 
 extern "C" {
@@ -65,7 +65,7 @@ extern "C" {
 #include "lwip/dns.h"
 }
 
-#if WIFIMANAGER==1
+#if _WIFIMANAGER==1
 #include <WiFiManager.h>									// Library for ESP WiFi config through an AP
 #endif
 
@@ -267,7 +267,7 @@ void die(const char *s)
 }
 
 // ----------------------------------------------------------------------------
-// gway_failed is a function called by ASSERT in ESP-sc-gway.h
+// gway_failed is a function called by ASSERT in configGway.h
 //
 // ----------------------------------------------------------------------------
 void gway_failed(const char *file, uint16_t line) {
@@ -395,7 +395,7 @@ time_t getNtpTime()
 	// So increase the counter
 	gwayConfig.ntpErr++;
 	gwayConfig.ntpErrTime = now();
-#if DUSB>=1
+#if _DUSB>=1
 	if (( debug>=0 ) && ( pdebug & P_MAIN )) {
 		Serial.println(F("M getNtpTime:: read failed"));
 	}
@@ -437,20 +437,20 @@ void setup() {
 #endif
 
 #ifdef ESP32
-#if DUSB>=1
+#if _DUSB>=1
 	Serial.print(F("ESP32 defined, freq="));
 	Serial.print(freqs[0].upFreq);
 	Serial.println();
 #endif
 #endif
 #ifdef ARDUINO_ARCH_ESP32
-#if DUSB>=1
+#if _DUSB>=1
 	Serial.println(F("ARDUINO_ARCH_ESP32 defined"));
 #endif
 #endif
 
 
-#if DUSB>=1
+#if _DUSB>=1
 	Serial.flush();
 
 	delay(500);
@@ -462,13 +462,13 @@ void setup() {
 	}
 #endif	
 #if _SPIFF_FORMAT>=1
-#if DUSB>=1
+#if _DUSB>=1
 	if (( debug >= 0 ) && ( pdebug & P_MAIN )) {
 		Serial.println(F("M Format Filesystem ... "));
 	}
 #endif
 	SPIFFS.format();										// Normally disabled. Enable only when SPIFFS corrupt
-#if DUSB>=1
+#if _DUSB>=1
 	if (( debug >= 0 ) && ( pdebug & P_MAIN )) {
 		Serial.println(F("Done"));
 	}
@@ -488,7 +488,7 @@ void setup() {
 
 	delay(500);
 	yield();
-#if DUSB>=1	
+#if _DUSB>=1	
 	if (debug>=1) {
 		Serial.print(F("debug=")); 
 		Serial.println(debug);
@@ -634,7 +634,7 @@ void setup() {
 	
 	//setTime((time_t)getNtpTime());
 	while (timeStatus() == timeNotSet) {
-#if DUSB>=1
+#if _DUSB>=1
 		if (( debug>=0 ) && ( pdebug & P_MAIN )) 
 			Serial.println(F("M setupTime:: Time not set (yet)"));
 #endif
@@ -645,12 +645,12 @@ void setup() {
 	}
 	// When we are here we succeeded in getting the time
 	startTime = now();										// Time in seconds
-#if DUSB>=1
+#if _DUSB>=1
 	Serial.print("Time: "); printTime();
 	Serial.println();
 #endif
 	writeGwayCfg(CONFIGFILE );
-#if DUSB>=1
+#if _DUSB>=1
 	Serial.println(F("Gateway configuration saved"));
 #endif
 #endif //NTP_INTR
@@ -741,7 +741,7 @@ void loop ()
 	if ( ((nowSeconds - statr[0].tmst) > _MSG_INTERVAL ) &&
 		(msgTime <= statr[0].tmst) ) 
 	{
-#if DUSB>=1
+#if _DUSB>=1
 		if (( debug>=1 ) && ( pdebug & P_MAIN )) {
 			Serial.print("M REINIT:: ");
 			Serial.print( _MSG_INTERVAL );
@@ -796,7 +796,7 @@ void loop ()
 	// If we are not connected, try to connect.
 	// We will not read Udp in this loop cycle then
 	if (WlanConnect(1) < 0) {
-#if DUSB>=1
+#if _DUSB>=1
 		if (( debug >= 0 ) && ( pdebug & P_MAIN ))
 			Serial.println(F("M ERROR reconnect WLAN"));
 #endif
@@ -812,14 +812,14 @@ void loop ()
 	//
 	else {
 		while( (packetSize = Udp.parsePacket()) > 0) {
-#if DUSB>=2
+#if _DUSB>=2
 			Serial.println(F("loop:: readUdp calling"));
 #endif
 			// DOWNSTREAM
 			// Packet may be PKT_PUSH_ACK (0x01), PKT_PULL_ACK (0x03) or PKT_PULL_RESP (0x04)
 			// This command is found in byte 4 (buffer[3])
 			if (readUdp(packetSize) <= 0) {
-#if DUSB>=1
+#if _DUSB>=1
 				if (( debug>0 ) && ( pdebug & P_MAIN ))
 					Serial.println(F("M readUdp error"));
 #endif
@@ -838,14 +838,14 @@ void loop ()
 	//	
 
     if ((nowSeconds - statTime) >= _STAT_INTERVAL) {		// Wake up every xx seconds
-#if DUSB>=1
+#if _DUSB>=1
 		if (( debug>=1 ) && ( pdebug & P_MAIN )) {
 			Serial.print(F("M STAT:: ..."));
 			Serial.flush();
 		}
 #endif
         sendstat();											// Show the status message and send to server
-#if DUSB>=1
+#if _DUSB>=1
 		if (( debug>=1 ) && ( pdebug & P_MAIN )) {
 			Serial.println(F(" done"));
 			if (debug>=2) Serial.flush();
@@ -866,7 +866,7 @@ void loop ()
 			// could be battery but also other status info or sensor info
 		
 			if (sensorPacket() < 0) {
-#if DUSB>=1
+#if _DUSB>=1
 				Serial.println(F("sensorPacket: Error"));
 #endif
 			}
@@ -882,7 +882,7 @@ void loop ()
 	//
 	nowSeconds = now();
     if ((nowSeconds - pulltime) >= _PULL_INTERVAL) {		// Wake up every xx seconds
-#if DUSB>=1
+#if _DUSB>=1
 		if (( debug>=2) && ( pdebug & P_MAIN )) {
 			Serial.println(F("M PULL"));
 			if (debug>=1) Serial.flush();

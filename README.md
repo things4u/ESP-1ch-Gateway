@@ -1,6 +1,7 @@
 # Single Channel LoRaWAN Gateway
 
-Version 6.1.0, October 20, 2019  
+Version 6.1.1, 
+Data: November 6, 2019  
 Author: M. Westenberg (mw12554@hotmail.com)  
 Copyright: M. Westenberg (mw12554@hotmail.com)  
 
@@ -18,13 +19,13 @@ Maintained by Maarten Westenberg (mw12554@hotmail.com)
 First of all: PLEASE READ THIS FILE AND [Documentation](https://things4u.github.io/Projects/SingleChannelGateway/UserGuide/Introduction%206.html) it should contain most of the 
 information you need to get going.
 Unfortunately I do not have the time to follow up on all emails, and as most information including pin-outs 
-etc etc are contained on these pages I hope you have the time to read them before posting any questions.
+etc etc are contained on these pages I hope you have the time to read them and post any remaining questions.
 
 I do have more than 10 Wemos D1 mini boards running, some I built myself, 
 some 10+ on Hallard, 3 on ComResult and 4 ESP32 boards. They ALL work without problems
 on this code.
 I did find however that good soldering joints and wiring makes all the difference,
-so if you get resets you cannot explain, please have a second look at your wiring.
+so if you get resets/errors you cannot explain, please have a second look at your wiring.
 
 This repository contains a proof-of-concept implementation of a single channel LoRaWAN gateway for the ESP8266. 
 Starting version 5.2 also the ESP32 of TTGO (and others) is supported.
@@ -39,7 +40,7 @@ gateways that were making use of the SX1301 chip.
 - As the software of this gateway will often be used during the development phase of a project or in 
 demo situations, the software is flexible and can be easily configured according to environment or 
 customer requirements. There are two ways of interacting with the software: 
-1. Modifying the ESP-sc-gway.h file at compile time allows the administrator to set almost all parameters. 
+1. Modifying the configGway.h file at compile time allows the administrator to set almost all parameters. 
 2. Using the webinterface (http://<gateway_IP>) will allow administrators to set and reset several of the 
 parameters at runtime.
 
@@ -64,36 +65,43 @@ I'm still working on the ESP32 pin-out and functions (expected soon).
 # Getting Started
 
 It is recommended to compile and start the single channel gateway with as little modificatons as possible. 
-This means that you should use the default settings in the configuration files as much as possible and 
+This means that you should use the default settings in the 2 configuration files as much as possible and 
 only change the SSID/Password for your WiFi setup and the pins of your ESP8266 that you use in loraModem.h.
 This section describes the minimum of configuration necessary to get a working gateway which than can be 
 configured further using the webpage.
 
 1. Unpack the source code including the libraries in a separate folder.
 2. Connect the gateway to a serial port of your computer, and configure that port in the IDE. 
-Switch on the Serial Monitor for the gateway. As the Wemos chip does not contain any code, you will probably 
-see nothing on the Serial Monitor.
-3. Modify the _loraModem.h file and change the "struct pins" area and configure either for a traditional
-(=Comresult) PCB or configure for a Hallard PCB where the dio0, dio1 and dio2 pins are shared. You HAVE to check 
-this section.
-4. Edit the ESP-sc-gway.h file and adapt the "wpas" structure. `Make sure that the first line of this structure 
-remains empty and put the SSID and Password of your router on the second line of the array.
-5. In the preferences part of the IDE, set the location of your sketch to the place where you put the 
-sketch on your computer. This will make sure that for example the required libraries that are shipped 
-with this sketch in the libraries folder can be found by the compiler
+Switch on the Serial Monitor for the gateway. As the Wemos chip does not contain any code, 
+you will probably see nothing on the Serial Monitor.
+3. If necessary, modify the _loraModem.h file and change the "struct pins" area and configure 
+either for a traditional (=Comresult) PCB or configure for a Hallard PCB where the dio0, 
+dio1 and dio2 pins are shared. You HAVE to check this section. In the configGway.h file the 
+most used pin-outs are documented so it might be that you use a standard pin-out
+4. Edit the configNode.h file and adapt the "wpas" structure. Make sure that the first line of 
+this structure remains empty and put the SSID and Password of your router on the second 
+line of the array.
+5. In the preferences part of the IDE, set the location of your sketch to the place where 
+you put the sketch on your computer. This will make sure that for example the required 
+libraries that are shipped with this sketch in the libraries folder can be found by the 
+compiler.
 6. If not yet done: Load the support for ESP8266 in your IDE. <Tools><Board><Board Manager...>
 7. Load the other necessary libraries that are not shipped with this sketch in your IDE. 
-Goto <Sketch><Include Library><Manage Libraries...> in the IDE to do so. 
-- ArduinoJson (version 6.13.0)
+Goto <Sketch><Include Library><Manage Libraries...> in the IDE to do so. Most of the include files 
+can be loaded through this library section. Some cannot and are shipped with the Gateway.
+
 - WifiManager (Version 0.12.0 by Tzapu)
-- LoRaCode (Version unknown, see library shipped)
-- gBase64
+- LoRaCode (Version 1.0.0, see library shipped)
+- gBase64 (changed name from Adam Rudd's Base64 version)
 
 Through Library Manager:
 
+- ArduinoJson (version 6.12.0)
+- Heltec ESP32 Dev-Boards (Version 1.0.6)
+- Heltec ESL8266 Dev-Boards (Version 1.0.2)
 - SPI (Version 1.0.0)
 - SPIFFS (Version 1.0.0)
-- Streaming (Version 1.1.0)
+- Streaming (Version 5.0.0)
 - Ticker (Version 1.1.0)
 - Time (Version 1.5.0)
 - TinyGPS++ (Version 1.0.0)
@@ -102,6 +110,7 @@ Through Library Manager:
 - WiFiClientSecure (Version 1.0.0)
 - WifiEsp (Version 2.2.2)
 - Wire (Version 1.0.1)
+
 8. Compile the code and download the executable over USB to the gateway. If all is right, you should
 see the gateway starting up on the Serial Monitor.
 9. Note the IP address that the device receives from your router. Use that IP address in a browser on 
@@ -115,16 +124,18 @@ coming in on the Serial monitor.
 
 There are two ways of changing the configuration of the single channel gateway:
 
-1. Changing the ESP-sc-gway.h file at compile-time
+1. Changing the configGway.h and the configNode.h file at compile-time
 2. Run the http://<gateway-IP> web interface to change settings at run time.
 
+Where you have a choice, option 2 is far more friendly and useful.
 
-## Editing the ESP-sc-gway.h file
+## Editing the configGway.h file
 
-The ESP-sc-gway.h file contains the user configurable settings. All have their definitions set through #define statements. 
+The configGway.h file contains the user configurable gateway settings. 
+All have their definitions set through #define statements. 
 In general, setting a #define to 1 will enable the function and setting it to 0 will disable it. 
 
-Also, some settings cn be initialised by setting their value with a #define but can be changed at runtime in the web interface.
+Also, some settings can be initialised by setting their value with a #define but can be changed at runtime in the web interface.
 For some settings, disabling the function with a #define will remove the function from the webserver as well.
 
 NOTE regarding memory usage: The ESP8266 has an enormous amount of memory available for program space and SPIFFS filesystem. 
@@ -132,19 +143,22 @@ However the memory available for heap and variables is limited to about 80K byte
 The user is advised to turn off functions not used in order to save on memory usage. 
 If the heap drops below 18 KBytes some functions may not behave as expected (in extreme case the program may crash).
 
-## Editing the sensor.h file
+## Editing the configNode.h file
 
-The sensor.h file is used to set the structure of known sensors to the 1-channel gateway.
+The configNode.h file is used to set teh WiFi access point and the structure of known 
+sensors to the 1-channel gateway.
+Setting the known WiFi access points (SSID and password) must be done at compile time.
+
 When the gateway is not just used as a gateway but also for debugging purposes, the used can specify not only
 the name of the sensor node but also decrypt for certain nodes the message.
 
 ### Setting USB
 
 The user can determine whether or not the USB console is used for output messages.
-When setting DUSB to 0 all output by Serial is disabled 
+When setting _DUSB to 0 all output by Serial is disabled 
 (actually the Serial statements are not included in the code).
 
- \#define DUSB 1
+ \#define _DUSB 1
 
 
 ### Debug
@@ -278,7 +292,7 @@ output.
  
 
  
-Setting the I2C SDA/SCL pins is done in the ESP-sc-gway.h file right after the #define of OLED.
+Setting the I2C SDA/SCL pins is done in the configGway.h file right after the #define of OLED.
 Standard the ESP8266 uses pins D1 and D2 for the I2C bus SCL and SDA lines but these can be changed by the user.
 Normally thsi is not necessary. 
 The OLED functions are found in the _loraModem.ino file, and can be adapted to show other fields. 
@@ -320,14 +334,8 @@ This is a cpu and memory intensive function as making a sensor message involves 
 
  \#define GATEWAYNODE 0  
 
-Further below in the configuration file, it is possible to set the address and other  LoRa information of the gateway node.
-
- \#if GATEWAYNODE==1  
- \#define _DEVADDR { 0x26, 0x01, 0x15, 0x3D }  
- \#define _APPSKEY { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }  
- \#define _NWKSKEY { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }  
- \#define _SENSOR_INTERVAL 300  
- \#endif  
+Further below in the configNode.h configuration file, it is possible to set the address 
+and other LoRa information of the gateway node.
 
 
 ### Connect to WiFi with WiFiManager
@@ -335,7 +343,7 @@ Further below in the configuration file, it is possible to set the address and o
 The easiest way to configure the Gateway on WiFi is by using the WiFimanager function. This function works out of the box. 
 WiFiManager will put the gateway in accesspoint mode so that you can connect to it as a WiFi accesspoint. 
 
- \#define WIFIMANAGER 0  
+ \#define _WIFIMANAGER 0  
 
 If Wifi Manager is enabled, make sure to define the name of the accesspoint if the gateway is in accesspoint 
 mode and the password.
@@ -349,20 +357,35 @@ After binding to the access point with your mobile phone or computer, go to htp:
 The gateway will then reset and bind to the given network. If all goes well you are now set and the ESP8266 will remember the network that it must connect to. NOTE: As long as the accesspoint that the gateway is bound to is present, the gateway will not any longer work with the wpa list of known access points.
 If necessary, you can delete the current access point in the webserver and power cycle the gateway to force it to read the wpa array again.
 
-## Specify a name for known nodes
-- It is possible to substitue the address for known nodes with a chosen name. This will greatly enhance the readibility of the statistics overview 
+## Editing the configNode.h file
+
+### Specify the gateway node data (as with T-beam)
+
+ \#if GATEWAYNODE==1  
+ \#define _DEVADDR { 0x26, 0x01, 0x15, 0x3D }  
+ \#define _APPSKEY { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }  
+ \#define _NWKSKEY { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }  
+ \#define _SENSOR_INTERVAL 300  
+ \#endif 
+ 
+### Specify a name for known nodes in configNode.h
+
+- In configNode.h It is possible to substitue the address for known nodes with a chosen name. 
+This will greatly enhance the readibility of the statistics overview 
 especially for your own nodes, Now you will find names for your own nodes in the webserver.
-- set the TRUSTED_NODES to either 0 (no names), 1 (specify names for known nodes) and 2 (Do not show or transfer to TTN other than known nodes)
+- set the TRUSTED_NODES to either 0 (no names), 1 (specify names for known nodes) and 2 
+(Do not show or transfer to TTN other than known nodes)
 - Although this will work with OTAA nodes as well, please remind that OTAA nodes will change
 their LORA id with every reboot. So for these nodes this function does not add much value.
 
-### Other Settings
+### Other Settings configNode.h
 
 - static char *wpa[WPASIZE][2] contains the array of known WiFi access points the Gateway will connect to.
 Make sure that the dimensions of the array are correctly defined in the WPASIZE settings. 
 Note: When the WiFiManager software is enabled (it is by default) there must at least be one entry in the wpa file, wpa[0] is used for storing WiFiManager information.
 - Only the sx1276 (and HopeRF 95) radio modules are supported at this time. The sx1272 code should be 
 working without much work, but as I do not have one of these modules available I cannot test this.
+
 
 
 ## Webserver
@@ -414,6 +437,7 @@ See http://things4u.github.io in the hardware section for building and connectio
 
 The following dependencies are valid for the Single Channel gateway:
 - ArduinoJson 6, version 6.10.0 of Benoit Blanchon
+- gBase64 library, adapted by me to work in the expected way
 
 # To-DO
 
@@ -421,7 +445,8 @@ The following things are still on my wish list to make to the single channel gat
 
 - Receive downstream message with commands from the server. These can be used to configure
   the gateway through downlink messages (such as setting the SF)
-- Support for ESP32 and RFM95 on 433 MHz
+- Support for ESP32 and RFM95 on 433 MHz (seems to work now)
+- Display for each node the last time it was seen
 - Use the SPIFFS for storing .css files
 - Look at Class B and C support
 

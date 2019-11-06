@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.0
-// Date: 2019-10-20
+// Version 6.1.1
+// Date: 2019-11-06
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -64,7 +64,7 @@ int sendPacket(uint8_t *buf, uint8_t length)
 	char * bufPtr = (char *) (buf);
 	buf[length] = 0;
 	
-#if DUSB>=1
+#if _DUSB>=1
 	if (debug>=2) {
 		Serial.println((char *)buf);
 		Serial.print(F("<"));
@@ -76,7 +76,7 @@ int sendPacket(uint8_t *buf, uint8_t length)
 	auto error = deserializeJson(jsonBuffer, bufPtr);
 		
 	if (error) {
-#if DUSB>=1
+#if _DUSB>=1
 		if (( debug>=1) && (pdebug & P_TX)) {
 			Serial.print (F("T sendPacket:: ERROR Json Decode"));
 			if (debug>=2) {
@@ -112,7 +112,7 @@ int sendPacket(uint8_t *buf, uint8_t length)
 	//}
 
 	if ( data != NULL ) {
-#if DUSB>=1
+#if _DUSB>=1
 		if (( debug>=2 ) && ( pdebug & P_TX )) { 
 			Serial.print(F("T data: ")); 
 			Serial.println((char *) data);
@@ -121,7 +121,7 @@ int sendPacket(uint8_t *buf, uint8_t length)
 #endif
 	}
 	else {												// There is data!
-#if DUSB>=1
+#if _DUSB>=1
 		if ((debug>0) && ( pdebug & P_TX )) {
 			Serial.println(F("T sendPacket:: ERROR: data is NULL"));
 			if (debug>=2) Serial.flush();
@@ -177,7 +177,7 @@ int sendPacket(uint8_t *buf, uint8_t length)
 	
 	LoraDown.payLoad = payLoad;				
 
-#if DUSB>=1
+#if _DUSB>=1
 	if (( debug>=1 ) && ( pdebug & P_TX)) {
 	
 		Serial.print(F("T LoraDown tmst="));
@@ -207,7 +207,7 @@ int sendPacket(uint8_t *buf, uint8_t length)
 #endif
 
 	if (LoraDown.payLength != psize) {
-#if DUSB>=1
+#if _DUSB>=1
 		Serial.print(F("sendPacket:: WARNING payLength: "));
 		Serial.print(LoraDown.payLength);
 		Serial.print(F(", psize="));
@@ -215,7 +215,7 @@ int sendPacket(uint8_t *buf, uint8_t length)
 		if (debug>=2) Serial.flush();
 #endif
 	}
-#if DUSB>=1
+#if _DUSB>=1
 	else if (( debug >= 2 ) && ( pdebug & P_TX )) {
 		Serial.print(F("T Payload="));
 		for (i=0; i<LoraDown.payLength; i++) {
@@ -234,12 +234,12 @@ int sendPacket(uint8_t *buf, uint8_t length)
 		case 2: statc.msg_down_2++; break;
 	}
 
-#if DUSB>=1
+#if _DUSB>=1
 	if (( debug>=2 ) && ( pdebug & P_TX )) {
 		Serial.println(F("T sendPacket:: fini OK"));
 		Serial.flush();
 	}
-#endif // DUSB
+#endif // _DUSB
 
 	// All data is in Payload and parameters and need to be transmitted.
 	// The function is called in user-space
@@ -298,7 +298,7 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 		rssicorr = LoraUp.rssicorr;
 	}
 
-#if STATISTICS >= 1
+#if _STATISTICS >= 1
 	// Receive statistics, move old statistics down 1 position
 	// and fill the new top line with the latest received sensor values.
 	// This works fine for the sensor, EXCEPT when we decode data for _LOCALSERVER
@@ -341,7 +341,7 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 	statr[0].rssi = _rssi - rssicorr;
 #endif // RSII
 	statr[0].sf = LoraUp.sf;
-#if DUSB>=2
+#if _DUSB>=2
 	if (debug>=0) {
 		if ((message[4] != 0x26) || (message[1]==0x99)) {
 			Serial.print(F("addr="));
@@ -356,7 +356,7 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 #endif //DUSB
 	statr[0].node = ( message[1]<<24 | message[2]<<16 | message[3]<<8 | message[4] );
 
-#if STATISTICS >= 2
+#if _STATISTICS >= 2
 	// Fill in the statistics that we will also need for the GUI.
 	// So 
 	switch (statr[0].sf) {
@@ -367,9 +367,9 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 		case SF11: statc.sf11++; break;
 		case SF12: statc.sf12++; break;
 	}
-#endif //STATISTICS >= 2
+#endif // _STATISTICS >= 2
 
-#if STATISTICS >= 3
+#if _STATISTICS >= 3
 	if (statr[0].ch == 0) {
 		statc.msg_ttl_0++;
 		switch (statr[0].sf) {
@@ -405,11 +405,11 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 			case SF12: statc.sf12_2++; break;
 		}
 	}
-#endif //STATISTICS >= 3
+#endif //_STATISTICS >= 3
 
-#endif //STATISTICS >= 2
+#endif //_STATISTICS >= 2
 
-#if DUSB>=1	
+#if _DUSB>=1	
 	if (( debug>=2 ) && ( pdebug & P_RADIO )){
 		Serial.print(F("R buildPacket:: pRSSI="));
 		Serial.print(prssi-rssicorr);
@@ -428,7 +428,7 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 		Serial.println();
 		yield();
 	}
-#endif // DUSB
+#endif // _DUSB
 
 // Show received message status on OLED display
 #if OLED>=1
@@ -470,14 +470,14 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 	// 	message Length is multiple of 4!
 	// Encode message with messageLength into b64
 	int encodedLen = base64_enc_len(messageLength);		// max 341
-#if DUSB>=1
+#if _DUSB>=1
 	if ((debug>=1) && (encodedLen>255) && ( pdebug & P_RADIO )) {
 		Serial.print(F("R buildPacket:: b64 err, len="));
 		Serial.println(encodedLen);
 		if (debug>=2) Serial.flush();
 		return(-1);
 	}
-#endif // DUSB
+#endif // _DUSB
 	base64_encode(b64, (char *) message, messageLength);// max 341
 	// start composing datagram with the header 
 	uint8_t token_h = (uint8_t)rand(); 					// random token
@@ -511,7 +511,7 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 	buff_up[buff_index] = '{';
 	++buff_index;
 	j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, "\"tmst\":%u", tmst);
-#if DUSB>=1
+#if _DUSB>=1
 	if ((j<0) && ( debug>=1 ) && ( pdebug & P_RADIO )) {
 		Serial.println(F("buildPacket:: Error "));
 	}
@@ -597,7 +597,7 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 	addLog( (unsigned char *)(buff_up), buff_index );
 #endif	
 	
-#if DUSB>=1
+#if _DUSB>=1
 	if (( debug>=2 ) && ( pdebug & P_RX )) {
 		Serial.print(F("R RXPK:: "));
 		Serial.println((char *)(buff_up + 12));			// debug: display JSON payload
@@ -704,7 +704,7 @@ int receivePacket()
 				DevAddr[3]= LoraUp.payLoad[1];
 				uint16_t frameCount=LoraUp.payLoad[7]*256 + LoraUp.payLoad[6];
 
-#if DUSB>=1
+#if _DUSB>=1
 				if (( debug>=1 ) && ( pdebug & P_RX )) {
 					Serial.print(F("R receivePacket:: Ind="));
 					Serial.print(index);
@@ -727,7 +727,7 @@ int receivePacket()
 				}
 #endif //DUSB
 			}
-#if DUSB>=1
+#if _DUSB>=1
 			else if (( debug>=2 ) && ( pdebug & P_RX )) {
 					Serial.println(F("receivePacket:: No Index"));
 			}

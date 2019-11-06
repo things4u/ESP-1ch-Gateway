@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.0
-// Date: 2019-10-20
+// Version 6.1.1
+// Date: 2019-11-06
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -62,13 +62,13 @@ void acti_oLED()
 	display.setFont(ArialMT_Plain_16);
 	display.drawString(0, 0, "READY,  SSID=");
 	display.drawString(0, 16, WiFi.SSID());
-	display.drawString(0, 32, "WiFi=");
+	display.drawString(0, 32, "IP=");
 	display.drawString(0, 48, WiFi.localIP().toString().c_str() );
 #elif OLED==2
 	display.setFont(ArialMT_Plain_16);
 	display.drawString(0, 0, "READY,  SSID=");
 	display.drawString(0, 16, WiFi.SSID());
-	display.drawString(0, 32, "WiFi=");
+	display.drawString(0, 32, "IP=");
 	display.drawString(0, 48, WiFi.localIP().toString().c_str() );
 #endif
 

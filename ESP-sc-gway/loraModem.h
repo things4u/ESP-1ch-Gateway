@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.0
-// Date: 2019-10-20
+// Version 6.1.1
+// Date: 2019-11-06
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many other contributors.
@@ -288,7 +288,7 @@ struct pins {
 
 // stat_t contains the statistics that are kept by message. 
 // Each time a message is received or sent the statistics are updated.
-// In case STATISTICS==1 we define the last MAX_STAT messages as statistics
+// In case _STATISTICS==1 we define the last MAX_STAT messages as statistics
 struct stat_t {
 	unsigned long tmst;						// Time since 1970 in seconds		
 	unsigned long node;						// 4-byte DEVaddr (the only one known to gateway)
@@ -305,7 +305,7 @@ struct stat_t {
 } stat_t;
 
 
-#if STATISTICS >= 1
+#if _STATISTICS >= 1
 // statc_c contains the statistic that are gateway related and not per
 // message. Example: Number of messages received on SF7 or number of (re) boots
 // So where statr contains the statistics gathered per packet the statc_c
@@ -317,7 +317,7 @@ struct stat_c {
 	unsigned long msg_ttl;
 	unsigned long msg_down;
 
-#if STATISTICS >= 2							// Only if we explicitly set it higher	
+#if _STATISTICS >= 2							// Only if we explicitly set it higher	
 	unsigned long sf7;						// Spreading factor 7 statistics/Count
 	unsigned long sf8;						// Spreading factor 8
 	unsigned long sf9;						// Spreading factor 9
@@ -325,10 +325,10 @@ struct stat_c {
 	unsigned long sf11;						// Spreading factor 11
 	unsigned long sf12;						// Spreading factor 12
 	
-	// If STATISTICS is 3, we add statistics about the channel 
+	// If _STATISTICS is 3, we add statistics about the channel 
 	// When only one channel is used, we normally know the spread of
 	// statistics, but when HOP mode is selected we migth want to add this info
-#if STATISTICS >=3
+#if _STATISTICS >=3
 	unsigned long msg_ok_0, msg_ok_1, msg_ok_2;
 	unsigned long msg_ttl_0, msg_ttl_1, msg_ttl_2;
 	unsigned long msg_down_0, msg_down_1, msg_down_2;
@@ -356,7 +356,7 @@ struct stat_t statr[MAX_STAT];
 
 
 
-#else // STATISTICS==0
+#else // _STATISTICS==0
 struct stat_t	statr[1];					// Always have at least one element to store in
 #endif
 

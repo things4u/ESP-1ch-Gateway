@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.0
-// Date: 2019-10-20
+// Version 6.1.1
+// Date: 2019-11-06
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -193,7 +193,7 @@ void writeBuffer(uint8_t addr, uint8_t *buf, uint8_t len)
 void setRate(uint8_t sf, uint8_t crc) 
 {
 	uint8_t mc1=0, mc2=0, mc3=0;
-#if DUSB>=2
+#if _DUSB>=2
 	if ((sf<SF7) || (sf>SF12)) {
 		if (( debug>=1 ) && ( pdebug & P_RADIO )) {
 			Serial.print(F("setRate:: SF="));
@@ -370,7 +370,7 @@ void hop() {
 	// Be aware that micros() has increased significantly from calling 
 	// the hop function until printed below
 	//
-#if DUSB>=1
+#if _DUSB>=1
 	if (( debug>=2 ) && ( pdebug & P_RADIO )){
 			Serial.print(F("hop:: hopTime:: "));
 			Serial.print(micros() - hopTime);
@@ -408,7 +408,7 @@ uint8_t receivePkt(uint8_t *payload)
 
 	uint8_t crcUsed = readRegister(REG_HOP_CHANNEL);
 	if (crcUsed & 0x40) {
-#if DUSB>=1
+#if _DUSB>=1
 		if (( debug>=2) && (pdebug & P_RX )) {
 			Serial.println(F("R rxPkt:: CRC used"));
 		}
@@ -418,7 +418,7 @@ uint8_t receivePkt(uint8_t *payload)
     //  Check for payload IRQ_LORA_CRCERR_MASK=0x20 set
     if (irqflags & IRQ_LORA_CRCERR_MASK)
     {
-#if DUSB>=1
+#if _DUSB>=1
         if (( debug>=0) && ( pdebug & P_RADIO )) {
 			Serial.print(F("rxPkt:: Err CRC, ="));
 			SerialTime();
@@ -433,7 +433,7 @@ uint8_t receivePkt(uint8_t *payload)
 	// that we would here conclude that there is no HEADER
 	else if ((irqflags & IRQ_LORA_HEADER_MASK) == false)
     {
-#if DUSB>=1
+#if _DUSB>=1
         if (( debug>=0) && ( pdebug & P_RADIO )) {
 			Serial.println(F("rxPkt:: Err HEADER"));
 		}
@@ -467,7 +467,7 @@ uint8_t receivePkt(uint8_t *payload)
         //uint8_t currentAddr = readRegister(REG_FIFO_RX_CURRENT_ADDR);	// 0x10
 		uint8_t currentAddr = readRegister(REG_FIFO_RX_BASE_AD);		// 0x0F
         uint8_t receivedCount = readRegister(REG_RX_NB_BYTES);			// 0x13; How many bytes were read
-#if DUSB>=1
+#if _DUSB>=1
 		if ((debug>=0) && (currentAddr > 64)) {
 			Serial.print(F("rxPkt:: Rx addr>64"));
 			Serial.println(currentAddr);
@@ -476,7 +476,7 @@ uint8_t receivePkt(uint8_t *payload)
         writeRegister(REG_FIFO_ADDR_PTR, (uint8_t) currentAddr);		// 0x0D 
 
 		if (receivedCount > PAYLOAD_LENGTH) {
-#if DUSB>=1
+#if _DUSB>=1
 			if (( debug>=0 ) & ( pdebug & P_RADIO )) {
 				Serial.print(F("rxPkt:: receivedCount="));
 				Serial.println(receivedCount);
@@ -492,9 +492,9 @@ uint8_t receivePkt(uint8_t *payload)
 
 		writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);		// Reset ALL interrupts
 		
-		// A long as DUSB is enabled, and RX debug messages are selected,
+		// A long as _DUSB is enabled, and RX debug messages are selected,
 		//the received packet is displayed on the output.
-#if DUSB>=1
+#if _DUSB>=1
 		if (( debug>=0 ) && ( pdebug & P_RX )){
 		
 			Serial.print(F("rxPkt:: t="));
@@ -610,7 +610,7 @@ uint8_t receivePkt(uint8_t *payload)
 // ----------------------------------------------------------------------------
 bool sendPkt(uint8_t *payLoad, uint8_t payLength)
 {
-#if DUSB>=2
+#if _DUSB>=2
 	if (payLength>=128) {
 		if (debug>=1) {
 			Serial.print("sendPkt:: len=");
@@ -660,7 +660,7 @@ void loraWait(const uint32_t timestamp)
 		case 11: break;
 		case 12: break;
 		default:
-#if DUSB>=1
+#if _DUSB>=1
 		if (( debug>=1 ) && ( pdebug & P_TX )) {
 			Serial.print(F("T loraWait:: unknown SF="));
 			Serial.print(LoraDown.sfTx);
@@ -685,7 +685,7 @@ void loraWait(const uint32_t timestamp)
 	// And we use delayMicroseconds() to wait
 	if (waitTime>0) delayMicroseconds(waitTime);
 
-#if DUSB>=1
+#if _DUSB>=1
 	else if ((waitTime+20) < 0) {
 		Serial.println(F("loraWait:: TOO LATE"));		// Never happens
 	}
@@ -745,7 +745,7 @@ void txLoraModem(
 				uint8_t iiq				// Interrupt
 				)
 {
-#if DUSB>=2
+#if _DUSB>=2
 	if (debug>=1) {
 		// Make sure that all serial stuff is done before continuing
 		Serial.print(F("txLoraModem::"));
@@ -989,7 +989,7 @@ void initLoraModem(
     digitalWrite(pins.rst, HIGH);
 	delayMicroseconds(10000);
 	digitalWrite(pins.ss, HIGH);
-#if DUSB>=1
+#if _DUSB>=1
 
 #endif
 
@@ -1020,7 +1020,7 @@ void initLoraModem(
     uint8_t version = readRegister(REG_VERSION);				// Read the LoRa chip version id
     if (version == 0x22) {
         // sx1272
-#if DUSB>=2
+#if _DUSB>=2
         Serial.println(F("WARNING:: SX1272 detected"));
 #endif
         sx1272 = true;
@@ -1028,7 +1028,7 @@ void initLoraModem(
 	
 	else if (version == 0x12) {
         // sx1276?
-#if DUSB>=2
+#if _DUSB>=2
             if (debug >=1) 
 				Serial.println(F("SX1276 starting"));
 #endif
@@ -1039,7 +1039,7 @@ void initLoraModem(
 		// therefore specified the wrong type of wiring/pins to the software
 		// Maybe this issue can be resolved of we try one of the other defined 
 		// boards. (Comresult or Hallard or ...)
-#if DUSB>=1
+#if _DUSB>=1
 		Serial.print(F("Unknown transceiver="));
 		Serial.print(version,HEX);
 		Serial.print(F(", pins.rst =")); Serial.print(pins.rst);
@@ -1093,7 +1093,7 @@ void initLoraModem(
 void startReceiver() {
 	initLoraModem();								// XXX 180326, after adapting this function 
 	if (_cad) {
-#if DUSB>=1
+#if _DUSB>=1
 		if (( debug>=1 ) && ( pdebug & P_SCAN )) {
 			Serial.println(F("S PULL:: _state set to S_SCAN"));
 			if (debug>=2) Serial.flush();

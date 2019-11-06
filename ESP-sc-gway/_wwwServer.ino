@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.0
-// Date: 2019-10-20
+// Version 6.1.1
+// Date: 2019-11-06
 //
 // 	based on work done by many people and making use of several libraries.
 //
@@ -113,6 +113,7 @@ boolean YesNo()
 // This function will open a pop-up in the browser and then 
 //	display the contents of a file in that window
 // Output is sent to server.sendContent()
+//	Note: The output is not in a variable, its size would be too large
 // Parameters:
 //		fn; String with filename
 // Returns:
@@ -121,20 +122,20 @@ boolean YesNo()
 void wwwFile(String fn) {
 
 	if (!SPIFFS.exists(fn)) {
-#if DUSB>=1
+#if _DUSB>=1
 		Serial.print(F("wwwFile:: ERROR: file not found="));
 		Serial.println(fn);
 #endif
 		return;
 	}
-#if DUSB>=2
+#if _DUSB>=2
 	else {
 		Serial.print(F("wwwFile:: File existist= "));
 		Serial.println(fn);
 	}
 #endif
 
-#if DUSB>=1
+#if _DUSB>=1
 	File f = SPIFFS.open(fn, "r");					// Open the file for reading
 		
 	int j;
@@ -149,6 +150,9 @@ void wwwFile(String fn) {
 		server.sendContent("\n");
 		yield();
 	}
+	
+	f.close();
+
 #endif
 	
 }
@@ -171,7 +175,7 @@ void buttonDocu()
 	response += "    txt += \"Click OK to continue viewing documentation,\\n\"; ";
 	response += "    txt += \"or Cancel to return to the home page.\\n\\n\"; ";
 	response += "    if(confirm(txt)) { ";
-	response += "      document.location.href = \"https://things4u.github.io/UserGuide/One%20Channel%20Gateway/Introduction%205.html\"; ";
+	response += "      document.location.href = \"https://things4u.github.io/Projects/SingleChannelGateway/UserGuide/Introduction%206.html\"; ";
 	response += "    }";
 	response += "  }";
 	response += "}";
@@ -204,6 +208,27 @@ void buttonLog()
 }
 
 // --------------------------------------------------------------------------------
+// BUTTONNODE
+// Read the logfiles and display info about nodes (last seend, SF used etc).
+// This is a button on the top of the GUI screen
+// --------------------------------------------------------------------------------
+void buttonNode() 
+{
+	
+//	String response = "";
+	String fn = "";
+	int i = 0;
+	
+	while (i< LOGFILEMAX ) {
+		fn = "/log-" + String(gwayConfig.logFileNo - i);
+		wwwFile(fn);									// Display the file contents in the browser
+		i++;
+	}
+	
+//	server.sendContent(response);
+}
+
+// --------------------------------------------------------------------------------
 // Navigate webpage by buttons. This method has some advantages:
 // - Less time/cpu usage
 // - Less memory usage		<a href=\"SPEED=160\">
@@ -219,6 +244,7 @@ static void wwwButtons()
 	response += "<input type=\"button\" value=\"Documentation\" onclick=\"showDocu()\" >";
 	
 	response += "<a href=\"EXPERT\" download><button type=\"button\">" + mode + "</button></a>";
+	response += "<a href=\"NODE\" download><button type=\"button\">Nodes Seen</button></a>";
 	response += "<a href=\"LOG\" download><button type=\"button\">Log Files</button></a>";
 
 	server.sendContent(response);							// Send to the screen
@@ -323,7 +349,7 @@ static void setVariables(const char *cmd, const char *arg) {
 	}
 #endif
 	
-#if WIFIMANAGER==1
+#if _WIFIMANAGER==1
 	if (strcmp(cmd, "NEWSSID")==0) { 
 		WiFiManager wifiManager;
 		strcpy(wpa[0].login,""); 
@@ -369,7 +395,7 @@ static void openWebPage()
 	server.sendHeader("Expires", "-1");
 	
 	// init webserver, fill the webpage
-	// NOTE: The page is renewed every _WWW_INTERVAL seconds, please adjust in ESP-sc-gway.h
+	// NOTE: The page is renewed every _WWW_INTERVAL seconds, please adjust in configGway.h
 	//
 	server.setContentLength(CONTENT_LENGTH_UNKNOWN);
 	server.send(200, "text/html", "");
@@ -487,9 +513,9 @@ static void gatewaySettings()
 	}
 	response +="</tr>";
 
-	// Debugging options, only when DUSB is set, otherwise no
+	// Debugging options, only when _DUSB is set, otherwise no
 	// serial activity
-#if DUSB>=1	
+#if _DUSB>=1	
 	response +="<tr><td class=\"cell\">Debug level</td><td class=\"cell\" colspan=\"2\">"; 
 	response +=debug; 
 	response +="</td>";
@@ -553,7 +579,7 @@ static void gatewaySettings()
 #endif
 	// Serial Debugging
 	response +="<tr><td class=\"cell\">Usb Debug</td><td class=\"cell\" colspan=\"2\">"; 
-	response +=DUSB; 
+	response += _DUSB; 
 	response +="</td>";
 	//response +="<td class=\"cell\"> </td>";
 	//response +="<td class=\"cell\"> </td>";
@@ -589,7 +615,7 @@ static void gatewaySettings()
 #endif
 
 	// Reset Accesspoint
-#if WIFIMANAGER==1
+#if _WIFIMANAGER==1
 	response +="<tr><td><tr><td>";
 	response +="Click <a href=\"/NEWSSID\">here</a> to reset accesspoint<br>";
 	response +="</td><td></td></tr>";
@@ -605,7 +631,7 @@ static void gatewaySettings()
 	response +="<td colspan=\"2\" class=\"cell\"><input type=\"button\" value=\"FORMAT\" onclick=\"ynDialog(\'Do you really want to format?\',\'FORMAT\')\" /></td></tr>";
 
 	// Reset all statistics
-#if STATISTICS >= 1
+#if _STATISTICS >= 1
 	response +="<tr><td class=\"cell\">Statistics</td>";
 	response +=String() + "<td class=\"cell\" colspan=\"2\" >"+statc.resets+"</td>";
 	response +="<td colspan=\"2\" class=\"cell\"><input type=\"button\" value=\"RESET\" onclick=\"ynDialog(\'Do you really want to reset statistics?\',\'RESET\')\" /></td></tr>";
@@ -636,7 +662,7 @@ static void statisticsData()
 	response +="<h2>Package Statistics</h2>";
 	response +="<table class=\"config_table\">";
 	response +="<tr><th class=\"thead\">Counter</th>";
-#if STATISTICS == 3
+#if _STATISTICS == 3
 	response +="<th class=\"thead\">C 0</th>";
 	response +="<th class=\"thead\">C 1</th>";
 	response +="<th class=\"thead\">C 2</th>";
@@ -649,7 +675,7 @@ static void statisticsData()
 	// Table rows
 	//
 	response +="<tr><td class=\"cell\">Packages Downlink</td>";
-#if STATISTICS == 3
+#if _STATISTICS == 3
 		response +="<td class=\"cell\">" + String(statc.msg_down_0) + "</td>";
 		response +="<td class=\"cell\">" + String(statc.msg_down_1) + "</td>";
 		response +="<td class=\"cell\">" + String(statc.msg_down_2) + "</td>"; 
@@ -658,7 +684,7 @@ static void statisticsData()
 	response +="<td class=\"cell\"></td></tr>";
 		
 	response +="<tr><td class=\"cell\">Packages Uplink Total</td>";
-#if STATISTICS == 3
+#if _STATISTICS == 3
 		response +="<td class=\"cell\">" + String(statc.msg_ttl_0) + "</td>";
 		response +="<td class=\"cell\">" + String(statc.msg_ttl_1) + "</td>";
 		response +="<td class=\"cell\">" + String(statc.msg_ttl_2) + "</td>";
@@ -667,7 +693,7 @@ static void statisticsData()
 		response +="<td class=\"cell\">" + String((statc.msg_ttl*3600)/(now() - startTime)) + "</td></tr>";
 		
 	response +="<tr><td class=\"cell\">Packages Uplink OK </td>";
-#if STATISTICS == 3
+#if _STATISTICS == 3
 		response +="<td class=\"cell\">" + String(statc.msg_ok_0) + "</td>";
 		response +="<td class=\"cell\">" + String(statc.msg_ok_1) + "</td>";
 		response +="<td class=\"cell\">" + String(statc.msg_ok_2) + "</td>";
@@ -677,7 +703,7 @@ static void statisticsData()
 		
 
 	// Provide a table with all the SF data including percentage of messsages
-#if STATISTICS == 2
+#if _STATISTICS == 2
 	response +="<tr><td class=\"cell\">SF7 rcvd</td>"; 
 		response +="<td class=\"cell\">"; response +=statc.sf7; 
 		response +="<td class=\"cell\">"; response += String(statc.msg_ttl>0 ? 100*statc.sf7/statc.msg_ttl : 0)+" %"; 
@@ -703,7 +729,7 @@ static void statisticsData()
 		response +="<td class=\"cell\">"; response += String(statc.msg_ttl>0 ? 100*statc.sf12/statc.msg_ttl : 0)+" %"; 
 		response +="</td></tr>";
 #endif
-#if STATISTICS == 3
+#if _STATISTICS == 3
 	response +="<tr><td class=\"cell\">SF7 rcvd</td>";
 		response +="<td class=\"cell\">"; response +=statc.sf7_0; 
 		response +="<td class=\"cell\">"; response +=statc.sf7_1; 
@@ -780,7 +806,7 @@ static void statisticsData()
 // --------------------------------------------------------------------------------
 static void messageHistory() 
 {
-#if STATISTICS >= 1
+#if _STATISTICS >= 1
 	String response="";
 	
 	response += "<h2>Message History</h2>";
@@ -919,7 +945,7 @@ void setupWWW()
 		SPIFFS.format();								// Normally disabled. Enable only when SPIFFS corrupt
 		initConfig(&gwayConfig);
 		writeConfig( CONFIGFILE, &gwayConfig);
-#if DUSB>=1
+#if _DUSB>=1
 		Serial.println(F("DONE"));
 #endif
 		server.sendHeader("Location", String("/"), true);
@@ -936,7 +962,7 @@ void setupWWW()
 		statc.msg_ok = 0;
 		statc.msg_down = 0;
 		
-#if STATISTICS >= 3
+#if _STATISTICS >= 3
 		statc.msg_ttl_0 = 0;
 		statc.msg_ttl_1 = 0;
 		statc.msg_ttl_2 = 0;
@@ -948,9 +974,9 @@ void setupWWW()
 		statc.msg_down_2 = 0;	
 #endif
 
-#if STATISTICS >= 1
+#if _STATISTICS >= 1
 		for (int i=0; i<MAX_STAT; i++) { statr[i].sf = 0; }
-#if STATISTICS >= 2
+#if _STATISTICS >= 2
 		statc.sf7 = 0;
 		statc.sf8 = 0;
 		statc.sf9 = 0;
@@ -960,7 +986,7 @@ void setupWWW()
 		
 		statc.resets= 0;
 		writeGwayCfg(CONFIGFILE);
-#if STATISTICS >= 3
+#if _STATISTICS >= 3
 		statc.sf7_0 = 0; statc.sf7_1 = 0; statc.sf7_2 = 0;
 		statc.sf8_0 = 0; statc.sf8_1 = 0; statc.sf8_2 = 0;
 		statc.sf9_0 = 0; statc.sf9_1 = 0; statc.sf9_2 = 0;
@@ -977,7 +1003,7 @@ void setupWWW()
 	// Reset the boot counter
 	server.on("/BOOT", []() {
 		Serial.println(F("BOOT"));
-#if STATISTICS >= 2
+#if _STATISTICS >= 2
 		gwayConfig.boots = 0;
 		gwayConfig.wifis = 0;
 		gwayConfig.views = 0;
@@ -1092,7 +1118,7 @@ void setupWWW()
 	// Set Frequency of the GateWay node
 	server.on("/FREQ=1", []() {
 		uint8_t nf = sizeof(freqs)/sizeof(freqs[0]);	// Number of elements in array
-#if DUSB==2
+#if _DUSB==2
 		Serial.print("FREQ==1:: For freq[0] sizeof vector=");
 		Serial.print(sizeof(freqs[0]));
 		Serial.println();
@@ -1207,10 +1233,11 @@ void setupWWW()
 		buttonDocu();
 		server.send ( 302, "text/plain", "");
 	});
-	
+
+	// Display LOGging information
 	server.on("/LOG", []() {
 		server.sendHeader("Location", String("/"), true);
-#if DUSB>=1
+#if _DUSB>=1
 		Serial.println(F("LOG button"));
 #endif
 		buttonLog();
@@ -1221,6 +1248,16 @@ void setupWWW()
 	server.on("/EXPERT", []() {
 		server.sendHeader("Location", String("/"), true);
 		gwayConfig.expert = bool(1 - (int) gwayConfig.expert) ;
+		server.send ( 302, "text/plain", "");
+	});
+	
+	// Display the NODE statistics
+	server.on("/NODE", []() {
+		server.sendHeader("Location", String("/"), true);
+#if _DUSB>=1
+		Serial.println(F("NODE button"));
+#endif
+		buttonNode();
 		server.send ( 302, "text/plain", "");
 	});
 
@@ -1339,7 +1376,7 @@ static void systemStatus()
 #endif
 		response +="<tr><td class=\"cell\">OLED</td><td class=\"cell\">"; response+=OLED; response+="</tr>";
 		
-#if STATISTICS>=1
+#if _STATISTICS >= 1
 		response +="<tr><td class=\"cell\">WiFi Setups</td><td class=\"cell\">"; response+=gwayConfig.wifis; response+="</tr>";
 		response +="<tr><td class=\"cell\">WWW Views</td><td class=\"cell\">"; response+=gwayConfig.views; response+="</tr>";
 #endif

@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.0
-// Date: 2019-10-20
+// Version 6.1.1
+// Date: 2019-11-06
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -158,7 +158,7 @@ void SerialTime()
 
 void SerialStat(uint8_t intr) 
 {
-#if DUSB>=1
+#if _DUSB>=1
 	if (debug>=0) {
 		Serial.print(F("I="));
 
@@ -230,7 +230,7 @@ int SerialName(char * a, String& response)
 	for ( i=0; i< (sizeof(nodes)/sizeof(nodex)); i++) {
 
 		if (id == nodes[i].id) {
-#if DUSB >=1
+#if _DUSB >=1
 			if (( debug>=3 ) && ( pdebug & P_GUI )) {
 				Serial.print(F("G Name="));
 				Serial.print(nodes[i].nm);

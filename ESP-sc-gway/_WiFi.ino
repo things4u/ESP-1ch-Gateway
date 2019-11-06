@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.0
-// Date: 2019-10-20
+// Version 6.1.1
+// Date: 2019-11-06
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -34,7 +34,7 @@ int WlanStatus() {
 
 	switch (WiFi.status()) {
 		case WL_CONNECTED:
-#if DUSB>=1
+#if _DUSB>=1
 			if ( debug>=0 ) {
 				Serial.print(F("A WlanStatus:: CONNECTED to "));				// 3
 				Serial.println(WiFi.SSID());
@@ -47,7 +47,7 @@ int WlanStatus() {
 		// In case we get disconnected from the AP we loose the IP address.
 		// The ESP is configured to reconnect to the last router in memory.
 		case WL_DISCONNECTED:
-#if DUSB>=1
+#if _DUSB>=1
 			if ( debug>=0 ) {
 				Serial.print(F("A WlanStatus:: DISCONNECTED, IP="));			// 6
 				Serial.println(WiFi.localIP());
@@ -62,7 +62,7 @@ int WlanStatus() {
 
 		// When still pocessing
 		case WL_IDLE_STATUS:
-#if DUSB>=1
+#if _DUSB>=1
 			if ( debug>=0 ) {
 				Serial.println(F("A WlanStatus:: IDLE"));					// 0
 			}
@@ -72,14 +72,14 @@ int WlanStatus() {
 		// This code is generated as soonas the AP is out of range
 		// Whene detected, the program will search for a better AP in range
 		case WL_NO_SSID_AVAIL:
-#if DUSB>=1
+#if _DUSB>=1
 			if ( debug>=0 )
 				Serial.println(F("WlanStatus:: NO SSID"));					// 1
 #endif
 			break;
 			
 		case WL_CONNECT_FAILED:
-#if DUSB>=1
+#if _DUSB>=1
 			if ( debug>=0 )
 				Serial.println(F("A WlanStatus:: FAILED"));					// 4
 #endif
@@ -87,7 +87,7 @@ int WlanStatus() {
 			
 		// Never seen this code
 		case WL_SCAN_COMPLETED:
-#if DUSB>=1
+#if _DUSB>=1
 			if ( debug>=0 )
 				Serial.println(F("A WlanStatus:: SCAN COMPLETE"));			// 2
 #endif
@@ -95,7 +95,7 @@ int WlanStatus() {
 			
 		// Never seen this code
 		case WL_CONNECTION_LOST:
-#if DUSB>=1
+#if _DUSB>=1
 			if ( debug>=0 )
 				Serial.println(F("A WlanStatus:: LOST"));					// 5
 #endif
@@ -104,14 +104,14 @@ int WlanStatus() {
 		// This code is generated for example when WiFi.begin() has not been called
 		// before accessing WiFi functions
 		case WL_NO_SHIELD:
-#if DUSB>=1
+#if _DUSB>=1
 			if ( debug>=0 )
 				Serial.println(F("A WlanStatus:: WL_NO_SHIELD"));				// 
 #endif
 			break;
 			
 		default:
-#if DUSB>=1
+#if _DUSB>=1
 			if ( debug>=0 ) {
 				Serial.print(F("A WlanStatus Error:: code="));
 				Serial.println(WiFi.status());								// 255 means ERROR
@@ -144,7 +144,7 @@ int WlanReadWpa() {
 	if (gwayConfig.fcnt != (uint8_t) 0) frameCount = gwayConfig.fcnt+10;
 #endif
 	
-#if WIFIMANAGER==1
+#if _WIFIMANAGER==1
 	String ssid=gwayConfig.ssid;
 	String pass=gwayConfig.pass;
 
@@ -170,10 +170,10 @@ int WlanReadWpa() {
 // ----------------------------------------------------------------------------
 // Print the WPA data of last WiFiManager to the config file
 // ----------------------------------------------------------------------------
-#if WIFIMANAGER==1
+#if _WIFIMANAGER==1
 int WlanWriteWpa( char* ssid, char *pass) {
 
-#if DUSB>=1
+#if _DUSB>=1
 	if (( debug >=0 ) && ( pdebug & P_MAIN )) {
 		Serial.print(F("M WlanWriteWpa:: ssid=")); 
 		Serial.print(ssid);
@@ -229,12 +229,12 @@ int WlanWriteWpa( char* ssid, char *pass) {
 // ----------------------------------------------------------------------------
 int WlanConnect(int maxTry) {
   
-#if WIFIMANAGER==1
+#if _WIFIMANAGER==1
 	WiFiManager wifiManager;
 #endif
 
 	unsigned char agains = 0;
-	unsigned char wpa_index = (WIFIMANAGER >0 ? 0 : 1);		// Skip over first record for WiFiManager
+	unsigned char wpa_index = (_WIFIMANAGER >0 ? 0 : 1);		// Skip over first record for WiFiManager
 
 	// The initial setup() call is done with parameter 0
 	// We clear the WiFi memory and start with previous AP.
@@ -263,7 +263,7 @@ int WlanConnect(int maxTry) {
 			// Start with well-known access points in the list
 			char *ssid		= wpa[j].login;
 			char *password	= wpa[j].passw;
-#if DUSB>=1
+#if _DUSB>=1
 			if (debug>=0)  {
 				Serial.print(i);
 				Serial.print(':');
@@ -305,13 +305,13 @@ int WlanConnect(int maxTry) {
 			while (((WiFi.status()) != WL_CONNECTED) && (agains < 10)) {
 				agains++;
 				delay(agains*500);
-#if DUSB>=1
+#if _DUSB>=1
 				if ( debug>=0 ) {
 					Serial.print(".");
 				}
 #endif
 			}
-#if DUSB>=1
+#if _DUSB>=1
 			Serial.println();
 #endif		
 			//if ( WiFi.status() == WL_DISCONNECTED) return(0);				// XXX 180811 removed
@@ -329,10 +329,10 @@ int WlanConnect(int maxTry) {
 
 	
 	// If we are not connected to a well known AP
-	// we can invoike WIFIMANAGER or else return unsuccessful.
+	// we can invoike _WIFIMANAGER or else return unsuccessful.
 	if (WiFi.status() != WL_CONNECTED) {
-#if WIFIMANAGER==1
-#if DUSB>=1
+#if _WIFIMANAGER==1
+#if _DUSB>=1
 		Serial.println(F("Starting Access Point Mode"));
 		Serial.print(F("Connect Wifi to accesspoint: "));
 		Serial.print(AP_NAME);
@@ -353,7 +353,7 @@ int WlanConnect(int maxTry) {
 		//WlanWriteWpa(ssidBuf, (char *)sta_conf.password);
 		WlanWriteWpa((char *)sta_conf.ssid, (char *)sta_conf.password);
 #else
-#if DUSB>=1
+#if _DUSB>=1
 		if (debug>=0) {
 			Serial.println(F("WlanConnect:: Not connected after all"));
 			Serial.print(F("WLAN retry="));
@@ -362,7 +362,7 @@ int WlanConnect(int maxTry) {
 			Serial.print(WiFi.status() );						// Status. 3 is WL_CONNECTED
 			Serial.println();
 		}
-#endif// DUSB
+#endif// _DUSB
 		return(-1);
 #endif
 	}

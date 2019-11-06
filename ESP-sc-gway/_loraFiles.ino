@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.0		
-// Date: 2019-10-20
+// Version 6.1.1		
+// Date: 2019-11-06	
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -27,7 +27,7 @@
 // Supporting function to readConfig
 // ----------------------------------------------------------------------------
 void id_print (String id, String val) {
-#if DUSB>=1
+#if _DUSB>=1
 	if (( debug>=0 ) && ( pdebug & P_MAIN )) {
 		Serial.print(id);
 		Serial.print(F("=\t"));
@@ -59,11 +59,11 @@ int initConfig(struct espGwayConfig *c) {
 int readConfig(const char *fn, struct espGwayConfig *c) {
 
 	int tries = 0;
-#if DUSB>=1
+#if _DUSB>=1
 	Serial.println(F("readConfig:: Starting "));
 #endif
 	if (!SPIFFS.exists(fn)) {
-#if DUSB>=1
+#if _DUSB>=1
 		if (( debug>=0 ) && ( pdebug & P_MAIN ))
 		Serial.print(F("M ERR:: readConfig, file="));
 		Serial.print(fn);
@@ -82,7 +82,7 @@ int readConfig(const char *fn, struct espGwayConfig *c) {
 
 	while (f.available()) {
 		
-#if DUSB>=1
+#if _DUSB>=1
 		if (( debug>=0 ) && ( pdebug & P_MAIN )) {
 			Serial.print('.');
 		}
@@ -92,7 +92,7 @@ int readConfig(const char *fn, struct espGwayConfig *c) {
 		//
 		if (tries >= 10) {
 			f.close();
-#if DUSB>=1
+#if _DUSB>=1
 			if (( debug>=0 ) && ( pdebug & P_MAIN ))
 				Serial.println(F("Formatting"));
 #endif
@@ -202,7 +202,7 @@ int readConfig(const char *fn, struct espGwayConfig *c) {
 		}
 	}
 	f.close();
-#if DUSB>=1
+#if _DUSB>=1
 	if (debug>=0) {
 		Serial.println('#');
 	}
@@ -314,7 +314,7 @@ void addLog(const unsigned char * line, int cnt)
 	//
 	if (gwayConfig.logFileNum > LOGFILEMAX){
 		sprintf(fn,"/log-%d", gwayConfig.logFileNo - LOGFILEMAX);
-#if DUSB>=1
+#if _DUSB>=1
 		if (( debug>=0 ) && ( pdebug & P_GUI )) {
 			Serial.print(F("G addLog:: Too many logfile, deleting="));
 			Serial.println(fn);
@@ -330,7 +330,7 @@ void addLog(const unsigned char * line, int cnt)
 	// If there is no SPIFFS, Error
 	// Make sure to write the config record/line also
 	if (!SPIFFS.exists(fn)) {
-#if DUSB>=1
+#if _DUSB>=1
 		if (( debug >= 1 ) && ( pdebug & P_GUI )) {
 			Serial.print(F("G ERROR:: addLog:: file="));
 			Serial.print(fn);
@@ -343,7 +343,7 @@ void addLog(const unsigned char * line, int cnt)
 	
 	File f = SPIFFS.open(fn, "a");
 	if (!f) {
-#if DUSB>=1
+#if _DUSB>=1
 		if (( debug>=1 ) && ( pdebug & P_GUI )) {
 			Serial.println("G file open failed=");
 			Serial.println(fn);
@@ -353,7 +353,7 @@ void addLog(const unsigned char * line, int cnt)
 	}
 	
 	int i;
-#if DUSB>=1
+#if _DUSB>=1
 	if (( debug>=1 ) && ( pdebug & P_GUI )) {
 		Serial.print(F("G addLog:: fileno="));
 		Serial.print(gwayConfig.logFileNo);
@@ -392,7 +392,7 @@ void printLog()
 {
 	char fn[16];
 	int i=0;
-#if DUSB>=1
+#if _DUSB>=1
 	while (i< LOGFILEMAX ) {
 		sprintf(fn,"/log-%d", gwayConfig.logFileNo - i);
 		if (!SPIFFS.exists(fn)) break;		// break the loop
@@ -421,7 +421,7 @@ void printLog()
 // ----------------------------------------------------------------------------
 void listDir(char * dir) 
 {
-#if DUSB>=1
+#if _DUSB>=1
 	
 #endif
 }

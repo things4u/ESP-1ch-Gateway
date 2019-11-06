@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.0
-// Date: 2019-10-20
+// Version 6.1.1
+// Date: 2019-11-06
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -80,7 +80,7 @@ void stateMachine()
 	uint8_t rssi;
 	_event=0;													// Reset the interrupt detector	
 	
-#if DUSB>=1
+#if _DUSB>=1
 	if (intr != flags) {
 		Serial.print(F("FLAG  ::"));
 		SerialStat(intr);
@@ -113,7 +113,7 @@ void stateMachine()
 				case S_TXDONE:	eventWait = EVENT_WAIT * 4; break;
 				default:
 					eventWait=0;
-#if DUSB>=1
+#if _DUSB>=1
 					Serial.print(F("DEFAULT :: "));
 					SerialStat(intr);
 #endif
@@ -134,7 +134,7 @@ void stateMachine()
 				case SF12:	doneWait *= 32;	break;
 				default:
 					doneWait *= 1;
-#if DUSB>=1
+#if _DUSB>=1
 					if (( debug>=0 ) && ( pdebug & P_PRE )) {
 						Serial.print(F("PRE:: DEF set"));
 						Serial.println();
@@ -155,7 +155,7 @@ void stateMachine()
 				_state = S_SCAN;
 				hop();											// increment ifreq = (ifreq + 1) % NUM_HOPS ;
 				cadScanner();									// Reset to initial SF, leave frequency "freqs[ifreq]"
-#if DUSB>=1
+#if _DUSB>=1
 				if (( debug >= 1 ) && ( pdebug & P_PRE )) {
 					Serial.print(F("DONE  :: "));
 					SerialStat(intr);
@@ -173,7 +173,7 @@ void stateMachine()
 				_state = S_SCAN;
 				hop();											// increment ifreq = (ifreq + 1) % NUM_HOPS ;
 				cadScanner();									// Reset to initial SF, leave frequency "freqs[ifreq]"
-#if DUSB>=1
+#if _DUSB>=1
 				if (( debug >= 2 ) && ( pdebug & P_PRE )) {
 					Serial.print(F("HOP ::  "));
 					SerialStat(intr);
@@ -188,7 +188,7 @@ void stateMachine()
 			// If we are here, NO timeout has occurred 
 			// So we need to return to the main State Machine
 			// as there was NO interrupt
-#if DUSB>=1
+#if _DUSB>=1
 			if (( debug>=3 ) && ( pdebug & P_PRE )) {
 				Serial.print(F("PRE:: eventTime="));
 				Serial.print(eventTime);
@@ -224,7 +224,7 @@ void stateMachine()
 	  // The initLoraModem() function is already called in setup();
 	  //
 	  case S_INIT:
-#if DUSB>=1
+#if _DUSB>=1
 		if (( debug>=1 ) && ( pdebug & P_PRE )) { 
 			Serial.println(F("S_INIT")); 
 		}
@@ -278,7 +278,7 @@ void stateMachine()
 			_event = 0;												// Make 0, as soon as we have an interrupt
 			detTime = micros();										// mark time that preamble detected
 			
-#if DUSB>=1
+#if _DUSB>=1
 			if (( debug>=1 ) && ( pdebug & P_SCAN )) {
 				Serial.print(F("SCAN:: "));
 				SerialStat(intr);
@@ -300,7 +300,7 @@ void stateMachine()
 			opmode(OPMODE_CAD);
 			rssi = readRegister(REG_RSSI);							// Read the RSSI
 
-#if DUSB>=1
+#if _DUSB>=1
 			if (( debug>=2 ) && ( pdebug & P_SCAN )) {
 				Serial.print(F("SCAN:: CDDONE: "));
 				SerialStat(intr);
@@ -315,7 +315,7 @@ void stateMachine()
 			//if ( rssi > RSSI_LIMIT )								// Is set to 35
 			if ( rssi > (RSSI_LIMIT - (_hop * 7)))					// Is set to 35, or 29 for HOP
 			{
-#if DUSB>=1
+#if _DUSB>=1
 				if (( debug>=2 ) && ( pdebug & P_SCAN )) {
 					Serial.print(F("SCAN:: -> CAD: "));
 					SerialStat(intr);
@@ -328,7 +328,7 @@ void stateMachine()
 			// If the RSSI is not big enough we skip the CDDONE
 			// and go back to scanning
 			else {
-#if DUSB>=1
+#if _DUSB>=1
 				if (( debug>=2 ) && ( pdebug & P_SCAN )) {
 					Serial.print("SCAN:: rssi=");
 					Serial.print(rssi);
@@ -370,7 +370,7 @@ void stateMachine()
 		// Unkown Interrupt, so we have an error
 		//
 		else {
-#if DUSB>=1
+#if _DUSB>=1
 			if (( debug>=0 ) && ( pdebug & P_SCAN )) {
 				Serial.print(F("SCAN unknown:: "));
 				SerialStat(intr);
@@ -437,7 +437,7 @@ void stateMachine()
 			_rssi = rssi;											// Read the RSSI in the state variable
 
 			detTime = micros();
-#if DUSB>=1
+#if _DUSB>=1
 			if (( debug>=1 ) && ( pdebug & P_CAD )) {
 				Serial.print(F("CAD:: "));
 				SerialStat(intr);
@@ -471,7 +471,7 @@ void stateMachine()
 				delayMicroseconds(RSSI_WAIT);
 				rssi = readRegister(REG_RSSI);						// Read the RSSI
 
-#if DUSB>=1
+#if _DUSB>=1
 				if (( debug>=2 ) && ( pdebug & P_CAD )) {
 					Serial.print(F("S_CAD:: CDONE, SF="));
 					Serial.println(sf);
@@ -493,7 +493,7 @@ void stateMachine()
 				sf = (sf_t) freqs[ifreq].upLo;
 				cadScanner();										// Which will reset SF to lowest SF
 
-#if DUSB>=1		
+#if _DUSB>=1		
 				if (( debug>=2 ) && ( pdebug & P_CAD )) {
 					Serial.print(F("CAD->SCAN:: "));
 					SerialStat(intr);
@@ -511,7 +511,7 @@ void stateMachine()
 		// coming on this frequency so we wait on CDECT.
 		//
 		else if (intr == 0x00) {
-#if DUSB>=0
+#if _DUSB>=0
 			if (( debug>=3 ) && ( pdebug & P_CAD )) {
 				Serial.println("Err CAD:: intr is 0x00");
 			}
@@ -523,7 +523,7 @@ void stateMachine()
 		// and restart scanning. If hop we even start at ifreq==1
 		//
 		else {
-#if DUSB>=1
+#if _DUSB>=1
 			if (( debug>=0) && ( pdebug & P_CAD )) { 
 				Serial.print(F("Err CAD: Unknown::")); 
 				SerialStat(intr);
@@ -560,7 +560,7 @@ void stateMachine()
 			// CRC error checking requires DIO3
 			//
 			if (intr & IRQ_LORA_CRCERR_MASK) {
-#if DUSB>=1
+#if _DUSB>=1
 				if (( debug>=0 ) && ( pdebug & P_RX )) {
 					Serial.print(F("Rx CRC err: "));
 					SerialStat(intr);
@@ -590,7 +590,7 @@ void stateMachine()
 #endif // CRCCHECK
 			
 			// If we are here, no CRC error occurred, start timer
-#if DUSB>=1
+#if _DUSB>=1
 			unsigned long ffTime = micros();	
 #endif			
 			// There should not be an error in the message
@@ -603,7 +603,7 @@ void stateMachine()
 			// - Reset the interrupts
 			// - break
 			if((LoraUp.payLength = receivePkt(LoraUp.payLoad)) <= 0) {
-#if DUSB>=1
+#if _DUSB>=1
 				if (( debug>=1 ) && ( pdebug & P_RX )) {
 					Serial.print(F("sMachine:: Error S-RX: "));
 					Serial.print(F("payLength="));
@@ -623,7 +623,7 @@ void stateMachine()
 				_state = S_SCAN;
 				break;
 			}
-#if DUSB>=1
+#if _DUSB>=1
 			if (( debug>=1 ) && ( pdebug & P_RX )) {
 				Serial.print(F("R RXDONE in dT="));
 				Serial.print(ffTime - detTime);
@@ -659,7 +659,7 @@ void stateMachine()
 			// If read was successful, read the package from the LoRa bus
 			//
 			if (receivePacket() <= 0) {								// read is not successful
-#if DUSB>=1
+#if _DUSB>=1
 				if (( debug>=0 ) && ( pdebug & P_RX )) {
 					Serial.println(F("sMach:: Error receivePacket"));
 				}
@@ -704,7 +704,7 @@ void stateMachine()
 			//
 			if ((_cad) || (_hop)) {
 				// Set the state to CAD scanning
-#if DUSB>=1
+#if _DUSB>=1
 				if (( debug>=2 ) && ( pdebug & P_RX )) {
 					Serial.print(F("RXTOUT:: "));
 					SerialStat(intr);
@@ -732,7 +732,7 @@ void stateMachine()
 			// This interrupt means we received an header successfully
 			// which is normall an indication of RXDONE
 			//writeRegister(REG_IRQ_FLAGS, IRQ_LORA_HEADER_MASK);
-#if DUSB>=1
+#if _DUSB>=1
 			if (( debug>=3 ) && ( pdebug & P_RX )) {
 				Serial.print(F("RX HEADER:: "));
 				SerialStat(intr);
@@ -746,7 +746,7 @@ void stateMachine()
 		// state there always comes a RXTOUT or RXDONE interrupt
 		//
 		else if (intr == 0x00) {
-#if DUSB>=1
+#if _DUSB>=1
 			if (( debug>=3) && ( pdebug & P_RX )) {
 				Serial.print(F("S_RX no INTR:: "));
 				SerialStat(intr);
@@ -758,7 +758,7 @@ void stateMachine()
 		// therefore we wait. Make sure to clear the interrupt
 		// as HEADER interrupt comes just before RXDONE
 		else {							
-#if DUSB>=1
+#if _DUSB>=1
 			if (( debug>=0 ) && ( pdebug & P_RX )) {
 				Serial.print(F("R S_RX:: no RXDONE, RXTOUT, HEADER:: "));
 				SerialStat(intr);
@@ -784,7 +784,7 @@ void stateMachine()
 		// then there will nog be a TXDONE but probably another CDDONE/CDDETD before
 		// we have a timeout in the main program (Keep Alive)
 		if (intr == 0x00) {
-#if DUSB>=1
+#if _DUSB>=1
 			if (( debug>=2 ) && ( pdebug & P_TX )) {
 				Serial.println(F("TX:: 0x00"));
 			}
@@ -814,7 +814,7 @@ void stateMachine()
 		);
 		// After filling the buffer we only react on TXDONE interrupt
 		
-#if DUSB>=1
+#if _DUSB>=1
 		if (( debug>=1 ) && ( pdebug & P_TX )) { 
 			Serial.print(F("T TX done:: ")); 
 			SerialStat(intr);
@@ -838,7 +838,7 @@ void stateMachine()
 	  case S_TXDONE:
 		if (intr & IRQ_LORA_TXDONE_MASK) {
 
-#if DUSB>=1
+#if _DUSB>=1
 			if (( debug>=0 ) && ( pdebug & P_TX )) {
 				Serial.print(F("T TXDONE:: rcvd="));
 				Serial.print(micros());
@@ -862,7 +862,7 @@ void stateMachine()
 			_event=0;
 			writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) 0x00);
 			writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);			// reset interrupt flags
-#if DUSB>=1
+#if _DUSB>=1
 			if (( debug>=1 ) && ( pdebug & P_TX )) {
 				Serial.println(F("T TXDONE:: done OK"));
 			}
@@ -871,7 +871,7 @@ void stateMachine()
 		
 		// If a soft _event==0 interrupt and no transmission finished:
 		else if ( intr != 0 ) {
-#if DUSB>=1
+#if _DUSB>=1
 			if (( debug>=0 ) && ( pdebug & P_TX )) {
 				Serial.print(F("T TXDONE:: unknown int:"));
 				SerialStat(intr);
@@ -891,7 +891,7 @@ void stateMachine()
 			// within 7 seconds according to spec, of here is a problem.
 			if ( sendTime > micros() ) sendTime = 0;				// This could be omitted for usigned ints
 			if (( _state == S_TXDONE ) && (( micros() - sendTime) > 7000000 )) {
-#if DUSB>=1
+#if _DUSB>=1
 				if (( debug>=1 ) && ( pdebug & P_TX )) {
 					Serial.println(F("T TXDONE:: reset TX"));
 					Serial.flush();
@@ -899,7 +899,7 @@ void stateMachine()
 #endif
 				startReceiver();
 			}
-#if DUSB>=1
+#if _DUSB>=1
 			if (( debug>=3 ) && ( pdebug & P_TX )) {
 				Serial.println(F("T TXDONE:: No Interrupt"));
 			}
@@ -915,14 +915,14 @@ void stateMachine()
 	  // If such a thing happens, we should re-init the interface and 
 	  // make sure that we pick up next interrupt
 	  default:
-#if DUSB>=1
+#if _DUSB>=1
 		if (( debug>=0) && ( pdebug & P_PRE )) { 
 			Serial.print("ERR state="); 
 			Serial.println(_state);	
 		}
 #endif
 		if ((_cad) || (_hop)) {
-#if DUSB>=1
+#if _DUSB>=1
 			if (debug>=0) {
 				Serial.println(F("default:: Unknown _state "));
 				SerialStat(intr);

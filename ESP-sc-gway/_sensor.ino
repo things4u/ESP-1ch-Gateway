@@ -1,7 +1,7 @@
 // sensor.ino; 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg
-// Verison 6.1.0
-// Date: 2019-10-20
+// Verison 6.1.1
+// Date: 2019-11-06
 //
 // All rights reserved. This program and the accompanying materials
 // are made available under the terms of the MIT License
@@ -16,7 +16,7 @@
 // Please specify the DevAddr and the AppSKey below (and on your LoRa backend).
 // Also you will have to choose what sensors to forward to your application.
 //
-// Note: disable sensors not used in ESP-sc-gway.h
+// Note: disable sensors not used in configGway.h
 //	- The GPS is included on TTGO T-Beam ESP32 boards by default.
 //	- The battery sensor works by connecting the VCC pin to A0 analog port
 // ============================================================================
@@ -25,7 +25,7 @@
 
 #include "LoRaCode.h"
 
-unsigned char DevAddr[4]  = _DEVADDR ;				// see ESP-sc-gway.h
+unsigned char DevAddr[4]  = _DEVADDR ;				// see configGway.h
 
 
 // Only used by GPS sensor code
@@ -75,13 +75,13 @@ static int LoRaSensors(uint8_t *buf) {
 	uint8_t tchars = 1;
 	buf[0] = 0x86;									// 134; User code <lCode + len==3 + Parity
 
-#if DUSB>=1
+#if _DUSB>=1
 	if (debug>=0)
 		Serial.print(F("LoRaSensors:: "));
 #endif
 
 #if _BATTERY==1
-#if DUSB>=1
+#if _DUSB>=1
 	if (debug>=0)
 		Serial.print(F("Battery "));
 #endif
@@ -103,7 +103,7 @@ static int LoRaSensors(uint8_t *buf) {
 #endif
 
 #if _GPS==1
-#if DUSB>=1
+#if _DUSB>=1
 	if (debug>=0)
 		Serial.print(F("M GPS "));
 
@@ -129,7 +129,7 @@ static int LoRaSensors(uint8_t *buf) {
 	smartDelay(1000);
 	
 	if (millis() > 5000 && gps.charsProcessed() < 10) {
-#if DUSB>=1
+#if _DUSB>=1
 		Serial.println(F("No GPS data received: check wiring"));
 #endif
 		return(0);
@@ -143,7 +143,7 @@ static int LoRaSensors(uint8_t *buf) {
 
 #endif
 
-#if DUSB>=1
+#if _DUSB>=1
 	if (debug>=0)
 		Serial.println();
 #endif
@@ -470,7 +470,7 @@ int sensorPacket() {
 	// Payload bytes in this example are encoded in the LoRaCode(c) format
 	uint8_t PayLength = LoRaSensors((uint8_t *)(LUP.payLoad + LUP.payLength));
 
-#if DUSB>=1
+#if _DUSB>=1
 	if ((debug>=2) && (pdebug & P_RADIO )) {
 		Serial.print(F("old: "));
 		for (int i=0; i<PayLength; i++) {
@@ -484,7 +484,7 @@ int sensorPacket() {
 	// we have to include the AES functions at this stage in order to generate LoRa Payload.
 	uint8_t CodeLength = encodePacket((uint8_t *)(LUP.payLoad + LUP.payLength), PayLength, (uint16_t)frameCount, DevAddr, AppSKey, 0);
 
-#if DUSB>=1
+#if _DUSB>=1
 	if ((debug>=2) && (pdebug & P_RADIO )) {
 		Serial.print(F("new: "));
 		for (int i=0; i<CodeLength; i++) {
@@ -505,7 +505,7 @@ int sensorPacket() {
 	//
 	LUP.payLength += micPacket((uint8_t *)(LUP.payLoad), LUP.payLength, (uint16_t)frameCount, NwkSKey, 0);
 
-#if DUSB>=1
+#if _DUSB>=1
 	if ((debug>=2) && (pdebug & P_RADIO )) {
 		Serial.print(F("mic: "));
 		for (int i=0; i<LUP.payLength; i++) {
@@ -552,7 +552,7 @@ int sensorPacket() {
 	}
 #endif
 
-#if DUSB>=1
+#if _DUSB>=1
 	// If all is right, we should after decoding (which is the same as encoding) get
 	// the original message back again.
 	if ((debug>=2) && (pdebug & P_RADIO )) {
@@ -615,7 +615,7 @@ int sensorPacket() {
 // ----------------------------------------------------------------------------
 uint8_t encodePacket(uint8_t *Data, uint8_t DataLength, uint16_t FrameCount, uint8_t *DevAddr, uint8_t *AppSKey, uint8_t Direction) {
 
-#if DUSB>=1
+#if _DUSB>=1
 	if (( debug>=2 ) && ( pdebug & P_GUI )) {
 		Serial.print(F("G encodePacket:: DevAddr="));
 		for (int i=0; i<4; i++ ) { Serial.print(DevAddr[i],HEX); Serial.print(' '); }
@@ -625,7 +625,7 @@ uint8_t encodePacket(uint8_t *Data, uint8_t DataLength, uint16_t FrameCount, uin
 	}
 #endif
 
-	//unsigned char AppSKey[16] = _APPSKEY ;	// see ESP-sc-gway.h
+	//unsigned char AppSKey[16] = _APPSKEY ;	// see configGway.h
 	uint8_t i, j;
 	uint8_t Block_A[16];
 	uint8_t bLen=16;						// Block length is 16 except for last block in message
