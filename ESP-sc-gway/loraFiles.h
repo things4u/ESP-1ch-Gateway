@@ -45,6 +45,7 @@
 #define P_GUI		0x40
 #define P_RADIO		0x80
 
+
 // Definition of the configuration record that is read at startup and written
 // when settings are changed.
 
@@ -90,4 +91,24 @@ struct espGwayConfig {
 #define LOGFILEMAX 10
 #define LOGFILEREC 100
 
-#endif
+#endif // STAT_LOG
+
+// Define the node list structure
+//
+#define nSF6	0x01
+#define nSF7	0x02
+#define nSF8	0x04
+#define nSF9	0x08
+#define nSF10	0x10
+#define nSF11	0x20
+#define nSF12	0x40
+#define nFSK	0x80
+
+struct nodeSeen {
+	uint32_t idSeen;
+	uint8_t sfSeen;
+	unsigned long timSeen;
+};
+struct nodeSeen listSeen[_SEENMAX];
+
+

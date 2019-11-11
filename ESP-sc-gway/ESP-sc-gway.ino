@@ -581,7 +581,7 @@ void setup() {
     // display results of getting hardware address
 	//
 
-    Serial.print("Gateway ID: ");
+    Serial.print(F("Gateway ID: "));
 	printHexDigit(MAC_array[0]);
     printHexDigit(MAC_array[1]);
     printHexDigit(MAC_array[2]);
@@ -591,9 +591,9 @@ void setup() {
     printHexDigit(MAC_array[4]);
     printHexDigit(MAC_array[5]);
 
-    Serial.print(", Listening at SF");
+    Serial.print(F(", Listening at SF"));
 	Serial.print(sf);
-	Serial.print(" on ");
+	Serial.print(F(" on "));
 	Serial.print((double)freqs[ifreq].upFreq/1000000);
 	Serial.println(" MHz.");
 
@@ -692,7 +692,7 @@ void setup() {
 		attachInterrupt(pins.dio1, Interrupt_1, RISING);	// Separate interrupts		
 	}
 	
-	writeConfig( CONFIGFILE, &gwayConfig);					// Write config
+	writeConfig(CONFIGFILE, &gwayConfig);					// Write config
 
 	// activate OLED display
 #if OLED>=1

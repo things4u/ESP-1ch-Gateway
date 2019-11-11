@@ -16,10 +16,18 @@ Maintained by Maarten Westenberg (mw12554@hotmail.com)
 
 # Release Notes
 
+Features release 6.1.1 (November 6, 2019)
+- Added "last seen" for a node. Am overview when each known node has last been seen by the gateway,
+	This would mean that a node that does not fit in the regular history overview would still be visible
+	even when it has been seen three days ago.
+- Changed name of the ESP-sc-gway.h file into configGway.h and removed most privacy info. 
+  This way, whis fie does need less editing and allows faster releasing. 
+ - Also moved sensor.h into configNode.h and devided between both configXXX.h file.
+- Added the documentation for release 6.1.1 and correctd a number of typos.
+
 Features release 6.1.0 (October 20, 2019)
 - Changed name of the ESP-sc-gway.h file into configGway.h and removed most privacy info. 
-  This way, whis fie does need less editing 
-and allows faster releasing
+  This way, whis fie does need less editing and allows faster releasing
 - Removed lib from the library directory for libs that are present in the library manager of the node.
 - Changed name of sensor.h file into configNode.h and added all privacy configuration info such as SSID, 
   WiFi password, node data etc.
@@ -29,7 +37,7 @@ So please keep on the line if you do not know your IP.
 - Change the country/region setting of the Gateway (As a result you probably have to update most of 
   the package).
 - Upon connecting over WiFi, display the address for 4 seconds before starting the Gateway function.
-- Made a (not complete) list of lib info in teh README.md document.
+- Made a (not complete) list of lib info in the README.md document.
 - Correct (again) some typos
 
 New features in version 5.3.4 (March 25, 2019)

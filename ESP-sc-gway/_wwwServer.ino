@@ -194,27 +194,6 @@ void buttonDocu()
 void buttonLog() 
 {
 	
-	String response = "";
-	String fn = "";
-	int i = 0;
-	
-	while (i< LOGFILEMAX ) {
-		fn = "/log-" + String(gwayConfig.logFileNo - i);
-		wwwFile(fn);									// Display the file contents in the browser
-		i++;
-	}
-	
-	server.sendContent(response);
-}
-
-// --------------------------------------------------------------------------------
-// BUTTONNODE
-// Read the logfiles and display info about nodes (last seend, SF used etc).
-// This is a button on the top of the GUI screen
-// --------------------------------------------------------------------------------
-void buttonNode() 
-{
-	
 //	String response = "";
 	String fn = "";
 	int i = 0;
@@ -226,6 +205,27 @@ void buttonNode()
 	}
 	
 //	server.sendContent(response);
+}
+
+// --------------------------------------------------------------------------------
+// BUTTONSEEN
+// List the listSeen array.
+// Read the logfiles and display info about nodes (last seend, SF used etc).
+// This is a button on the top of the GUI screen
+// --------------------------------------------------------------------------------
+void buttonSeen() 
+{
+	
+	String fn = "";
+	int i = 0;
+	
+	printSeen(listSeen);
+#if _DUSB>=1
+	if (( debug>=1 ) && ( pdebug & P_MAIN )) {
+		Serial.println(F("buttonSeen:: printSeen called"));
+	}
+#endif	
+
 }
 
 // --------------------------------------------------------------------------------
@@ -244,7 +244,7 @@ static void wwwButtons()
 	response += "<input type=\"button\" value=\"Documentation\" onclick=\"showDocu()\" >";
 	
 	response += "<a href=\"EXPERT\" download><button type=\"button\">" + mode + "</button></a>";
-	response += "<a href=\"NODE\" download><button type=\"button\">Nodes Seen</button></a>";
+	response += "<a href=\"SEEN\" download><button type=\"button\">Nodes Seen</button></a>";
 	response += "<a href=\"LOG\" download><button type=\"button\">Log Files</button></a>";
 
 	server.sendContent(response);							// Send to the screen
@@ -873,6 +873,65 @@ static void messageHistory()
 #endif
 }
 
+// --------------------------------------------------------------------------------
+// H2 NODE SEEN HISTORY
+// If enabled, display the sensor last Seen history.
+// This setting ,pves togetjer with the "expert" mode.
+//  If that mode is enabled than the node seen intory is displayed
+//
+// Parameters:
+//	- <none>
+// Returns:
+//	- <none>
+// --------------------------------------------------------------------------------
+static void nodeHistory() 
+{
+#if _SEENMAX > 0
+	if (gwayConfig.expert) {
+		// First draw the headers
+		String response="";
+	
+		response += "<h2>Node Last Seen History</h2>";
+		response += "<table class=\"config_table\">";
+		response += "<tr>";
+		response += "<th class=\"thead\" style=\"width: 220px;\">Time</th>";
+		response += "<th class=\"thead\">Node</th>";
+//#if _LOCALSERVER==1
+//		response += "<th class=\"thead\">Data</th>";
+//#endif
+		response += "<th class=\"thead\" style=\"width: 20px;\">C</th>";
+		response += "<th class=\"thead\" style=\"width: 40px;\">SF</th>";
+
+		response += "</tr>";
+		server.sendContent(response);
+		
+		// Now start the contents
+		
+		int i;
+		for (i=0; i<_SEENMAX; i++) {
+			if (listSeen[i].idSeen == 0) break;
+			response = "";
+		
+			response += String() + "<tr><td class=\"cell\">";					// Tmst
+			stringTime((listSeen[i].timSeen), response);
+			response += "</td>";
+		
+			response += String() + "<td class=\"cell\">"; 						// Node
+			if (SerialName((char *)(& (listSeen[i].idSeen)), response) < 0) {	// works with TRUSTED_NODES >= 1
+				printHEX((char *)(& (listSeen[i].idSeen)),' ',response);		// else
+			}
+			response += "</td>";
+
+			response += String() + "<td class=\"cell\">" + 0 + "</td>";			// Channel
+			
+			response += String() + "<td class=\"cell\">" + listSeen[i].sfSeen + "</td>";
+			
+			server.sendContent(response);
+		}
+		server.sendContent("</table>");
+	}
+#endif
+}
 
 // --------------------------------------------------------------------------------
 // SEND WEB PAGE() 
@@ -893,6 +952,7 @@ void sendWebPage(const char *cmd, const char *arg)
 
 	statisticsData(); yield();		 			// Node statistics
 	messageHistory(); yield();					// Display the sensor history, message statistics
+	nodeHistory(); yield();						// Display the lastSeen array
 
 	gatewaySettings(); yield();					// Display web configuration
 	wifiConfig(); yield();						// WiFi specific parameters
@@ -1237,7 +1297,7 @@ void setupWWW()
 	// Display LOGging information
 	server.on("/LOG", []() {
 		server.sendHeader("Location", String("/"), true);
-#if _DUSB>=1
+#if _DUSB>=2
 		Serial.println(F("LOG button"));
 #endif
 		buttonLog();
@@ -1251,13 +1311,13 @@ void setupWWW()
 		server.send ( 302, "text/plain", "");
 	});
 	
-	// Display the NODE statistics
-	server.on("/NODE", []() {
+	// Display the SEEN statistics
+	server.on("/SEEN", []() {
 		server.sendHeader("Location", String("/"), true);
-#if _DUSB>=1
-		Serial.println(F("NODE button"));
+#if _DUSB>=2
+		Serial.println(F("SEEN button"));
 #endif
-		buttonNode();
+		buttonSeen();
 		server.send ( 302, "text/plain", "");
 	});
 

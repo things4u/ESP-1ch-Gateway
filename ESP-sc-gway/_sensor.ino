@@ -533,6 +533,7 @@ int sensorPacket() {
 	// In order to save the memory, we only write the framecounter
 	// to EEPROM every 10 values. It also means that we will invalidate
 	// 10 value when restarting the gateway.
+	// NOTE: This means that preferences are NOT saved unless >=10 messages have been received.
 	//
 	if (( frameCount % 10)==0) writeGwayCfg(CONFIGFILE);
 	

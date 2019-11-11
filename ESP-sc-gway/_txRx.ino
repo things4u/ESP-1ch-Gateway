@@ -305,7 +305,7 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 	//
 	for (int m=( MAX_STAT -1); m>0; m--) statr[m]=statr[m-1];
 	
-	// From now on we can fill start[0] with sensor data
+	// From now on we can fill statr[0] with sensor data
 #if _LOCALSERVER==1
 	statr[0].datal=0;
 	int index;
@@ -368,6 +368,8 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 		case SF12: statc.sf12++; break;
 	}
 #endif // _STATISTICS >= 2
+
+
 
 #if _STATISTICS >= 3
 	if (statr[0].ch == 0) {
@@ -596,6 +598,12 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 
 	addLog( (unsigned char *)(buff_up), buff_index );
 #endif	
+
+// When we have the node address and the SF, fill the array
+// listSeen with the required data. SEENMAX must be >0 for this ro happen.
+#if  _SEENMAX > 0
+	addSeen(listSeen, statr[0].node, statr[0].sf, now());
+#endif
 	
 #if _DUSB>=1
 	if (( debug>=2 ) && ( pdebug & P_RX )) {

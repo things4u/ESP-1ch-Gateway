@@ -350,7 +350,7 @@ struct stat_c statc;
 
 
 
-// History of received uplink messages from nodes
+// History of received uplink and downlink messages from nodes
 struct stat_t statr[MAX_STAT];
 
 

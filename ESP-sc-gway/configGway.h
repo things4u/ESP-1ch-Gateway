@@ -28,7 +28,7 @@
 // really matter.
 // ----------------------------------------------------------------------------------------
 
-#define VERSION "V.6.1.1.E.EU868; 191106a"
+#define VERSION "V.6.1.1.E.EU868; 191106c"
 
 // This value of DEBUG determines whether some parts of code get compiled.
 // Also this is the initial value of debug parameter. 
@@ -182,13 +182,21 @@
 #define GATEWAYMGT 0
 
 
-// Do extensive loggin
+// Do extensive logging
 // Use the ESP8266 SPIFS filesystem to do extensive logging.
 // We must take care that the filesystem never(!) is full, and for that purpose we
 // rather have new records/line of statistics than very old.
 // Of course we must store enough records to make the filesystem work
 #define STAT_LOG 1
 
+// We will log a list of LoRa nodes that was forwarded using this gateway.
+// For eacht node we record:
+//	- node Number, or known node name
+//	- Last seen 'seconds since 1/1/1970'
+//	- SF seen (8-bit integer with SF per bit)
+// The initial version _NUMMAX stores max so many nodes:
+#define _SEENMAX 100
+#define _SEENFILE "/gwayNum.txt"
 
 // Name of he configfile in SPIFFs	filesystem
 // In this file we store the configuration and other relevant info that should
@@ -218,7 +226,7 @@
 // Port is UDP port in this program
 //
 // Default for testing: Switched off
-#define _THINGSERVER "your.domain.org"		// Server URL of the LoRa-udp.js handler
+#define _THINGSERVER "your,webserver.com"		// Server URL of the LoRa-udp.js handler
 #define _THINGPORT 1700						// Port 1700 is old compatibility
 
 
@@ -231,7 +239,7 @@
 
 // Gateway Ident definitions
 #define _DESCRIPTION "ESP Gateway"			// Name of the gateway
-#define _EMAIL "your@email.com"				// Owner
+#define _EMAIL "your@mail.com"				// Owner
 #define _PLATFORM "ESP8266"
 #define _LAT 52.0
 #define _LON 5.0
@@ -240,7 +248,7 @@
 // ntp
 // Please add daylight saving time to NTP_TIMEZONES when desired
 #define NTP_TIMESERVER "nl.pool.ntp.org"	// Country and region specific
-#define NTP_TIMEZONES	2					// How far is our Timezone from UTC (excl daylight saving/summer time)
+#define NTP_TIMEZONES	1					// How far is our Timezone from UTC (excl daylight saving/summer time)
 #define SECS_IN_HOUR	3600
 #define NTP_INTR 0							// Do NTP processing with interrupts or in loop();
 
@@ -275,7 +283,7 @@
 //		forwarded or counted! (not yet fully implemented)
 #define _TRUSTED_NODES 1
 #define _TRUSTED_DECODE 1
-// See configNode.h for more info
+
 
 
 

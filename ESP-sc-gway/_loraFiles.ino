@@ -415,6 +415,128 @@ void printLog()
 } //printLog
 
 
+#if _SEENMAX>0
+
+// ----------------------------------------------------------------------------
+// writeSeen
+// - Once every few messages, update the SPIFFS file and write the array.
+//
+// ----------------------------------------------------------------------------
+int writeSeen(struct nodeSeen *listSeen) {
+
+	return(1);
+}
+
+// ----------------------------------------------------------------------------
+// printSeen
+// - Once every few messages, update the SPIFFS file and write the array.
+// ----------------------------------------------------------------------------
+int printSeen(struct nodeSeen *listSeen) {
+
+#if _DUSB>=1
+	if (( debug>=0 ) && ( pdebug & P_MAIN )) {
+		Serial.print(F("printSeen:: print list"));
+		Serial.println();
+	}
+#endif
+    int i;
+#if _DUSB>=1
+	if (( debug>=0 ) && ( pdebug & P_MAIN )) {
+		for (i=0; i<_SEENMAX; i++) {
+			if (listSeen[i].idSeen != 0) {
+				String response;
+				
+				Serial.print(i);
+				Serial.print(F(", TM="));
+
+				stringTime(listSeen[i].timSeen, response);
+				Serial.print(response);
+								
+				Serial.print(F(", addr=0x"));
+				Serial.print(listSeen[i].idSeen,HEX);
+				Serial.print(F(", SF=0x"));
+				Serial.print(listSeen[i].sfSeen,HEX);
+				Serial.println();
+			}
+		}
+	}
+#endif
+	return(1);
+}
+
+// ----------------------------------------------------------------------------
+// addSeen
+//	With every new message received:
+// - Look whether the message is already in the array, if so update existing 
+//	message. If not, create new record.
+// - With this record, update the SF settings
+// ----------------------------------------------------------------------------
+int addSeen(struct nodeSeen *listSeen, uint32_t idSeen, uint8_t sfSeen, unsigned long timSeen) {
+	int i;
+	
+//	( message[4]<<24 | message[3]<<16 | message[2]<<8 | message[1] )
+	
+#if _DUSB>=1
+	if (( debug>=0 ) && ( pdebug & P_MAIN )) {
+		Serial.print(F("addSeen:: "));
+//		Serial.print(F(" listSeen[0]="));
+//		Serial.print(listSeen[0].idSeen,HEX);
+		Serial.print(F(", tim="));
+		Serial.print(timSeen);
+		Serial.print(F(", idSeen="));
+		Serial.print(idSeen,HEX);
+		Serial.print(F(", sfSeen="));
+		Serial.print(sfSeen,HEX);
+		Serial.println();
+	}
+#endif
+
+	for (i=0; i< _SEENMAX; i++) {
+		if ((listSeen[i].idSeen==idSeen) ||
+			(listSeen[i].idSeen==0))
+		{
+			break;
+		}
+	}
+	
+	if (i>=_SEENMAX) {
+#if _DUSB>=1
+	if (( debug>=0 ) && ( pdebug & P_MAIN )) {
+		Serial.print(F("addSeen:: exit=0, index="));
+		Serial.println(i);
+	}
+#endif
+		return(0);
+	}
+#if _DUSB>=2
+	if (( debug>=0 ) && ( pdebug & P_MAIN )) {
+		Serial.print(F("addSeen:: index="));
+		Serial.print(i);
+	}
+#endif
+	listSeen[i].idSeen = idSeen;
+	listSeen[i].sfSeen |= sfSeen;
+	listSeen[i].timSeen = timSeen;
+	
+	return(1);
+}
+
+// ----------------------------------------------------------------------------
+// initSeen
+// Init the lisrScreen array
+// ----------------------------------------------------------------------------
+int initSeen(struct nodeSeen *listSeen) {
+	int i;
+	for (i=0; i< _SEENMAX; i++) {
+		listSeen[i].idSeen=0;
+		listSeen[i].sfSeen=0;
+		listSeen[i].timSeen=0;
+	}
+	return(1);
+}
+
+
+
 // ----------------------------------------------------------------------------
 // listDir
 //	List the directory and put it in
@@ -422,7 +544,7 @@ void printLog()
 void listDir(char * dir) 
 {
 #if _DUSB>=1
-	
+	// Nothing here
 #endif
 }
-
+#endif //_SEENMAX>0
