@@ -50,6 +50,7 @@ int initConfig(struct espGwayConfig *c) {
 	(*c).cad = _CAD;
 	(*c).hop = false;
 	(*c).expert = false;
+	(*c).txDelay = 0;					// First Value without saving is 0;
 }
 
 
@@ -64,8 +65,7 @@ int readConfig(const char *fn, struct espGwayConfig *c) {
 #endif
 	if (!SPIFFS.exists(fn)) {
 #if _DUSB>=1
-		if (( debug>=0 ) && ( pdebug & P_MAIN ))
-		Serial.print(F("M ERR:: readConfig, file="));
+		Serial.print(F("readConfig ERR:: file="));
 		Serial.print(fn);
 		Serial.println(F(" does not exist .. Formatting"));
 #endif
@@ -76,7 +76,9 @@ int readConfig(const char *fn, struct espGwayConfig *c) {
 
 	File f = SPIFFS.open(fn, "r");
 	if (!f) {
+#if _DUSB>=1
 		Serial.println(F("ERROR:: SPIFFS open failed"));
+#endif
 		return(-1);
 	}
 
@@ -101,10 +103,18 @@ int readConfig(const char *fn, struct espGwayConfig *c) {
 			f = SPIFFS.open(fn, "r");
 			tries = 0;
 		}
-		
-		String id =f.readStringUntil('=');						// C++ thing
-		String val=f.readStringUntil('\n');
-		
+
+		String id =f.readStringUntil('=');						// Read keyword until '=', C++ thing
+		String val=f.readStringUntil('\n');						// Read value until End of Line (EOL)
+
+#if _DUSB>=1
+		Serial.print(F("readConfig:: reading line="));
+		Serial.print(id);
+		Serial.print(F("="));
+		Serial.print(val);
+		Serial.println();
+#endif	
+
 		if (id == "SSID") {										// WiFi SSID
 			id_print(id, val);
 			(*c).ssid = val;									// val contains ssid, we do NO check
@@ -181,7 +191,7 @@ int readConfig(const char *fn, struct espGwayConfig *c) {
 			id_print(id, val);
 			(*c).ntps = (uint8_t) val.toInt();
 		}
-		else if (id == "FILENO") {								// log FILENO setting
+		else if (id == "FILENO") {								// FILENO setting
 			id_print(id, val);
 			(*c).logFileNo = (uint8_t) val.toInt();
 		}
@@ -193,23 +203,31 @@ int readConfig(const char *fn, struct espGwayConfig *c) {
 			id_print(id, val);
 			(*c).logFileNum = (uint16_t) val.toInt();
 		}
-		else if (id == "EXPERT") {								// FILEREC setting
+		else if (id == "EXPERT") {								// EXPERT setting
 			id_print(id, val);
 			(*c).expert = (uint8_t) val.toInt();
 		}
+		else if (id == "DELAY") {								// DELAY setting
+			id_print(id, val);
+			(*c).txDelay = (int32_t) val.toInt();
+		}
 		else {
+#if _DUSB>=1
+			Serial.print(F("readConfig:: tries++"));
+#endif
 			tries++;
 		}
 	}
 	f.close();
 #if _DUSB>=1
 	if (debug>=0) {
-		Serial.println('#');
+		Serial.println(F("readConfig:: Fini"));
 	}
 #endif
 	Serial.println();
 	return(1);
-}
+}//readConfig
+
 
 // ----------------------------------------------------------------------------
 // Write the current gateway configuration to SPIFFS. First copy all the
@@ -280,6 +298,7 @@ int writeConfig(const char *fn, struct espGwayConfig *c) {
 	f.print("FILENO");  f.print('='); f.print((*c).logFileNo); f.print('\n');
 	f.print("FILENUM");  f.print('='); f.print((*c).logFileNum); f.print('\n');
 	f.print("EXPERT");  f.print('='); f.print((*c).expert); f.print('\n');
+	f.print("DELAY");  f.print('='); f.print((*c).txDelay); f.print('\n');
 	
 	f.close();
 	return(1);

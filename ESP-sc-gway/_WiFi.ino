@@ -130,7 +130,7 @@ int WlanStatus() {
 // ----------------------------------------------------------------------------
 int WlanReadWpa() {
 	
-	readConfig( CONFIGFILE, &gwayConfig);
+	readConfig(CONFIGFILE, &gwayConfig);
 
 	if (gwayConfig.sf != (uint8_t) 0) sf = (sf_t) gwayConfig.sf;
 	ifreq = gwayConfig.ch;

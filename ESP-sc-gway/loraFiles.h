@@ -59,6 +59,7 @@ struct espGwayConfig {
 	uint16_t ntpErr;			// Number of UTP requests that failed
 	uint16_t ntps;
 
+	int32_t txDelay;			// Init 0 at setup
 	uint32_t ntpErrTime;		// Record the time of the last NTP error
 	uint8_t ch;					// index to freqs array, freqs[ifreq]=868100000 default
 	uint8_t sf;					// range from SF7 to SF12

@@ -516,13 +516,24 @@ static void gatewaySettings()
 	// Debugging options, only when _DUSB is set, otherwise no
 	// serial activity
 #if _DUSB>=1	
-	response +="<tr><td class=\"cell\">Debug level</td><td class=\"cell\" colspan=\"2\">"; 
+	response +="<tr><td class=\"cell\">Debug Level</td><td class=\"cell\" colspan=\"2\">"; 
 	response +=debug; 
 	response +="</td>";
 	response +="<td class=\"cell\"><a href=\"DEBUG=-1\"><button>-</button></a></td>";
 	response +="<td class=\"cell\"><a href=\"DEBUG=1\"><button>+</button></a></td>";
 	response +="</tr>";
+
+	// Time Correction
+	if (gwayConfig.expert) {
+		response +="<tr><td class=\"cell\">Time Correction (uSec)</td><td class=\"cell\" colspan=\"2\">"; 
+		response += txDelay; 
+		response +="</td>";
+		response +="<td class=\"cell\"><a href=\"DELAY=-1\"><button>-</button></a></td>";
+		response +="<td class=\"cell\"><a href=\"DELAY=1\"><button>+</button></a></td>";
+		response +="</tr>";
+	}
 	
+	// Debug Pattern
 	response +="<tr><td class=\"cell\">Debug pattern</td>"; 
 	
 	bg = ( (pdebug & P_SCAN) ? "LightGreen" : "orange" ); 
@@ -577,7 +588,7 @@ static void gatewaySettings()
 	response +="<button>RDIO</button></a></td>";
 	response +="</tr>";
 #endif
-	// Serial Debugging
+	// USB Debug, Serial Debugging
 	response +="<tr><td class=\"cell\">Usb Debug</td><td class=\"cell\" colspan=\"2\">"; 
 	response += _DUSB; 
 	response +="</td>";
@@ -603,6 +614,7 @@ static void gatewaySettings()
 	response +="</tr>";
 #endif
 
+	/// WWW Refresh
 #if A_REFRESH==1
 	bg = " background-color: ";
 	bg += ( (gwayConfig.refresh == 1) ? "LightGreen" : "orange" );
@@ -1062,7 +1074,6 @@ void setupWWW()
 
 	// Reset the boot counter
 	server.on("/BOOT", []() {
-		Serial.println(F("BOOT"));
 #if _STATISTICS >= 2
 		gwayConfig.boots = 0;
 		gwayConfig.wifis = 0;
@@ -1074,6 +1085,9 @@ void setupWWW()
 		gwayConfig.reents = 0;					// Re-entrance
 
 		writeGwayCfg(CONFIGFILE);
+#if _DUSB>=1
+		Serial.println(F("BOOT, config written"));
+#endif
 		server.sendHeader("Location", String("/"), true);
 		server.send ( 302, "text/plain", "");
 	});
@@ -1088,19 +1102,25 @@ void setupWWW()
 	server.on("/DEBUG=-1", []() {				// Set debug level 0-2						
 		debug = (debug+3)%4;
 		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+#if _DUSB>=1
+		Serial.println(F("DEBUG -1: config written"));
+#endif
 		server.sendHeader("Location", String("/"), true);
 		server.send ( 302, "text/plain", "");
 	});
 	server.on("/DEBUG=1", []() {
 		debug = (debug+1)%4;
 		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+#if _DUSB>=1
+		Serial.println(F("DEBUG +1: config written"));
+#endif
 		server.sendHeader("Location", String("/"), true);
 		server.send ( 302, "text/plain", "");
 	});
 
 	// Set PDEBUG parameter
 	//
-		server.on("/PDEBUG=SCAN", []() {		// Set debug level 0-2						
+	server.on("/PDEBUG=SCAN", []() {		// Set debug level 0-2						
 		pdebug ^= P_SCAN;
 		writeGwayCfg(CONFIGFILE);				// Save configuration to file
 		server.sendHeader("Location", String("/"), true);
@@ -1153,11 +1173,19 @@ void setupWWW()
 	// Set delay in microseconds
 	server.on("/DELAY=1", []() {
 		txDelay+=5000;
+		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+#if _DUSB>=1
+		Serial.println(F("DELAY +, config written"));
+#endif
 		server.sendHeader("Location", String("/"), true);
 		server.send ( 302, "text/plain", "");
 	});
 	server.on("/DELAY=-1", []() {
 		txDelay-=5000;
+		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+#if _DUSB>=1
+		Serial.println(F("DELAY +, config written"));
+#endif
 		server.sendHeader("Location", String("/"), true);
 		server.send ( 302, "text/plain", "");
 	});
@@ -1353,44 +1381,46 @@ void setupWWW()
 static void wifiConfig()
 {
 	if (gwayConfig.expert) {
-	String response="";
-	response +="<h2>WiFi Config</h2>";
+		String response="";
+		response +="<h2>WiFi Config</h2>";
 
-	response +="<table class=\"config_table\">";
+		response +="<table class=\"config_table\">";
 
-	response +="<tr><th class=\"thead\">Parameter</th><th class=\"thead\">Value</th></tr>";
+		response +="<tr><th class=\"thead\">Parameter</th><th class=\"thead\">Value</th></tr>";
 	
-	response +="<tr><td class=\"cell\">WiFi host</td><td class=\"cell\">"; 
+		response +="<tr><td class=\"cell\">WiFi host</td><td class=\"cell\">"; 
 #if ESP32_ARCH==1
-	response +=WiFi.getHostname(); response+="</tr>";
+		response +=WiFi.getHostname(); response+="</tr>";
 #else
-	response +=wifi_station_get_hostname(); response+="</tr>";
+		response +=wifi_station_get_hostname(); response+="</tr>";
 #endif
 
-	response +="<tr><td class=\"cell\">WiFi SSID</td><td class=\"cell\">"; 
-	response +=WiFi.SSID(); response+="</tr>";
+		response +="<tr><td class=\"cell\">WiFi SSID</td><td class=\"cell\">"; 
+		response +=WiFi.SSID(); response+="</tr>";
 	
-	response +="<tr><td class=\"cell\">IP Address</td><td class=\"cell\">"; 
-	printIP((IPAddress)WiFi.localIP(),'.',response); 
-	response +="</tr>";
-	response +="<tr><td class=\"cell\">IP Gateway</td><td class=\"cell\">"; 
-	printIP((IPAddress)WiFi.gatewayIP(),'.',response); 
-	response +="</tr>";
-	response +="<tr><td class=\"cell\">NTP Server</td><td class=\"cell\">"; response+=NTP_TIMESERVER; response+="</tr>";
-	response +="<tr><td class=\"cell\">LoRa Router</td><td class=\"cell\">"; response+=_TTNSERVER; response+="</tr>";
-	response +="<tr><td class=\"cell\">LoRa Router IP</td><td class=\"cell\">"; 
-	printIP((IPAddress)ttnServer,'.',response); 
-	response +="</tr>";
+		response +="<tr><td class=\"cell\">IP Address</td><td class=\"cell\">"; 
+		printIP((IPAddress)WiFi.localIP(),'.',response); 
+		response +="</tr>";
+		response +="<tr><td class=\"cell\">IP Gateway</td><td class=\"cell\">"; 
+		printIP((IPAddress)WiFi.gatewayIP(),'.',response); 
+		response +="</tr>";
+		response +="<tr><td class=\"cell\">NTP Server</td><td class=\"cell\">"; response+=NTP_TIMESERVER; response+="</tr>";
+		response +="<tr><td class=\"cell\">LoRa Router</td><td class=\"cell\">"; response+=_TTNSERVER; response+="</tr>";
+		response +="<tr><td class=\"cell\">LoRa Router IP</td><td class=\"cell\">"; 
+		printIP((IPAddress)ttnServer,'.',response); 
+		response +="</tr>";
 #ifdef _THINGSERVER
-	response +="<tr><td class=\"cell\">LoRa Router 2</td><td class=\"cell\">"; response+=_THINGSERVER; 
-	response += String() + ":" + _THINGPORT + "</tr>";
-	response +="<tr><td class=\"cell\">LoRa Router 2 IP</td><td class=\"cell\">"; 
-	printIP((IPAddress)thingServer,'.',response);
-	response +="</tr>";
+		response +="<tr><td class=\"cell\">LoRa Router 2</td><td class=\"cell\">"; response+=_THINGSERVER; 
+		response += String() + ":" + _THINGPORT + "</tr>";
+		response +="<tr><td class=\"cell\">LoRa Router 2 IP</td><td class=\"cell\">"; 
+		printIP((IPAddress)thingServer,'.',response);
+		response +="</tr>";
 #endif
-	response +="</table>";
 
-	server.sendContent(response);
+
+		response +="</table>";
+
+		server.sendContent(response);
 	} // gwayConfig.expert
 } // wifiConfig
 
@@ -1513,13 +1543,6 @@ static void interruptData()
 		response +="<td colspan=\"2\" style=\"border: 1px solid black;\">";
 		stringTime(gwayConfig.ntpErrTime, response);
 		response +="</td>";
-		response +="</tr>";
-		
-		response +="<tr><td class=\"cell\">Time Correction (uSec)</td><td class=\"cell\">"; 
-		response += txDelay; 
-		response +="</td>";
-		response +="<td class=\"cell\"><a href=\"DELAY=-1\"><button>-</button></a></td>";
-		response +="<td class=\"cell\"><a href=\"DELAY=1\"><button>+</button></a></td>";
 		response +="</tr>";
 		
 		response +="</table>";

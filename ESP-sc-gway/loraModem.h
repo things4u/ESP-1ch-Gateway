@@ -52,7 +52,7 @@
 
 
 // Our code should correct the server Tramission delay settings
-long txDelay= 0x00;								// tx delay time on top of server TMST
+int32_t txDelay= 0x00;								// tx delay time on top of server TMST
 
 // SPI setting. 8MHz seems to be the max
 #define SPISPEED 8000000						// Set to 8 * 10E6

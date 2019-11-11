@@ -65,7 +65,7 @@ int sendPacket(uint8_t *buf, uint8_t length)
 	buf[length] = 0;
 	
 #if _DUSB>=1
-	if (debug>=2) {
+	if (( debug>=2) && (pdebug & P_TX)) {
 		Serial.println((char *)buf);
 		Serial.print(F("<"));
 		Serial.flush();
@@ -94,7 +94,7 @@ int sendPacket(uint8_t *buf, uint8_t length)
 	// {"txpk":{"codr":"4/5","data":"YCkEAgIABQABGmIwYX/kSn4Y","freq":868.1,"ipol":true,"modu":"LORA","powe":14,"rfch":0,"size":18,"tmst":1890991792,"datr":"SF7BW125"}}
 
 	// Used in the protocol of Gateway:
-	JsonObject root		= jsonBuffer.to<JsonObject>();
+	JsonObject root		= jsonBuffer.as<JsonObject>();	// 191111 Avoid Crashes
 	
 	const char * data	= root["txpk"]["data"];			// Downstream Payload
 	uint8_t psize		= root["txpk"]["size"];			// Payload size
@@ -142,7 +142,7 @@ int sendPacket(uint8_t *buf, uint8_t length)
 // _STRICT_1CH determines how we will react on downstream messages.
 //
 // If STRICT==1, we will answer (in the RX1 timeslot) on the frequency we receive on.
-// This way, we can bettrer communicate as a single gateway machine
+// This way, we can better communicate as a single gateway machine
 //
 #if _STRICT_1CH == 1
 	// RX1 is requested frequency
@@ -167,7 +167,7 @@ int sendPacket(uint8_t *buf, uint8_t length)
 // And since the Gateway is a single channel gateway, and its nodes are probably
 // single channel too. They will not listen to that frequency at all.
 // Pleae note that this parameter is more for nodes (that cannot change freqs)
- than for gateways.
+// than for gateways.
 //
 	LoraDown.powe = powe;
 

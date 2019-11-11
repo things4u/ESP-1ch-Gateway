@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
 // Version 6.1.1 E EU868
-// Date: 2019-11-06
+// Date: 2019-11-11
 //
 // Based on work done by Thomas Telkamp for Raspberry PI 1ch gateway and many others.
 // Contibutions of Dorijan Morelj and Andreas Spies for OLED support.
@@ -28,7 +28,7 @@
 // really matter.
 // ----------------------------------------------------------------------------------------
 
-#define VERSION "V.6.1.1.E.EU868; 191106c"
+#define VERSION "V.6.1.1.E.EU868; 191111a"
 
 // This value of DEBUG determines whether some parts of code get compiled.
 // Also this is the initial value of debug parameter. 

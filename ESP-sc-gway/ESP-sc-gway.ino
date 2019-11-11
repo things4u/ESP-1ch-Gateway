@@ -322,7 +322,7 @@ int sendNtpRequest(IPAddress timeServerIP) {
 	const int NTP_PACKET_SIZE = 48;							// Fixed size of NTP record
 	byte packetBuffer[NTP_PACKET_SIZE];
 
-	memset(packetBuffer, 0, NTP_PACKET_SIZE);				// Zeroise the buffer.
+	memset(packetBuffer, 0, NTP_PACKET_SIZE);				// Zero the buffer.
 	
 	packetBuffer[0]  = 0b11100011;   						// LI, Version, Mode
 	packetBuffer[1]  = 0;									// Stratum, or type of clock
@@ -470,10 +470,13 @@ void setup() {
 	SPIFFS.format();										// Normally disabled. Enable only when SPIFFS corrupt
 #if _DUSB>=1
 	if (( debug >= 0 ) && ( pdebug & P_MAIN )) {
-		Serial.println(F("Done"));
+		Serial.println(F("Format Done"));
 	}
 #endif
 #endif
+	delay(500);
+	// Read the config file for all parameters not set in the setup() or configGway.h file
+	readConfig(CONFIGFILE, &gwayConfig);
 
 	Serial.print(F("Assert="));
 #if defined CFG_noassert
