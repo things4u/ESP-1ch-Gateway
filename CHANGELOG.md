@@ -17,13 +17,16 @@ Maintained by Maarten Westenberg (mw12554@hotmail.com)
 # Release Notes
 
 Features release 6.1.1 (November 6, 2019)
-- Added "last seen" for a node. Am overview when each known node has last been seen by the gateway,
+- Added "last seen" for a node. An overview when each known node has last been seen by the gateway,
 	This would mean that a node that does not fit in the regular history overview would still be visible
 	even when it has been seen three days ago.
 - Changed name of the ESP-sc-gway.h file into configGway.h and removed most privacy info. 
   This way, whis fie does need less editing and allows faster releasing. 
- - Also moved sensor.h into configNode.h and devided between both configXXX.h file.
+- Also moved sensor.h into configNode.h and devided between both configXXX.h file.
 - Added the documentation for release 6.1.1 and correctd a number of typos.
+- Corrected bug for ipPrint() in _wwwServer.ino
+- Updated code to read and write config file at the setup() of the gateway, and more often if
+	variables are updated in the web server.
 
 Features release 6.1.0 (October 20, 2019)
 - Changed name of the ESP-sc-gway.h file into configGway.h and removed most privacy info. 

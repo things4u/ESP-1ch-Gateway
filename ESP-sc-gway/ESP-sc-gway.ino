@@ -215,8 +215,8 @@ void ICACHE_RAM_ATTR Interrupt_1();
 
 int sendPacket(uint8_t *buf, uint8_t length);				// _txRx.ino forward
 
-void setupWWW();											// _wwwServer.ino forward
 static void printIP(IPAddress ipa, const char sep, String& response);	// _wwwServer.ino
+void setupWWW();											// _wwwServer.ino forward
 
 void SerialTime();											// _utils.ino forward
 void SerialStat(uint8_t intr);								// _utils.ino

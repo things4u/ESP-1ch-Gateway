@@ -42,10 +42,10 @@
 // --------------------------------------------------------------------------------
 static void printIP(IPAddress ipa, const char sep, String& response)
 {
-	response+=(IPAddress)ipa[0]; response+=sep;
-	response+=(IPAddress)ipa[1]; response+=sep;
-	response+=(IPAddress)ipa[2]; response+=sep;
-	response+=(IPAddress)ipa[3];
+	response+=(String)ipa[0]; response+=sep;
+	response+=(String)ipa[1]; response+=sep;
+	response+=(String)ipa[2]; response+=sep;
+	response+=(String)ipa[3];
 }
 
 //
