@@ -158,9 +158,9 @@ int sendPacket(uint8_t *buf, uint8_t length)
 	else if ((w>6000000) && (w<7000000)) { 
 		LoraDown.tmst-=500000; 
 	}
-	LoraDown.powe = 14;										// On all freqs except 869.5MHz power is limited
-	LoraDown.sfTx = sfi;									// Take care, TX sf not to be mixed with SCAN
-	//LoraDown.fff = freqs[ifreq].dwnFreq;					// Use the corresponsing Down frequency
+	LoraDown.powe	= 14;									// On all freqs except 869.5MHz power is limited
+	LoraDown.sfTx	= sfi;									// Take care, TX sf not to be mixed with SCAN
+	LoraDown.fff	= freqs[ifreq].dwnFreq;					// Use the corresponsing Down frequency
 	
 #else
 // If _STRICT_1CH == 0, we will receive messags from the TTN gateway presumably on SF9/869.5MHz
@@ -192,7 +192,7 @@ int sendPacket(uint8_t *buf, uint8_t length)
 			Serial.print(F(" strict="));	Serial.print(_STRICT_1CH);
 			Serial.print(F(" datr="));		Serial.println(datr);
 			Serial.print(F(" Rfreq=")); 	Serial.print(freqs[ifreq].dwnFreq); 
-			Serial.print(F(", Request=")); 	Serial.print(freqs[ifreq].dwnFreq); 
+			//Serial.print(F(", Request=")); 	Serial.print(freqs[ifreq].dwnFreq); 
 			Serial.print(F(" ->")); 		Serial.println(LoraDown.fff);
 			Serial.print(F(" sf  =")); 		Serial.print(atoi(datr+2)); Serial.print(F(" ->")); Serial.println(LoraDown.sfTx);
 		
