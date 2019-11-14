@@ -668,7 +668,7 @@ void loraWait(const uint32_t timestamp)
 #endif
 		break;
 	}
-	tmst = tmst + txDelay + adjust;						// tmst based on txDelay and spreading factor
+	tmst = tmst + gwayConfig.txDelay + adjust;			// tmst based on txDelay and spreading factor
 	uint32_t waitTime = tmst - micros();				// Or make waitTime an unsigned and change next statement
 	if (micros()>tmst) {								// to (waitTime<0)
 		Serial.println(F("loraWait:: Error wait time < 0"));
@@ -700,7 +700,7 @@ void loraWait(const uint32_t timestamp)
 		Serial.print(F(", waited: "));
 		Serial.print(tmst - startMics);
 		Serial.print(F(", delay="));
-		Serial.print(txDelay);
+		Serial.print(gwayConfig.txDelay);
 		Serial.println();
 		if (debug>=2) Serial.flush();
 	}

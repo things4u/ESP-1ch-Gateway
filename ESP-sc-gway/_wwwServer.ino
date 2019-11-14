@@ -252,7 +252,7 @@ static void wwwButtons()
 
 
 // --------------------------------------------------------------------------------
-// SET ESP8266 WEB SERVER VARIABLES
+// SET ESP8266/ESP32 WEB SERVER VARIABLES
 //
 // This funtion implements the WiFi Webserver (very simple one). The purpose
 // of this server is to receive simple admin commands, and execute these
@@ -297,10 +297,12 @@ static void setVariables(const char *cmd, const char *arg) {
 	}
 	
 	if (strcmp(cmd, "DELAY")==0) {									// Set delay usecs
-		txDelay+=atoi(arg)*1000;
+		gwayConfig.txDelay+=atoi(arg)*1000;
+		writeGwayCfg(CONFIGFILE);									// Save configuration to file
 	}
 	
 	// SF; Handle Spreading Factor Settings
+	//
 	if (strcmp(cmd, "SF")==0) {
 		uint8_t sfi = sf;
 		if (atoi(arg) == 1) {
@@ -314,6 +316,7 @@ static void setVariables(const char *cmd, const char *arg) {
 	}
 	
 	// FREQ; Handle Frequency  Settings
+	//
 	if (strcmp(cmd, "FREQ")==0) {
 		uint8_t nf = sizeof(freqs)/ sizeof(freqs[0]);				// Number of frequency elements in array
 		
@@ -331,17 +334,24 @@ static void setVariables(const char *cmd, const char *arg) {
 	}
 
 	//if (strcmp(cmd, "GETTIME")==0) { Serial.println(F("gettime tbd")); }	// Get the local time
+	//
 	
 	//if (strcmp(cmd, "SETTIME")==0) { Serial.println(F("settime tbd")); }	// Set the local time
+	//
 	
+	// Help
+	//
 	if (strcmp(cmd, "HELP")==0)    { Serial.println(F("Display Help Topics")); }
 	
+	// Node
+	//
 #if GATEWAYNODE==1
 	if (strcmp(cmd, "NODE")==0) {									// Set node on=1 or off=0
 		gwayConfig.isNode =(bool)atoi(arg);
 		writeGwayCfg(CONFIGFILE);									// Save configuration to file
 	}
 	
+	// File Counter//
 	if (strcmp(cmd, "FCNT")==0)   { 
 		frameCount=0; 
 		rxLoraModem();												// Reset the radio with the new frequency
@@ -349,6 +359,8 @@ static void setVariables(const char *cmd, const char *arg) {
 	}
 #endif
 	
+	// WiFi Manager
+	//
 #if _WIFIMANAGER==1
 	if (strcmp(cmd, "NEWSSID")==0) { 
 		WiFiManager wifiManager;
@@ -359,10 +371,12 @@ static void setVariables(const char *cmd, const char *arg) {
 	}
 #endif
 
+	// Update the software (from User Interface)
 #if A_OTA==1
 	if (strcmp(cmd, "UPDATE")==0) {
 		if (atoi(arg) == 1) {
 			updateOtaa();
+			writeGwayCfg(CONFIGFILE);
 		}
 	}
 #endif
@@ -526,7 +540,7 @@ static void gatewaySettings()
 	// Time Correction
 	if (gwayConfig.expert) {
 		response +="<tr><td class=\"cell\">Time Correction (uSec)</td><td class=\"cell\" colspan=\"2\">"; 
-		response += txDelay; 
+		response += gwayConfig.txDelay; 
 		response +="</td>";
 		response +="<td class=\"cell\"><a href=\"DELAY=-1\"><button>-</button></a></td>";
 		response +="<td class=\"cell\"><a href=\"DELAY=1\"><button>+</button></a></td>";
@@ -1172,7 +1186,7 @@ void setupWWW()
 	
 	// Set delay in microseconds
 	server.on("/DELAY=1", []() {
-		txDelay+=5000;
+		gwayConfig.txDelay+=5000;
 		writeGwayCfg(CONFIGFILE);				// Save configuration to file
 #if _DUSB>=1
 		Serial.println(F("DELAY +, config written"));
@@ -1181,7 +1195,7 @@ void setupWWW()
 		server.send ( 302, "text/plain", "");
 	});
 	server.on("/DELAY=-1", []() {
-		txDelay-=5000;
+		gwayConfig.txDelay-=5000;
 		writeGwayCfg(CONFIGFILE);				// Save configuration to file
 #if _DUSB>=1
 		Serial.println(F("DELAY +, config written"));

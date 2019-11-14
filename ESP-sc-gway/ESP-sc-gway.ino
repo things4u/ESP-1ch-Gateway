@@ -223,9 +223,9 @@ void SerialStat(uint8_t intr);								// _utils.ino
 void printHexDigit(uint8_t digit);							// _utils.ino
 int inDecodes(char * id);									// _utils.ino
 
-void init_oLED();											// oLED.ino
-void acti_oLED();											// oLED.ino
-void addr_oLED();											// oLED.ino
+void init_oLED();											// _oLED.ino
+void acti_oLED();											// _oLED.ino
+void addr_oLED();											// _oLED.ino
 
 void setupOta(char *hostname);								// _otaServer.ino
 
@@ -475,7 +475,11 @@ void setup() {
 #endif
 #endif
 	delay(500);
+	
 	// Read the config file for all parameters not set in the setup() or configGway.h file
+	// This file should be read just after SPIFFS is initializen and before
+	// other configuration parameters are used.
+	//
 	readConfig(CONFIGFILE, &gwayConfig);
 
 	Serial.print(F("Assert="));

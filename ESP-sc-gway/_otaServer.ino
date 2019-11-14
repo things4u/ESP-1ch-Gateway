@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
 // Version 6.1.1
-// Date: 2019-11-06	
+// Date: 2019-11-12	
 //
 //
 // All rights reserved. This program and the accompanying materials
@@ -35,7 +35,7 @@ void setupOta(char *hostname) {
 #if _DUSB>=1
 	Serial.println(F("setupOta:: Started"));
 #endif	
-	// Hostname defaults to esp8266-[ChipID]
+	// Hostname defaults to esp8266-[ChipID] for ESP8266 nodes
 	ArduinoOTA.setHostname(hostname);
 	
 	ArduinoOTA.onStart([]() {
@@ -111,10 +111,11 @@ void setupOta(char *hostname) {
 void updateOtaa() {
 
 	String response="";
+	Serial.print(F("updateOtaa:: <unimplemented> IP="));
 	printIP((IPAddress)WiFi.localIP(),'.',response);
+	Serial.println(response);
 	
-	ESPhttpUpdate.update(response, 80, "/arduino.bin");
-
+//	ESPhttpUpdate.update(response, 80, "/arduino.bin");
 }
 
 

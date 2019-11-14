@@ -58,7 +58,7 @@ int initConfig(struct espGwayConfig *c) {
 // Read the gateway configuration file
 // ----------------------------------------------------------------------------
 int readConfig(const char *fn, struct espGwayConfig *c) {
-
+	
 	int tries = 0;
 #if _DUSB>=1
 	Serial.println(F("readConfig:: Starting "));
@@ -70,7 +70,7 @@ int readConfig(const char *fn, struct espGwayConfig *c) {
 		Serial.println(F(" does not exist .. Formatting"));
 #endif
 		SPIFFS.format();
-		initConfig(c);
+		initConfig(c);					// If we cannot read teh config, at least init known values
 		return(-1);
 	}
 
@@ -233,6 +233,8 @@ int readConfig(const char *fn, struct espGwayConfig *c) {
 // Write the current gateway configuration to SPIFFS. First copy all the
 // separate data items to the gwayConfig structure
 //
+// 	Note: gwayConfig.expert contains the expert setting already
+//				gwayConfig.txDelay
 // ----------------------------------------------------------------------------
 int writeGwayCfg(const char *fn) {
 
@@ -244,6 +246,7 @@ int writeGwayCfg(const char *fn) {
 	gwayConfig.pdebug = pdebug;
 	gwayConfig.cad = _cad;
 	gwayConfig.hop = _hop;
+
 #if GATEWAYNODE==1
 	gwayConfig.fcnt = frameCount;
 #endif
@@ -297,8 +300,8 @@ int writeConfig(const char *fn, struct espGwayConfig *c) {
 	f.print("FILEREC");  f.print('='); f.print((*c).logFileRec); f.print('\n');
 	f.print("FILENO");  f.print('='); f.print((*c).logFileNo); f.print('\n');
 	f.print("FILENUM");  f.print('='); f.print((*c).logFileNum); f.print('\n');
-	f.print("EXPERT");  f.print('='); f.print((*c).expert); f.print('\n');
 	f.print("DELAY");  f.print('='); f.print((*c).txDelay); f.print('\n');
+	f.print("EXPERT");  f.print('='); f.print((*c).expert); f.print('\n');
 	
 	f.close();
 	return(1);
@@ -317,7 +320,7 @@ int writeConfig(const char *fn, struct espGwayConfig *c) {
 // Returns:
 //		<none>
 // ----------------------------------------------------------------------------
-void addLog(const unsigned char * line, int cnt) 
+int addLog(const unsigned char * line, int cnt) 
 {
 #if STAT_LOG==1
 	char fn[16];
@@ -368,7 +371,7 @@ void addLog(const unsigned char * line, int cnt)
 			Serial.println(fn);
 		}
 #endif
-		return;									// If file open failed, return
+		return(0);								// If file open failed, return
 	}
 	
 	int i;
@@ -396,11 +399,12 @@ void addLog(const unsigned char * line, int cnt)
 	//	f.print(line[i],HEX);
 		f.print('*');
 	}
-	f.write(&(line[i]), cnt-12);				// write/append the line to the file
+	f.write(&(line[i]), cnt-12);			// write/append the line to the file
 	f.print('\n');
 	f.close();								// Close the file after appending to it
 
 #endif //STAT_LOG
+	return(1);
 }
 
 // ----------------------------------------------------------------------------
