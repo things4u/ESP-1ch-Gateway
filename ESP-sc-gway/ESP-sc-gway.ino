@@ -429,7 +429,7 @@ void setup() {
 	MAC_char[18] = 0;
 
 	Serial.begin(_BAUDRATE);								// As fast as possible for bus
-	delay(100);	
+	delay(500);	
 
 #if _GPS==1
 	// Pins are define in LoRaModem.h together with other pins
@@ -456,9 +456,14 @@ void setup() {
 	delay(500);
 
 	if (SPIFFS.begin()) {
+#if _DUSB>=1
 		Serial.println(F("SPIFFS init success"));
+#endif
 	}
 	else {
+#if _DUSB>=1
+		Serial.println(F("SPIFFS not found"));
+#endif
 	}
 #endif	
 #if _SPIFF_FORMAT>=1

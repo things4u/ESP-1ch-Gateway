@@ -107,7 +107,7 @@ int readConfig(const char *fn, struct espGwayConfig *c) {
 		String id =f.readStringUntil('=');						// Read keyword until '=', C++ thing
 		String val=f.readStringUntil('\n');						// Read value until End of Line (EOL)
 
-#if _DUSB>=1
+#if _DUSB>=2
 		Serial.print(F("readConfig:: reading line="));
 		Serial.print(id);
 		Serial.print(F("="));
@@ -383,11 +383,14 @@ int addLog(const unsigned char * line, int cnt)
 		Serial.print(gwayConfig.logFileRec);
 
 		Serial.print(F(": "));
-
+#if _DUSB>=2
 		for (i=0; i< 12; i++) {				// The first 12 bytes contain non printable characters
 			Serial.print(line[i],HEX);
 			Serial.print(' ');
 		}
+#else
+		i+=12;
+#endif
 		Serial.print((char *) &line[i]);	// The rest if the buffer contains ascii
 
 		Serial.println();
@@ -500,11 +503,12 @@ int addSeen(struct nodeSeen *listSeen, uint32_t idSeen, uint8_t sfSeen, unsigned
 //	( message[4]<<24 | message[3]<<16 | message[2]<<8 | message[1] )
 	
 #if _DUSB>=1
-	if (( debug>=0 ) && ( pdebug & P_MAIN )) {
+	if (( debug>=1 ) && ( pdebug & P_MAIN )) {
 		Serial.print(F("addSeen:: "));
 //		Serial.print(F(" listSeen[0]="));
 //		Serial.print(listSeen[0].idSeen,HEX);
-		Serial.print(F(", tim="));
+//		Serial.print(F(", "));
+		Serial.print(F("tim="));
 		Serial.print(timSeen);
 		Serial.print(F(", idSeen="));
 		Serial.print(idSeen,HEX);
