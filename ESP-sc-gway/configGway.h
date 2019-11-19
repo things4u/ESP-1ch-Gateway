@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.1 E EU868
-// Date: 2019-11-11
+// Version 6.1.3 E EU868
+// Date: 2019-11-20
 //
 // Based on work done by Thomas Telkamp for Raspberry PI 1ch gateway and many others.
 // Contibutions of Dorijan Morelj and Andreas Spies for OLED support.
@@ -17,18 +17,21 @@
 //
 // This file contains a number of compile-time settings that can be set on (=1) or off (=0)
 // The disadvantage of compile time is minor compared to the memory gain of not having
-// too much code compiled and loaded on your ESP8266.
+// too much code compiled and loaded on your ESP device.
 //
 // NOTE: 
-// If version if vor ESP32 Halard board, compile with ESP32 setting and board 
+// If version if vor ESP32 Heltec board, compile with ESP32 setting and board 
 // "ESP32 Dev Module" or "Heltec WiFi Lora 32"
 // 
-// If version is for Comresult or Halard board, compile with "Wemos R1 D1" and choose
+// For ESP8266 Wemos: compile with "Wemos R1 D1" and choose
 // the right _PIN_OUT below. Selecting OLED while that is not connected does not 
 // really matter.
-// ----------------------------------------------------------------------------------------
+//
+// ========================================================================================
 
-#define VERSION "V.6.1.1.E.EU868; 191111a"
+// Specify the correct version and date of your gateway here.
+// Normally it is provided with teh GitHub version
+#define VERSION "V.6.1.3.E.EU868; 191120a"
 
 // This value of DEBUG determines whether some parts of code get compiled.
 // Also this is the initial value of debug parameter. 
@@ -121,9 +124,6 @@
 #define _STATISTICS 3
 
 
-// Maximum number of statistics records gathered. 20 is a good maximum (memory intensive)
-// For ESP32 maybe 30 could be used as well
-#define MAX_STAT 20
 
 
 // Single channel gateways if they behave strict should only use one frequency 
@@ -151,7 +151,7 @@
 
 
 // This section defines whether we use the gateway as a repeater
-// For his, we use another output channle as the channel (default==0) we are 
+// For his, we use another output channel as the channel (default==0) we are 
 // receiving the messages on.
 #define _REPEATER 0
 
@@ -189,19 +189,7 @@
 // Of course we must store enough records to make the filesystem work
 #define STAT_LOG 1
 
-// We will log a list of LoRa nodes that was forwarded using this gateway.
-// For eacht node we record:
-//	- node Number, or known node name
-//	- Last seen 'seconds since 1/1/1970'
-//	- SF seen (8-bit integer with SF per bit)
-// The initial version _NUMMAX stores max so many nodes:
-#define _SEENMAX 100
-#define _SEENFILE "/gwayNum.txt"
 
-// Name of he configfile in SPIFFs	filesystem
-// In this file we store the configuration and other relevant info that should
-// survive a reboot of the gateway		
-#define CONFIGFILE "/gwayConfig.txt"
 
 // Set the Server Settings (IMPORTANT)
 #define _LOCUDPPORT 1700					// UDP port of gateway! Often 1700 or 1701 is used for upstream comms
@@ -214,21 +202,6 @@
 #define _WWW_INTERVAL	60					// Number of seconds before we refresh the WWW page
 
 
-// MQTT definitions, these settings should be standard for TTN
-// and need not changing
-#define _TTNSERVER "router.eu.thethings.network"
-#define _TTNPORT 1700						// Standard port for TTN
-
-
-// If you have a second back-end server defined such as Semtech or loriot.io
-// your can define _THINGPORT and _THINGSERVER with your own value.
-// If not, make sure that you do not define these, which will save CPU time
-// Port is UDP port in this program
-//
-// Default for testing: Switched off
-#define _THINGSERVER "your,webserver.com"		// Server URL of the LoRa-udp.js handler
-#define _THINGPORT 1700						// Port 1700 is old compatibility
-
 
 // This defines whether or not we would use the gateway as 
 // as sort of backend system which decodes
@@ -237,9 +210,9 @@
 #define _LOCALSERVER 1						// See server definitions for decodes
 
 
-// Gateway Ident definitions
+// Gateway Ident definitions. Where is the gateway located?
 #define _DESCRIPTION "ESP Gateway"			// Name of the gateway
-#define _EMAIL "your@mail.com"				// Owner
+#define _EMAIL "your@email.com"		// Owner
 #define _PLATFORM "ESP8266"
 #define _LAT 52.0
 #define _LON 5.0
@@ -264,6 +237,46 @@
 
 
 
+// We can put the gateway in such a mode that it will (only) recognize
+// nodes that are put in a list of trusted nodes 
+// Values:
+// 0: Do not use names for trusted Nodes
+// 1: Use the nodes as a translation table for hex codes to names (in TLN)
+// 2: Same as 1, but is nodes NOT in the nodes list below they are NOT
+//		shown! (option 2 is almost fully implemented)
+// NOTE: We probably will make this list dynamic!
+#define _TRUSTED_NODES 1
+#define _TRUSTED_DECODE 1
+
+
+
+// ========================================================================
+// DO NOT CHANGE BELOW THIS LINE
+// Probably do not change items below this line, only if lists or 
+// configurations on configNode.h are not large enough for example.
+// ========================================================================
+
+
+// Maximum number of statistics records gathered. 20 is a good maximum (memory intensive)
+// For ESP32 maybe 30 could be used as well
+#define MAX_STAT 20
+
+
+// We will log a list of LoRa nodes that was forwarded using this gateway.
+// For eacht node we record:
+//	- node Number, or known node name
+//	- Last seen 'seconds since 1/1/1970'
+//	- SF seen (8-bit integer with SF per bit)
+// The initial version _NUMMAX stores max this many nodes, please make
+// _SEENMAX==0 when not used
+#define _SEENMAX 100
+#define _SEENFILE "/gwayNum.txt"
+
+// Name of he configfile in SPIFFs	filesystem
+// In this file we store the configuration and other relevant info that should
+// survive a reboot of the gateway		
+#define CONFIGFILE "/gwayConfig.txt"
+
 
 // Define the correct radio type that you are using
 #define CFG_sx1276_radio		
@@ -274,16 +287,20 @@
 #define _BAUDRATE 115200					// Works for debug messages to serial momitor
 
 
-// We can put the gateway in such a mode that it will (only) recognize
-// nodes that are put in a list of trusted nodes 
-// Values:
-// 0: Do not use names for trusted Nodes
-// 1: Use the nodes as a translation table for hex codes to names (in TLN)
-// 2: Same as 1, but is nodes NOT in the nodes list below they are NOT
-//		forwarded or counted! (not yet fully implemented)
-#define _TRUSTED_NODES 1
-#define _TRUSTED_DECODE 1
+// MQTT definitions, these settings should be standard for TTN
+// and need no changing
+#define _TTNSERVER "router.eu.thethings.network"
+#define _TTNPORT 1700						// Standard port for TTN
 
+
+// If you have a second back-end server defined such as Semtech or loriot.io
+// your can define _THINGPORT and _THINGSERVER with your own value.
+// If not, make sure that you do not define these, which will save CPU time
+// Port is UDP port in this program
+//
+// Default for testing: Switched off
+#define _THINGSERVER "your,webserver.org"		// Server URL of the LoRa-udp.js handler
+#define _THINGPORT 1700						// Port 1700 is old compatibility
 
 
 

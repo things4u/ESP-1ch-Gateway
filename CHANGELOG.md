@@ -17,6 +17,14 @@ Maintained by Maarten Westenberg (mw12554@hotmail.com)
 # Release Notes
 
 Features release 6.1.1 (November 6, 2019)
+- Made changes to _TRUSTED_NODES in _wwwServer.ino to make sure only named nodes are 
+displayed when value is 2. 
+Other messages ARE handled by gateway but not shown in the user interface under message history.
+- Used id_print in _loraFiles.ino in order to avoid _DUSB issues
+- Reorganized the conigGway.h file to move items that normally do not change to the end of file.
+- Repaired bugs and writing errors
+
+Features release 6.1.1 (November 6, 2019)
 - Added "last seen" for a node. An overview when each known node has last been seen by the gateway,
 	This would mean that a node that does not fit in the regular history overview would still be visible
 	even when it has been seen three days ago.

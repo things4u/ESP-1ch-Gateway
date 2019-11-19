@@ -829,12 +829,20 @@ static void statisticsData()
 //	- <none>
 // Returns:
 //	- <none>
+//
+// As we make the TRUSTED_NODE a dynamic parameter, it can be set/unset in the user 
+// interface. It will allow the user to only see known nodes (with a name) in the 
+// list or also nodes with only an address (Unknown nodes).
+// As a result, the size of the list will NOT be as large when only known nodes are 
+// selected, as in can be deselcted in the GUI and we have only so much space on 
+// th screen.
 // --------------------------------------------------------------------------------
 static void messageHistory() 
 {
 #if _STATISTICS >= 1
 	String response="";
-	
+
+	// PRINT HEADERS
 	response += "<h2>Message History</h2>";
 	response += "<table class=\"config_table\">";
 	response += "<tr>";
@@ -855,19 +863,32 @@ static void messageHistory()
 	response += "</tr>";
 	server.sendContent(response);
 
-	for (int i=0; i<MAX_STAT; i++) {
+	// PRINT NODE CONTENT
+	for (int i=0; i<MAX_STAT; i++) {										// For every Node in the list
 		if (statr[i].sf == 0) break;
 		
 		response = "";
 		
 		response += String() + "<tr><td class=\"cell\">";					// Tmst
-		stringTime((statr[i].tmst), response);			// XXX Change tmst not to be millis() dependent
+		stringTime((statr[i].tmst), response);								// XXX Change tmst not to be millis() dependent
 		response += "</td>";
 		
 		response += String() + "<td class=\"cell\">"; 						// Node
-		if (SerialName((char *)(& (statr[i].node)), response) < 0) {		// works with TRUSTED_NODES >= 1
+		
+#if  _TRUSTED_NODES==0														// DO nothing with TRUSTED NODES
+		printHEX((char *)(& (statr[i].node)),' ',response);
+#elif _TRUSTED_NODES>=1
+		if (SerialName((char *)(& (statr[i].node)), response) < 0) {		// works with _TRUSTED_NODES >= 1
+#if _TRUSTED_NODES>=2
+			continue;														// else next item and do not show
+#else
 			printHEX((char *)(& (statr[i].node)),' ',response);				// else
+#endif // _TRUSTED_NODES>=2
 		}
+#else
+# error Undefined value for _TRUSTED_NODES
+#endif // _TRUSTED_NODES>=1
+
 		response += "</td>";
 		
 #if _LOCALSERVER==1
@@ -957,7 +978,8 @@ static void nodeHistory()
 		server.sendContent("</table>");
 	}
 #endif
-}
+} // nodeHistory()
+
 
 // --------------------------------------------------------------------------------
 // SEND WEB PAGE() 

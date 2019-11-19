@@ -238,13 +238,13 @@ int SerialName(char * a, String& response)
 				Serial.print(nodes[i].id,HEX);
 				Serial.println();
 			}
-#endif
+#endif // _DUSB
 			response += nodes[i].nm;
 			return(i);
 		}
 	}
 
-#endif
+#endif // _TRUSTED_NODES
 	return(-1);									// If no success OR is TRUSTED NODES not defined
 }
 

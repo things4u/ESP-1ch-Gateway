@@ -140,15 +140,15 @@ int readConfig(const char *fn, struct espGwayConfig *c) {
 			(*c).debug = (uint8_t) val.toInt();
 		}
 		else if (id == "PDEBUG") {								// pDebug Pattern
-			Serial.print(F("PDEBUG=")); Serial.println(val);
+			id_print(id, val);
 			(*c).pdebug = (uint8_t) val.toInt();
 		}
 		else if (id == "CAD") {									// CAD setting
-			Serial.print(F("CAD=")); Serial.println(val);
+			id_print(id, val);
 			(*c).cad = (uint8_t) val.toInt();
 		}
 		else if (id == "HOP") {									// HOP setting
-			Serial.print(F("HOP=")); Serial.println(val);
+			id_print(id, val);
 			(*c).hop = (uint8_t) val.toInt();
 		}
 		else if (id == "BOOTS") {								// BOOTS setting
@@ -219,12 +219,14 @@ int readConfig(const char *fn, struct espGwayConfig *c) {
 		}
 	}
 	f.close();
+	
 #if _DUSB>=1
-	if (debug>=0) {
+	if (debug>=1) {
 		Serial.println(F("readConfig:: Fini"));
 	}
-#endif
 	Serial.println();
+#endif
+
 	return(1);
 }//readConfig
 
