@@ -1,7 +1,7 @@
 # Single Channel LoRaWAN Gateway
 
-Version 6.1.1, 
-Data: November 6, 2019  
+Version 6.1.3, 
+Data: November 20, 2019  
 Author: M. Westenberg (mw12554@hotmail.com)  
 Copyright: M. Westenberg (mw12554@hotmail.com)  
 

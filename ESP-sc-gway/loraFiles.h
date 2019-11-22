@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.1
-// Date: 2019-11-06
+// Version 6.1.3
+// Date: 2019-11-20
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -50,6 +50,10 @@
 // when settings are changed.
 
 struct espGwayConfig {
+
+	int32_t txDelay;			// Init 0 at setup
+	uint32_t ntpErrTime;		// Record the time of the last NTP error
+
 	uint16_t fcnt;				// =0 as init value	XXX Could be 32 bit in size
 	uint16_t boots;				// Number of restarts made by the gateway after reset
 	uint16_t resets;			// Number of statistics resets
@@ -58,17 +62,17 @@ struct espGwayConfig {
 	uint16_t reents;			// Number of re-entrant interrupt handler calls
 	uint16_t ntpErr;			// Number of UTP requests that failed
 	uint16_t ntps;
-
-	int32_t txDelay;			// Init 0 at setup
-	uint32_t ntpErrTime;		// Record the time of the last NTP error
+	uint16_t logFileRec;		// Logging File Record number
+	uint16_t logFileNo;			// Logging File Number
+	uint16_t logFileNum;		// Number of log files
+	
 	uint8_t ch;					// index to freqs array, freqs[ifreq]=868100000 default
 	uint8_t sf;					// range from SF7 to SF12
 	uint8_t debug;				// range 0 to 4
 	uint8_t pdebug;				// pattern debug, 
+	uint8_t trusted;				// pattern debug, 
 
-	uint16_t logFileRec;		// Logging File Record number
-	uint16_t logFileNo;			// Logging File Number
-	uint16_t logFileNum;		// Number of log files
+
 	
 	bool cad;					// is CAD enabled?
 	bool hop;					// Is HOP enabled (Note: default be disabled)
@@ -106,9 +110,9 @@ struct espGwayConfig {
 #define nFSK	0x80
 
 struct nodeSeen {
+	unsigned long timSeen;
 	uint32_t idSeen;
 	uint8_t sfSeen;
-	unsigned long timSeen;
 };
 struct nodeSeen listSeen[_SEENMAX];
 

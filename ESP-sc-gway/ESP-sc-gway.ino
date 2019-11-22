@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.1
-// Date: 2019-11-06
+// Version 6.1.3
+// Date: 2019-11-20
 // Author: Maarten Westenberg (mw12554@hotmail.com)
 //
 // Based on work done by Thomas Telkamp for Raspberry PI 1-ch gateway and many others.
@@ -486,6 +486,7 @@ void setup() {
 	// other configuration parameters are used.
 	//
 	readConfig(CONFIGFILE, &gwayConfig);
+	readSeen(_SEENFILE, listSeen);							// read the seenFile records
 
 	Serial.print(F("Assert="));
 #if defined CFG_noassert
@@ -705,7 +706,10 @@ void setup() {
 	}
 	
 	writeConfig(CONFIGFILE, &gwayConfig);					// Write config
-
+	writeSeen( _SEENFILE, listSeen);						// Write the last time record  is seen
+#if _DUSB>=1
+	printSeen(listSeen);
+#endif	
 	// activate OLED display
 #if OLED>=1
 	acti_oLED();

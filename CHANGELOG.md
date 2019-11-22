@@ -1,6 +1,6 @@
 # Single Channel LoRaWAN Gateway
 
-Version 6.1.1, November 6	, 2019	  
+Version 6.1.3, November 20, 2019	  
 Author: M. Westenberg (mw12554@hotmail.com)  
 Copyright: M. Westenberg (mw12554@hotmail.com)  
 
@@ -16,10 +16,14 @@ Maintained by Maarten Westenberg (mw12554@hotmail.com)
 
 # Release Notes
 
-Features release 6.1.1 (November 6, 2019)
+Features release 6.1.3 (November 20, 2019)
 - Made changes to _TRUSTED_NODES in _wwwServer.ino to make sure only named nodes are 
-displayed when value is 2. 
-Other messages ARE handled by gateway but not shown in the user interface under message history.
+displayed when the value of trusted nodes in "Gateways Settings" has value  2. 
+The value of this vaiable is stored in the filesystem of the Gateway SPIFFS andwith every startup of 
+the Gateway it is read so that users can access when sensors last were seen by the Gateway 
+even after reboots.
+Note: all messages ARE handled by gateway but not shown in the user interface "Last Seen" 
+under message history.
 - Used id_print in _loraFiles.ino in order to avoid _DUSB issues
 - Reorganized the conigGway.h file to move items that normally do not change to the end of file.
 - Repaired bugs and writing errors

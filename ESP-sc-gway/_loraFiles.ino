@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.1		
-// Date: 2019-11-06	
+// Version 6.1.3		
+// Date: 2019-11-20	
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -51,6 +51,7 @@ int initConfig(struct espGwayConfig *c) {
 	(*c).hop = false;
 	(*c).expert = false;
 	(*c).txDelay = 0;					// First Value without saving is 0;
+	(*c).trusted = 1;
 }
 
 
@@ -211,6 +212,10 @@ int readConfig(const char *fn, struct espGwayConfig *c) {
 			id_print(id, val);
 			(*c).txDelay = (int32_t) val.toInt();
 		}
+		else if (id == "TRUSTED") {								// TRUSTED setting
+			id_print(id, val);
+			(*c).trusted= (int32_t) val.toInt();
+		}
 		else {
 #if _DUSB>=1
 			Serial.print(F("readConfig:: tries++"));
@@ -266,6 +271,9 @@ int writeGwayCfg(const char *fn) {
 // ----------------------------------------------------------------------------
 int writeConfig(const char *fn, struct espGwayConfig *c) {
 
+	// Assuming the cibfug file is the first we write...
+	// If it is not there we should format first.
+	// NOTE: Do not format for other files!
 	if (!SPIFFS.exists(fn)) {
 		Serial.print("WARNING:: writeConfig, file not exists, formatting ");
 		SPIFFS.format();
@@ -274,7 +282,7 @@ int writeConfig(const char *fn, struct espGwayConfig *c) {
 	}
 	File f = SPIFFS.open(fn, "w");
 	if (!f) {
-		Serial.print("ERROR:: writeConfig, open file=");
+		Serial.print("writeConfig: ERROR open file=");
 		Serial.print(fn);
 		Serial.println();
 		return(-1);
@@ -303,6 +311,7 @@ int writeConfig(const char *fn, struct espGwayConfig *c) {
 	f.print("FILENO");  f.print('='); f.print((*c).logFileNo); f.print('\n');
 	f.print("FILENUM");  f.print('='); f.print((*c).logFileNum); f.print('\n');
 	f.print("DELAY");  f.print('='); f.print((*c).txDelay); f.print('\n');
+	f.print("TRUSTED");  f.print('='); f.print((*c).trusted); f.print('\n');
 	f.print("EXPERT");  f.print('='); f.print((*c).expert); f.print('\n');
 	
 	f.close();
@@ -446,12 +455,89 @@ void printLog()
 #if _SEENMAX>0
 
 // ----------------------------------------------------------------------------
-// writeSeen
-// - Once every few messages, update the SPIFFS file and write the array.
+// readSeen
+// This function read the stored information from writeSeen.
 //
+// Parameters:
+// Return:
 // ----------------------------------------------------------------------------
-int writeSeen(struct nodeSeen *listSeen) {
+int readSeen(const char *fn, struct nodeSeen *listSeen) {
+	int i;
+	if (!SPIFFS.exists(fn)) {
+#if _DUSB>=1
+		Serial.print("WARNING:: readSeen, history file not exists ");
+#endif
+		initSeen(listSeen);		// XXX make all initial declarations here if config vars need to have a value
+		Serial.println(fn);
+		return(-1);
+	}
+	File f = SPIFFS.open(fn, "r");
+	if (!f) {
+		Serial.print("readConfig:: ERROR open file=");
+		Serial.print(fn);
+		Serial.println();
+		return(-1);
+	}
+	for (i=0; i<_SEENMAX; i++) {
+		String val;
+		if (!f.available()) {
+#if _DUSB>=1
+			Serial.println(F("readSeen:: No more info left in file"));
+#endif
+		}
+		val=f.readStringUntil('\t'); listSeen[i].timSeen = (uint32_t) val.toInt();
+		val=f.readStringUntil('\t'); 
+					listSeen[i].idSeen = (uint32_t) val.toInt();
+					//listSeen[i].idSeen = strtoul(val, val.length()+1, 10);
+		val=f.readStringUntil('\n'); listSeen[i].sfSeen = (uint8_t) val.toInt();
+	}
+	f.close();
+#if _DUSB>=1
+	printSeen(listSeen);
+#endif
+}
 
+
+// ----------------------------------------------------------------------------
+// writeSeen
+// Once every few messages, update the SPIFFS file and write the array.
+// Parameters:
+// - fn contains the filename to write
+// - listSeen contains the _SEENMAX array of list structures 
+// Return values:
+// - return 1 on success
+// ----------------------------------------------------------------------------
+int writeSeen(const char *fn, struct nodeSeen *listSeen) {
+	int i;
+	if (!SPIFFS.exists(fn)) {
+#if _DUSB>=1
+		Serial.print("WARNING:: writeSeen, file not exists, formatting ");
+#endif
+		initSeen(listSeen);		// XXX make all initial declarations here if config vars need to have a value
+		Serial.println(fn);
+	}
+	File f = SPIFFS.open(fn, "w");
+	if (!f) {
+		Serial.print("writeConfig:: ERROR open file=");
+		Serial.print(fn);
+		Serial.println();
+		return(-1);
+	}
+
+	for (i=0; i<_SEENMAX; i++) {
+
+			unsigned long timSeen;
+			f.print(listSeen[i].timSeen);		f.print('\t');
+			// Typecast to long to avoid errors in unsigned conversion.
+			f.print((long) listSeen[i].idSeen);		f.print('\t');
+			//f.print(listSeen[i].datSeen);		f.print('\t');
+			//f.print(listSeen[i].chanSeen);	f.print('\t');
+			//f.print(listSeen[i].rssiSeen);	f.print('\t');
+			f.print(listSeen[i].sfSeen);		f.print('\n');		
+	}
+	
+	f.close();
+	
 	return(1);
 }
 
@@ -460,16 +546,10 @@ int writeSeen(struct nodeSeen *listSeen) {
 // - Once every few messages, update the SPIFFS file and write the array.
 // ----------------------------------------------------------------------------
 int printSeen(struct nodeSeen *listSeen) {
-
-#if _DUSB>=1
-	if (( debug>=0 ) && ( pdebug & P_MAIN )) {
-		Serial.print(F("printSeen:: print list"));
-		Serial.println();
-	}
-#endif
     int i;
 #if _DUSB>=1
 	if (( debug>=0 ) && ( pdebug & P_MAIN )) {
+		Serial.println(F("printSeen:: "));
 		for (i=0; i<_SEENMAX; i++) {
 			if (listSeen[i].idSeen != 0) {
 				String response;
@@ -504,18 +584,16 @@ int addSeen(struct nodeSeen *listSeen, uint32_t idSeen, uint8_t sfSeen, unsigned
 	
 //	( message[4]<<24 | message[3]<<16 | message[2]<<8 | message[1] )
 	
-#if _DUSB>=1
+#if _DUSB>=2
 	if (( debug>=1 ) && ( pdebug & P_MAIN )) {
 		Serial.print(F("addSeen:: "));
 //		Serial.print(F(" listSeen[0]="));
 //		Serial.print(listSeen[0].idSeen,HEX);
 //		Serial.print(F(", "));
-		Serial.print(F("tim="));
-		Serial.print(timSeen);
-		Serial.print(F(", idSeen="));
-		Serial.print(idSeen,HEX);
-		Serial.print(F(", sfSeen="));
-		Serial.print(sfSeen,HEX);
+
+		Serial.print(F("tim="));		Serial.print(timSeen);
+		Serial.print(F(", idSeen="));	Serial.print(idSeen,HEX);
+		Serial.print(F(", sfSeen="));	Serial.print(sfSeen,HEX);
 		Serial.println();
 	}
 #endif
@@ -524,31 +602,36 @@ int addSeen(struct nodeSeen *listSeen, uint32_t idSeen, uint8_t sfSeen, unsigned
 		if ((listSeen[i].idSeen==idSeen) ||
 			(listSeen[i].idSeen==0))
 		{
+#if _DUSB>=2
+			if (( debug>=0 ) && ( pdebug & P_MAIN )) {
+				Serial.print(F("addSeen:: index="));
+				Serial.print(i);
+			}
+#endif
+			listSeen[i].idSeen = idSeen;
+			listSeen[i].sfSeen |= sfSeen;
+			listSeen[i].timSeen = timSeen;
+	
+			writeSeen(_SEENFILE, listSeen);
 			break;
 		}
 	}
 	
 	if (i>=_SEENMAX) {
 #if _DUSB>=1
-	if (( debug>=0 ) && ( pdebug & P_MAIN )) {
-		Serial.print(F("addSeen:: exit=0, index="));
-		Serial.println(i);
-	}
+		if (( debug>=0 ) && ( pdebug & P_MAIN )) {
+			Serial.print(F("addSeen:: exit=0, index="));
+			Serial.println(i);
+		}
 #endif
+
 		return(0);
 	}
-#if _DUSB>=2
-	if (( debug>=0 ) && ( pdebug & P_MAIN )) {
-		Serial.print(F("addSeen:: index="));
-		Serial.print(i);
-	}
-#endif
-	listSeen[i].idSeen = idSeen;
-	listSeen[i].sfSeen |= sfSeen;
-	listSeen[i].timSeen = timSeen;
+
 	
 	return(1);
 }
+
 
 // ----------------------------------------------------------------------------
 // initSeen

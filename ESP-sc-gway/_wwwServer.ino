@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.1
-// Date: 2019-11-06
+// Version 6.1.3
+// Date: 2019-11-20
 //
 // 	based on work done by many people and making use of several libraries.
 //
@@ -215,7 +215,6 @@ void buttonLog()
 // --------------------------------------------------------------------------------
 void buttonSeen() 
 {
-	
 	String fn = "";
 	int i = 0;
 	
@@ -296,8 +295,23 @@ static void setVariables(const char *cmd, const char *arg) {
 		writeGwayCfg(CONFIGFILE);									// Save configuration to file
 	}
 	
+	// DELAY, write txDelay for transmissions
+	//
 	if (strcmp(cmd, "DELAY")==0) {									// Set delay usecs
 		gwayConfig.txDelay+=atoi(arg)*1000;
+		writeGwayCfg(CONFIGFILE);									// Save configuration to file
+	}
+
+	// TRUSTED, write node trusted value 
+	//
+	if (strcmp(cmd, "TRUSTED")==0) {									// Set delay usecs
+		gwayConfig.trusted=atoi(arg);
+		if (atoi(arg) == 1) {
+			gwayConfig.trusted = (gwayConfig.trusted +1)%4;
+		}	
+		else if (atoi(arg) == -1) {
+			gwayConfig.trusted = (gwayConfig.trusted -1)%4;
+		}
 		writeGwayCfg(CONFIGFILE);									// Save configuration to file
 	}
 	
@@ -526,6 +540,16 @@ static void gatewaySettings()
 		response +="<td class=\"cell\"><a href=\"FREQ=1\"><button>+</button></a></td>";
 	}
 	response +="</tr>";
+
+	// Trusted options, when TRUSTED_NODE is set
+#ifdef _TRUSTED_NODES
+	response +="<tr><td class=\"cell\">Trusted Nodes</td><td class=\"cell\" colspan=\"2\">"; 
+	response +=gwayConfig.trusted; 
+	response +="</td>";
+	response +="<td class=\"cell\"><a href=\"TRUSTED=-1\"><button>-</button></a></td>";
+	response +="<td class=\"cell\"><a href=\"TRUSTED=1\"><button>+</button></a></td>";
+	response +="</tr>";
+#endif
 
 	// Debugging options, only when _DUSB is set, otherwise no
 	// serial activity
@@ -875,19 +899,28 @@ static void messageHistory()
 		
 		response += String() + "<td class=\"cell\">"; 						// Node
 		
-#if  _TRUSTED_NODES==0														// DO nothing with TRUSTED NODES
-		printHEX((char *)(& (statr[i].node)),' ',response);
-#elif _TRUSTED_NODES>=1
-		if (SerialName((char *)(& (statr[i].node)), response) < 0) {		// works with _TRUSTED_NODES >= 1
-#if _TRUSTED_NODES>=2
-			continue;														// else next item and do not show
-#else
-			printHEX((char *)(& (statr[i].node)),' ',response);				// else
-#endif // _TRUSTED_NODES>=2
+#ifdef  _TRUSTED_NODES														// DO nothing with TRUSTED NODES
+		switch (gwayConfig.trusted) {
+			case 0: printHEX((char *)(& (statr[i].node)),' ',response); 
+				break;
+			case 1: if (SerialName((char *)(& (statr[i].node)), response) < 0) {
+						printHEX((char *)(& (statr[i].node)),' ',response);
+					};
+				break;
+			case 2: if (SerialName((char *)(& (statr[i].node)), response) < 0) {
+						continue;
+					};
+				break;
+			case 3: // Value and we do not print unless also defined for LOCAL_SERVER
+			default:
+#if _DUSB>=1
+				Serial.println("Unknow value for gwayConfig.trusted");
+#endif			
 		}
-#else
-# error Undefined value for _TRUSTED_NODES
-#endif // _TRUSTED_NODES>=1
+		
+#else // _TRUSTED_NODES
+		printHEX((char *)(& (statr[i].node)),' ',response);
+#endif // _TRUSTED_NODES
 
 		response += "</td>";
 		
@@ -964,9 +997,28 @@ static void nodeHistory()
 			response += "</td>";
 		
 			response += String() + "<td class=\"cell\">"; 						// Node
-			if (SerialName((char *)(& (listSeen[i].idSeen)), response) < 0) {	// works with TRUSTED_NODES >= 1
-				printHEX((char *)(& (listSeen[i].idSeen)),' ',response);		// else
-			}
+#ifdef  _TRUSTED_NODES														// DO nothing with TRUSTED NODES
+			switch (gwayConfig.trusted) {
+				case 0: printHEX((char *)(& (listSeen[i].idSeen)),' ',response); 
+					break;
+				case 1: if (SerialName((char *)(& (listSeen[i].idSeen)), response) < 0) {
+							printHEX((char *)(& (listSeen[i].idSeen)),' ',response);
+						};
+					break;
+				case 2: if (SerialName((char *)(& (listSeen[i].idSeen)), response) < 0) {
+							continue;
+						};
+					break;
+				case 3: // Value 3 and we do not print unless also defined for LOCAL_SERVER
+				default:
+#if _DUSB>=1
+					Serial.println("Unknow value for gwayConfig.trusted");
+#endif			
+			}	
+#else // _TRUSTED_NODES
+			printHEX((char *)(& (listSeen[i].idSeen)),' ',response);
+#endif // _TRUSTED_NODES
+			
 			response += "</td>";
 
 			response += String() + "<td class=\"cell\">" + 0 + "</td>";			// Channel
@@ -977,7 +1029,7 @@ static void nodeHistory()
 		}
 		server.sendContent("</table>");
 	}
-#endif
+#endif //_SEENMAX
 } // nodeHistory()
 
 
@@ -1050,9 +1102,10 @@ void setupWWW()
 	server.on("/FORMAT", []() {
 		Serial.print(F("FORMAT ..."));
 		
-		SPIFFS.format();								// Normally disabled. Enable only when SPIFFS corrupt
+		SPIFFS.format();							// Normally disabled. Enable only when SPIFFS corrupt
 		initConfig(&gwayConfig);
 		writeConfig( CONFIGFILE, &gwayConfig);
+		writeSeen( _SEENFILE, listSeen);			// Write the last time record  is seen
 #if _DUSB>=1
 		Serial.println(F("DONE"));
 #endif
@@ -1226,6 +1279,25 @@ void setupWWW()
 		server.send ( 302, "text/plain", "");
 	});
 
+	// Set Trusted Node Parameter
+	server.on("/TRUSTED=1", []() {
+	gwayConfig.trusted = (gwayConfig.trusted +1)%4;
+		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+#if _DUSB>=2
+		Serial.println(F("TRUSTED +, config written"));
+#endif
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+	server.on("/TRUSTED=-1", []() {
+		gwayConfig.trusted = (gwayConfig.trusted -1)%4;
+		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+#if _DUSB>=2
+		Serial.println(F("TRUSTED +, config written"));
+#endif
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
 
 	// Spreading Factor setting
 	server.on("/SF=1", []() {
@@ -1378,8 +1450,9 @@ void setupWWW()
 	// Display the SEEN statistics
 	server.on("/SEEN", []() {
 		server.sendHeader("Location", String("/"), true);
-#if _DUSB>=2
+#if _DUSB>=1
 		Serial.println(F("SEEN button"));
+		printSeen(listSeen);
 #endif
 		buttonSeen();
 		server.send ( 302, "text/plain", "");
