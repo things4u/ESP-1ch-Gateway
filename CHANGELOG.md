@@ -1,6 +1,6 @@
 # Single Channel LoRaWAN Gateway
 
-Version 6.1.3, November 20, 2019	  
+Version 6.1.4, November 25, 2019	  
 Author: M. Westenberg (mw12554@hotmail.com)  
 Copyright: M. Westenberg (mw12554@hotmail.com)  
 
@@ -15,6 +15,10 @@ Maintained by Maarten Westenberg (mw12554@hotmail.com)
 
 
 # Release Notes
+
+Features release 6.1.4 (November 29, 2019)
+- Compacting Code and Solve Errors
+- Look at _DUSB define and add to Serial.print directive where not found
 
 Features release 6.1.3 (November 20, 2019)
 - Made changes to _TRUSTED_NODES in _wwwServer.ino to make sure only named nodes are 

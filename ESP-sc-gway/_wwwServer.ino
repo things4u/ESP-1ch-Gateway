@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.3
-// Date: 2019-11-20
+// Version 6.1.4
+// Date: 2019-11-29
 //
 // 	based on work done by many people and making use of several libraries.
 //
@@ -645,7 +645,7 @@ static void gatewaySettings()
 	bg = " background-color: ";
 	bg += ( (gwayConfig.isNode == 1) ? "LightGreen" : "orange" );
 	response +="<tr><td class=\"cell\">Gateway Node</td>";
-	response +="<td class=\"cell\" style=\"border: 1px solid black;" + bg + "\">";
+	response +="<td class=\"cell\" colspan=\"2\"  style=\"border: 1px solid black;" + bg + "\">";
 	response += ( (gwayConfig.isNode == true) ? "ON" : "OFF" );
 	response +="<td style=\"border: 1px solid black; width:40px;\"><a href=\"NODE=1\"><button>ON</button></a></td>";
 	response +="<td style=\"border: 1px solid black; width:40px;\"><a href=\"NODE=0\"><button>OFF</button></a></td>";

@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.3
-// Date: 2019-11-20
+// Version 6.1.4
+// Date: 2019-11-29
 // Author: Maarten Westenberg (mw12554@hotmail.com)
 //
 // Based on work done by Thomas Telkamp for Raspberry PI 1-ch gateway and many others.
@@ -114,12 +114,13 @@ uint8_t debug=1;											// Debug level! 0 is no msgs, 1 normal, 2 extensive
 uint8_t pdebug=0xFF;										// Allow all atterns (departments)
 
 #if GATEWAYNODE==1
+
 #if _GPS==1
 #include <TinyGPS++.h>
 TinyGPSPlus gps;
-HardwareSerial Serial1(1);
-#endif
-#endif
+HardwareSerial sGps(1);
+#endif //_GPS
+#endif //GATEWAYNODE
 
 // You can switch webserver off if not necessary but probably better to leave it in.
 #if A_SERVER==1
@@ -433,7 +434,7 @@ void setup() {
 
 #if _GPS==1
 	// Pins are define in LoRaModem.h together with other pins
-	Serial1.begin(9600, SERIAL_8N1, GPS_TX, GPS_RX);// PIN 12-TX 15-RX
+	sGps.begin(9600, SERIAL_8N1, GPS_TX, GPS_RX);// PIN 12-TX 15-RX
 #endif
 
 #ifdef ESP32

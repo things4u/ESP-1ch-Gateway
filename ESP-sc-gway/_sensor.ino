@@ -1,7 +1,7 @@
 // sensor.ino; 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg
-// Verison 6.1.3
-// Date: 2019-11-20
+// Verison 6.1.4
+// Date: 2019-11-29
 //
 // All rights reserved. This program and the accompanying materials
 // are made available under the terms of the MIT License
@@ -39,8 +39,8 @@ static void smartDelay(unsigned long ms)
   unsigned long start = millis();
   do
   {
-    while (Serial1.available())
-      gps.encode(Serial1.read());
+    while (sGps.available())
+      gps.encode(sGps.read());
   } while (millis() - start < ms);
 }
 #endif //_GPS
@@ -674,4 +674,4 @@ uint8_t encodePacket(uint8_t *Data, uint8_t DataLength, uint16_t FrameCount, uin
 	return(DataLength);				// or only 16*(numBlocks-1)+bLen;
 }
 
-#endif
+#endif // GATEWAYNODE || _LOCALSERVER

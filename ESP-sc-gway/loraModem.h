@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.3
-// Date: 2019-11-20
+// Version 6.1.4
+// Date: 2019-11-29
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many other contributors.
@@ -283,6 +283,11 @@ struct pins {
 #define MOSI 27				// Check
 #define RST 14				// Check
 #define SS 18
+
+#if _GPS==1
+#define GPS_RX 15
+#define GPS_TX 12
+#endif // _GPS
 
 #else
 // ----------------------------------------------------------------------------
