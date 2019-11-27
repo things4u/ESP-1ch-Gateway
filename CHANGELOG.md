@@ -19,10 +19,12 @@ Maintained by Maarten Westenberg (mw12554@hotmail.com)
 Features release 6.1.4 (November 29, 2019)
 - Compacting Code and Solve Errors
 - Look at _DUSB define and add to Serial.print directive where not found
+- Renewed the GPS functions, changed "Serial1" to "sGps" to avoid double definitions.
+- Downloaded TinyGPS++ library. All working on my T-Beam again.
 
 Features release 6.1.3 (November 20, 2019)
 - Made changes to _TRUSTED_NODES in _wwwServer.ino to make sure only named nodes are 
-displayed when the value of trusted nodes in "Gateways Settings" has value  2. 
+displayed when the value of trusted nodes in "Gateways Settings" has value 2. 
 The value of this vaiable is stored in the filesystem of the Gateway SPIFFS andwith every startup of 
 the Gateway it is read so that users can access when sensors last were seen by the Gateway 
 even after reboots.

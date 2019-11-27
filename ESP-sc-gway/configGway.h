@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
 // Version 6.1.4 E EU868
-// Date: 2019-11-25
+// Date: 2019-11-29
 //
 // Based on work done by Thomas Telkamp for Raspberry PI 1ch gateway and many others.
 // Contibutions of Dorijan Morelj and Andreas Spies for OLED support.
@@ -31,7 +31,7 @@
 
 // Specify the correct version and date of your gateway here.
 // Normally it is provided with teh GitHub version
-#define VERSION "V.6.1.4.E.EU868; 191125a"
+#define VERSION "V.6.1.4.E.EU868; 191129a"
 
 // This value of DEBUG determines whether some parts of code get compiled.
 // Also this is the initial value of debug parameter. 
@@ -54,9 +54,18 @@
 #define _SPIFF_FORMAT 0
 
 
-// Define the frequency band the gateway will listen on. Valid options are
-// EU863_870 (Europe), US902_928 (North America) & AU925_928 (Australia), CN470_510 (China).
+// Define the frequency band the gateway will listen on. Valid options are:
+// EU863_870	Europe 
+// US902_928	North America
+// AU925_928	Australia
+// CN470_510	China
+// IN865_867	India
+// CN779-787	(Not Used!)
+// EU433		Europe
+// AS923		(Not Used)
 // See https://www.thethingsnetwork.org/docs/lorawan/frequency-plans.html
+// You can find the definitions in "loraModem.h" and frequencies in
+
 #define EU863_870 1
  
  
@@ -114,7 +123,7 @@
 //	4: ESP32 TTGO pinning (should work for 433 and OLED too).
 //	5: ESP32 TTGO EU868/EU433 MHz with OLED
 //	6: Other, define your own in loraModem.h
-#define _PIN_OUT 5
+#define _PIN_OUT 4
 
 // Gather statistics on sensor and Wifi status
 // 0= No statistics
@@ -228,6 +237,7 @@
 
 // lora sensor code definitions
 // Defines whether the gateway will also report sensor/status value on MQTT
+// such as GPS, battery or temperature.
 // after all, a gateway can be a node to the system as well. Some sensors like GPS can be
 // sent to the backend as a parameter, some (like humidity for example) can only be sent
 // as a regular sensor value.
@@ -238,7 +248,7 @@
 
 
 // We can put the gateway in such a mode that it will (only) recognize
-// nodes that are put in a list of trusted nodes 
+// nodes that are put in a list of trusted nodes.
 // Values:
 // 0: Do not use names for trusted Nodes
 // 1: Use the nodes as a translation table for hex codes to names (in TLN)
@@ -266,8 +276,8 @@
 //	- node Number, or known node name
 //	- Last seen 'seconds since 1/1/1970'
 //	- SF seen (8-bit integer with SF per bit)
-// The initial version _NUMMAX stores max this many nodes, please make
-// _SEENMAX==0 when not used
+// The initial version _NUMMAX stores max this many nodes, please 
+// "define _SEENMAX 0" when not used
 #define _SEENMAX 25
 #define _SEENFILE "/gwayNum.txt"
 

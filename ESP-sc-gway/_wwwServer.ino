@@ -211,7 +211,7 @@ void buttonLog()
 // BUTTONSEEN
 // List the listSeen array.
 // Read the logfiles and display info about nodes (last seend, SF used etc).
-// This is a button on the top of the GUI screen
+// This is a button on the top of the USB GUI screen
 // --------------------------------------------------------------------------------
 void buttonSeen() 
 {
@@ -916,6 +916,7 @@ static void messageHistory()
 #if _DUSB>=1
 				Serial.println("Unknow value for gwayConfig.trusted");
 #endif			
+				break;
 		}
 		
 #else // _TRUSTED_NODES
@@ -976,6 +977,7 @@ static void nodeHistory()
 		response += "<tr>";
 		response += "<th class=\"thead\" style=\"width: 220px;\">Time</th>";
 		response += "<th class=\"thead\">Node</th>";
+		response += "<th class=\"thead\">Count</th>";
 //#if _LOCALSERVER==1
 //		response += "<th class=\"thead\">Data</th>";
 //#endif
@@ -1013,17 +1015,20 @@ static void nodeHistory()
 				default:
 #if _DUSB>=1
 					Serial.println("Unknow value for gwayConfig.trusted");
-#endif			
+#endif
+					break;
 			}	
 #else // _TRUSTED_NODES
 			printHEX((char *)(& (listSeen[i].idSeen)),' ',response);
 #endif // _TRUSTED_NODES
 			
 			response += "</td>";
-
-			response += String() + "<td class=\"cell\">" + 0 + "</td>";			// Channel
 			
-			response += String() + "<td class=\"cell\">" + listSeen[i].sfSeen + "</td>";
+			response += String() + "<td class=\"cell\">" + listSeen[i].cntSeen + "</td>";			// Counter		
+
+			response += String() + "<td class=\"cell\">" + listSeen[i].chnSeen + "</td>";								// Channel
+			
+			response += String() + "<td class=\"cell\">" + listSeen[i].sfSeen + "</td>";			// SF
 			
 			server.sendContent(response);
 		}
@@ -1314,7 +1319,7 @@ void setupWWW()
 	// Set Frequency of the GateWay node
 	server.on("/FREQ=1", []() {
 		uint8_t nf = sizeof(freqs)/sizeof(freqs[0]);	// Number of elements in array
-#if _DUSB==2
+#if _DUSB>=2
 		Serial.print("FREQ==1:: For freq[0] sizeof vector=");
 		Serial.print(sizeof(freqs[0]));
 		Serial.println();

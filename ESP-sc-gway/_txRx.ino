@@ -337,10 +337,10 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 	statr[0].tmst = now();
 	statr[0].ch= ifreq;
 	statr[0].prssi = prssi - rssicorr;
+	statr[0].sf = LoraUp.sf;
 #if RSSI==1
 	statr[0].rssi = _rssi - rssicorr;
 #endif // RSII
-	statr[0].sf = LoraUp.sf;
 #if _DUSB>=2
 	if (debug>=0) {
 		if ((message[4] != 0x26) || (message[1]==0x99)) {
@@ -602,7 +602,7 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 // When we have the node address and the SF, fill the array
 // listSeen with the required data. SEENMAX must be >0 for this to happen.
 #if  _SEENMAX > 0
-	addSeen(listSeen, statr[0].node, statr[0].sf, now());
+	addSeen(listSeen, statr[0] );
 #endif
 	
 #if _DUSB>=1

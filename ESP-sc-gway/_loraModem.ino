@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.3
-// Date: 2019-11-20
+// Version 6.1.4
+// Date: 2019-11-29
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -1042,11 +1042,11 @@ void initLoraModem(
 #if _DUSB>=1
 		Serial.print(F("Unknown transceiver="));
 		Serial.print(version,HEX);
-		Serial.print(F(", pins.rst =")); Serial.print(pins.rst);
-		Serial.print(F(", pins.ss  =")); Serial.print(pins.ss);
-		Serial.print(F(", pins.dio0 =")); Serial.print(pins.dio0);
-		Serial.print(F(", pins.dio1 =")); Serial.print(pins.dio1);
-		Serial.print(F(", pins.dio2 =")); Serial.print(pins.dio2);
+		Serial.print(F(", pins.rst ="));	Serial.print(pins.rst);
+		Serial.print(F(", pins.ss  ="));	Serial.print(pins.ss);
+		Serial.print(F(", pins.dio0 ="));	Serial.print(pins.dio0);
+		Serial.print(F(", pins.dio1 ="));	Serial.print(pins.dio1);
+		Serial.print(F(", pins.dio2 ="));	Serial.print(pins.dio2);
 		Serial.println();
 		Serial.flush();
 #endif

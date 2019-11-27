@@ -93,6 +93,7 @@ can be loaded through this library section. Some cannot and are shipped with the
 - WifiManager (Version 0.12.0 by Tzapu)
 - LoRaCode (Version 1.0.0, see library shipped)
 - gBase64 (changed name from Adam Rudd's Base64 version)
+- TinyGPS++ (Version 1.0.0)
 
 Through Library Manager:
 
@@ -104,7 +105,6 @@ Through Library Manager:
 - Streaming (Version 5.0.0)
 - Ticker (Version 1.1.0)
 - Time (Version 1.5.0)
-- TinyGPS++ (Version 1.0.0)
 - Update (Version 1.0.0)
 - Webserver (Version 1.0.0)
 - WiFiClientSecure (Version 1.0.0)

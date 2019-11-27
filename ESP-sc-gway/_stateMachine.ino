@@ -511,7 +511,7 @@ void stateMachine()
 		// coming on this frequency so we wait on CDECT.
 		//
 		else if (intr == 0x00) {
-#if _DUSB>=0
+#if _DUSB>=1
 			if (( debug>=3 ) && ( pdebug & P_CAD )) {
 				Serial.println("Err CAD:: intr is 0x00");
 			}

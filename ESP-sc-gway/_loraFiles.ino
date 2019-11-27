@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.3		
-// Date: 2019-11-20	
+// Version 6.1.4		
+// Date: 2019-11-29	
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -486,9 +486,9 @@ int readSeen(const char *fn, struct nodeSeen *listSeen) {
 #endif
 		}
 		val=f.readStringUntil('\t'); listSeen[i].timSeen = (uint32_t) val.toInt();
-		val=f.readStringUntil('\t'); 
-					listSeen[i].idSeen = (uint32_t) val.toInt();
-					//listSeen[i].idSeen = strtoul(val, val.length()+1, 10);
+		val=f.readStringUntil('\t'); listSeen[i].idSeen = (uint32_t) val.toInt();
+		val=f.readStringUntil('\t'); listSeen[i].cntSeen = (uint32_t) val.toInt();
+		val=f.readStringUntil('\t'); listSeen[i].chnSeen = (uint8_t) val.toInt();
 		val=f.readStringUntil('\n'); listSeen[i].sfSeen = (uint8_t) val.toInt();
 	}
 	f.close();
@@ -531,7 +531,8 @@ int writeSeen(const char *fn, struct nodeSeen *listSeen) {
 			// Typecast to long to avoid errors in unsigned conversion.
 			f.print((long) listSeen[i].idSeen);		f.print('\t');
 			//f.print(listSeen[i].datSeen);		f.print('\t');
-			//f.print(listSeen[i].chanSeen);	f.print('\t');
+			f.print(listSeen[i].cntSeen);		f.print('\t');
+			f.print(listSeen[i].chnSeen);		f.print('\t');
 			//f.print(listSeen[i].rssiSeen);	f.print('\t');
 			f.print(listSeen[i].sfSeen);		f.print('\n');		
 	}
@@ -579,27 +580,13 @@ int printSeen(struct nodeSeen *listSeen) {
 //	message. If not, create new record.
 // - With this record, update the SF settings
 // ----------------------------------------------------------------------------
-int addSeen(struct nodeSeen *listSeen, uint32_t idSeen, uint8_t sfSeen, unsigned long timSeen) {
+int addSeen(struct nodeSeen *listSeen, struct stat_t stat) {
 	int i;
 	
 //	( message[4]<<24 | message[3]<<16 | message[2]<<8 | message[1] )
-	
-#if _DUSB>=2
-	if (( debug>=1 ) && ( pdebug & P_MAIN )) {
-		Serial.print(F("addSeen:: "));
-//		Serial.print(F(" listSeen[0]="));
-//		Serial.print(listSeen[0].idSeen,HEX);
-//		Serial.print(F(", "));
-
-		Serial.print(F("tim="));		Serial.print(timSeen);
-		Serial.print(F(", idSeen="));	Serial.print(idSeen,HEX);
-		Serial.print(F(", sfSeen="));	Serial.print(sfSeen,HEX);
-		Serial.println();
-	}
-#endif
 
 	for (i=0; i< _SEENMAX; i++) {
-		if ((listSeen[i].idSeen==idSeen) ||
+		if ((listSeen[i].idSeen==stat.node) ||
 			(listSeen[i].idSeen==0))
 		{
 #if _DUSB>=2
@@ -608,9 +595,11 @@ int addSeen(struct nodeSeen *listSeen, uint32_t idSeen, uint8_t sfSeen, unsigned
 				Serial.print(i);
 			}
 #endif
-			listSeen[i].idSeen = idSeen;
-			listSeen[i].sfSeen |= sfSeen;
-			listSeen[i].timSeen = timSeen;
+			listSeen[i].idSeen = stat.node;
+			listSeen[i].chnSeen = stat.ch;
+			listSeen[i].sfSeen |= stat.sf;			// Or the argument
+			listSeen[i].timSeen = stat.tmst;
+			listSeen[i].cntSeen++;					// Not included on functiin paras
 	
 			writeSeen(_SEENFILE, listSeen);
 			break;
@@ -624,11 +613,9 @@ int addSeen(struct nodeSeen *listSeen, uint32_t idSeen, uint8_t sfSeen, unsigned
 			Serial.println(i);
 		}
 #endif
-
 		return(0);
 	}
 
-	
 	return(1);
 }
 
@@ -642,6 +629,8 @@ int initSeen(struct nodeSeen *listSeen) {
 	for (i=0; i< _SEENMAX; i++) {
 		listSeen[i].idSeen=0;
 		listSeen[i].sfSeen=0;
+		listSeen[i].cntSeen=0;
+		listSeen[i].chnSeen=0;
 		listSeen[i].timSeen=0;
 	}
 	return(1);

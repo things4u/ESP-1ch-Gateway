@@ -112,6 +112,8 @@ struct espGwayConfig {
 struct nodeSeen {
 	unsigned long timSeen;
 	uint32_t idSeen;
+	uint32_t cntSeen;
+	uint8_t chnSeen;
 	uint8_t sfSeen;
 };
 struct nodeSeen listSeen[_SEENMAX];

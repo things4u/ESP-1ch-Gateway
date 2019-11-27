@@ -1,6 +1,6 @@
 # Single Channel LoRaWAN Gateway
 
-Version 6.1.2, November 14, 2019	  
+Last Updated: November 25, 2019	  
 Author: M. Westenberg (mw12554@hotmail.com)  
 Copyright: M. Westenberg (mw12554@hotmail.com)  
 
@@ -16,12 +16,12 @@ Maintained by Maarten Westenberg (mw12554@hotmail.com)
 
 # ToDo Functions
 
-Features not in release 6.1.2 
+Features not in release 6.1.4
 
 - Support FSK
 - Support for eu433 frequencies
-- Better testeing for uplink functions
-- Get HOP functions to work on yhree frequencies
+- Testing and timing of downlink functions (quiet area)
+- Get HOP functions to work on three frequencies
 
 
 
