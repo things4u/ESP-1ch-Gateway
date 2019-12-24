@@ -1,6 +1,6 @@
 # Single Channel LoRaWAN Gateway
 
-Last Updated: November 25, 2019	  
+Last Updated: November 29, 2019	  
 Author: M. Westenberg (mw12554@hotmail.com)  
 Copyright: M. Westenberg (mw12554@hotmail.com)  
 
@@ -16,13 +16,16 @@ Maintained by Maarten Westenberg (mw12554@hotmail.com)
 
 # ToDo Functions
 
-Features not in release 6.1.4
+Features not in release 6.1.5
 
-- Support FSK
-- Support for eu433 frequencies
-- Testing and timing of downlink functions (quiet area)
-- Get HOP functions to work on three frequencies
 
+- Frequency: Support for eu433 frequencies
+- Testing and timing of downlink functions (I need a quiet area)
+- Get HOP frequency functions to work on three frequencies
+- Security: Enable passwords for GUI access and WiFi upload (may not be necessary for normal home router use)
+- Enable remote updating through GUI
+- Support FSK (May not be necessary)
+- Support for other Mode A and B of LoRa devices
 
 
 

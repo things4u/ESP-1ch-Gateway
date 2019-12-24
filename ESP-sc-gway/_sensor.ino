@@ -1,7 +1,7 @@
 // sensor.ino; 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg
-// Verison 6.1.4
-// Date: 2019-11-29
+// Verison 6.1.5
+// Date: 2019-12-20
 //
 // All rights reserved. This program and the accompanying materials
 // are made available under the terms of the MIT License
@@ -75,16 +75,19 @@ static int LoRaSensors(uint8_t *buf) {
 	uint8_t tchars = 1;
 	buf[0] = 0x86;									// 134; User code <lCode + len==3 + Parity
 
-#if _DUSB>=1
-	if (debug>=0)
-		Serial.print(F("LoRaSensors:: "));
-#endif
+#	if _MONITOR>=1
+	if (debug>=0) {
+		SmPrint("LoRaSensors:: ");
+	}
+#	endif //_MONITOR
 
 #if _BATTERY==1
-#if _DUSB>=1
-	if (debug>=0)
-		Serial.print(F("Battery "));
-#endif
+#	if _MONITOR>=1
+	if (debug>=0) {
+		mPrint("Battery ");
+	}
+#	endif //_MONITOR
+
 #if defined(ARDUINO_ARCH_ESP8266) || defined(ESP32)
 	// For ESP there is no standard battery library
 	// What we do is to measure GPIO35 pin which has a 100K voltage divider
@@ -103,11 +106,13 @@ static int LoRaSensors(uint8_t *buf) {
 #endif
 
 #if _GPS==1
-#if _DUSB>=1
-	if (debug>=0)
-		Serial.print(F("M GPS "));
+#	if _MONITOR>=1
+	if (debug>=1)
+		mPrint("GPS sensor"));
+#	endif //_MONITOR
 
-	if (( debug>=1 ) && ( pdebug & P_MAIN )) {
+#	if _DUSB>=1
+	if (( debug>=2 ) && ( pdebug & P_MAIN )) {
 		Serial.print("\tLatitude  : ");
 		Serial.println(gps.location.lat(), 5);
 		Serial.print("\tLongitude : ");
@@ -124,14 +129,14 @@ static int LoRaSensors(uint8_t *buf) {
 		Serial.print(":");
 		Serial.println(gps.time.second());
 	}
-#endif
+#	endif //_DUSB
 
 	smartDelay(1000);
 	
 	if (millis() > 5000 && gps.charsProcessed() < 10) {
-#if _DUSB>=1
-		Serial.println(F("No GPS data received: check wiring"));
-#endif
+#		if _MONITOR>=1
+			mPrint("No GPS data received: check wiring");
+#		endif //_MONITOR
 		return(0);
 	}
 	
@@ -141,11 +146,6 @@ static int LoRaSensors(uint8_t *buf) {
 	tchars += lcode.eGpsL(gps.location.lat(), gps.location.lng(), gps.altitude.value(),
                        gps.satellites.value(), buf + tchars);
 
-#endif
-
-#if _DUSB>=1
-	if (debug>=0)
-		Serial.println();
 #endif
 
 	// If all sensor data is encoded, we encode the buffer	
@@ -226,9 +226,9 @@ static void generate_subkey(uint8_t *key, uint8_t *k1, uint8_t *k2) {
 //
 // Although our own handler may choose not to interpret the last 4 (MIC) bytes
 // of a PHYSPAYLOAD physical payload message of in internal sensor,
-// The official TTN (and other) backends will intrpret the complete message and
+// The official TTN (and other) backends will interpret the complete message and
 // conclude that the generated message is bogus.
-// So we sill really simulate internal messages coming from the -1ch gateway
+// So we will really simulate internal messages coming from the -1ch gateway
 // to come from a real sensor and append 4 MIC bytes to every message that are 
 // perfectly legimate
 // Parameters:
@@ -517,8 +517,9 @@ int sensorPacket() {
 #endif
 
 	// So now our package is ready, and we can send it up through the gateway interface
-	// Note Be aware that the sensor message (which is bytes) in message will be
+	// Note: Be aware that the sensor message (which is bytes) in message will be
 	// be expanded if the server expects JSON messages.
+	// Note2: We fake this sensor message when sending
 	//
 	int buff_index = buildPacket(tmst, buff_up, LUP, true);
 	

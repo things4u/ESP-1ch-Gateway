@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.4
-// Date: 2019-11-29
+// Version 6.1.5
+// Date: 2019-12-20
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -49,28 +49,33 @@ bool connectUdp()
 
 	bool ret = false;
 	unsigned int localPort = _LOCUDPPORT;			// To listen to return messages from WiFi
-#if _DUSB>=1
+#	if _MONITOR>=1
 	if (debug>=1) {
-		Serial.print(F("Local UDP port="));
-		Serial.println(localPort);
+		mPrint("Local UDP port=" + String(localPort));
 	}
-#endif	
+#	endif //_MONITOR
+
 	if (Udp.begin(localPort) == 1) {
-#if _DUSB>=1
-		if (debug>=1) Serial.println(F("Connection successful"));
-#endif
+#		if _MONITOR>=1
+		if (debug>=1) {
+			mPrint("UDP Connection successful");
+		}
+#		endif //_MONITOR
 		ret = true;
 	}
 	else{
-#if _DUSB>=1
-		if (debug>=1) Serial.println("Connection failed");
-#endif
+#		if _MONITOR>=1
+		if (debug>=0) {
+			mPrint("Connection failed");
+		}
+#		endif //_MONITOR
 	}
 	return(ret);
 }// connectUdp
 
 
 // ----------------------------------------------------------------------------
+// DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN 
 // readUdp()
 // Read DOWN a package from UDP socket, can come from any server
 // Messages are received when server responds to gateway requests from LoRa nodes 
@@ -95,35 +100,32 @@ int readUdp(int packetSize)
 	uint8_t buff[32]; 						// General buffer to use for UDP, set to 64
 	uint8_t buff_down[RX_BUFF_SIZE];		// Buffer for downstream
 
-//	if ((WiFi.status() != WL_CONNECTED) &&& (WlanConnect(10) < 0)) {
 	if (WlanConnect(10) < 0) {
-#if _DUSB>=1
-			Serial.print(F("readUdp: ERROR connecting to WLAN"));
-			if (debug>=2) Serial.flush();
-#endif
-			Udp.flush();
-			yield();
-			return(-1);
+#		if _MONITOR>=1
+			mPrint("readUdp: ERROR connecting to WLAN");
+#		endif //_MONITOR
+		Udp.flush();
+		yield();
+		return(-1);
 	}
 
 	yield();
 	
 	if (packetSize > RX_BUFF_SIZE) {
-#if _DUSB>=1
-		Serial.print(F("readUdp:: ERROR package of size: "));
-		Serial.println(packetSize);
-#endif
+#		if _MONITOR>=1
+			mPrint("readUdp:: ERROR package of size: " + String(packetSize));
+#		endif //_MONITOR
 		Udp.flush();
 		return(-1);
 	}
   
-	// We assume here that we know the originator of the message
+	// We assume here that we know the originator of the message.
 	// In practice however this can be any sender!
 	if (Udp.read(buff_down, packetSize) < packetSize) {
-#if _DUSB>=1
-		Serial.println(F("A readUdp:: Reading less chars"));
+#		if _MONITOR>=1
+			mPrint("A readUdp:: Reading less chars");
+#		endif //_MONITOR
 		return(-1);
-#endif
 	}
 
 	// Remote Address should be known
@@ -134,11 +136,11 @@ int readUdp(int packetSize)
 
 	if (remotePortNo == 123) {
 		// This is an NTP message arriving
-#if _DUSB>=1
+#		if _MONITOR>=1
 		if ( debug>=0 ) {
-			Serial.println(F("A readUdp:: NTP msg rcvd"));
+			mPrint("A readUdp:: NTP msg rcvd");
 		}
-#endif
+#		endif //_MONITOR
 		gwayConfig.ntpErr++;
 		gwayConfig.ntpErrTime = now();
 		return(0);
@@ -151,52 +153,48 @@ int readUdp(int packetSize)
 		token = buff_down[2]*256 + buff_down[1];
 		ident = buff_down[3];
 
-#if _DUSB>=1
+#		if _MONITOR>=1
 		if ((debug>1) && (pdebug & P_MAIN)) {
-			Serial.print(F("M readUdp:: message waiting="));
-			Serial.print(ident);
-			Serial.println();
+			mPrint("M readUdp:: message waiting="+String(ident));
 		}
-#endif
+#		endif //_MONITOR
+
 		// now parse the message type from the server (if any)
 		switch (ident) {
 
-		// This message is used by the gateway to send sensor data to the
-		// server. As this function is used for downstream only, this option
+		// This message is used by the gateway to send sensor data to the server. 
+		// As this function is used for downstream only, this option
 		// will never be selected but is included as a reference only
 		case PKT_PUSH_DATA: // 0x00 UP
-#if _DUSB>=1
+#			if _MONITOR>=1
 			if (debug >=1) {
-				Serial.print(F("PKT_PUSH_DATA:: size ")); Serial.print(packetSize);
-				Serial.print(F(" From ")); Serial.print(remoteIpNo);
-				Serial.print(F(", port ")); Serial.print(remotePortNo);
-				Serial.print(F(", data: "));
-				for (int i=0; i<packetSize; i++) {
-					Serial.print(buff_down[i],HEX);
-					Serial.print(':');
-				}
-				Serial.println();
-				if (debug>=2) Serial.flush();
+				mPrint("PKT_PUSH_DATA:: size "+String(packetSize)+" From "+String(remoteIpNo.toString()));
+
+//				Serial.print(F(", port ")); Serial.print(remotePortNo);
+//				Serial.print(F(", data: "));
+//				for (int i=0; i<packetSize; i++) {
+//					Serial.print(buff_down[i],HEX);
+//					Serial.print(':');
+//				}
+//				Serial.println();
+//				if (debug>=2) Serial.flush();
 			}
-#endif
+#		endif //_MONITOR
 		break;
 	
 		// This message is sent by the server to acknowledge receipt of a
 		// (sensor) message sent with the code above.
 		case PKT_PUSH_ACK:	// 0x01 DOWN
-#if _DUSB>=1
+#if _MONITOR>=1
 			if (( debug>=2) && (pdebug & P_MAIN )) {
-				Serial.print(F("M PKT_PUSH_ACK:: size ")); 
-				Serial.print(packetSize);
-				Serial.print(F(" From ")); 
-				Serial.print(remoteIpNo);
-				Serial.print(F(", port ")); 
-				Serial.print(remotePortNo);
-				Serial.print(F(", token: "));
-				Serial.println(token, HEX);
-				Serial.println();
+				mPrint("M PKT_PUSH_ACK:: size="+String(packetSize)+" From "+String(remoteIpNo.toString())); 
+//				Serial.print(F(", port ")); 
+//				Serial.print(remotePortNo);
+//				Serial.print(F(", token: "));
+//				Serial.println(token, HEX);
+//				Serial.println();
 			}
-#endif
+#endif //_MONITOR
 		break;
 	
 		case PKT_PULL_DATA:	// 0x02 UP
@@ -209,11 +207,11 @@ int readUdp(int packetSize)
 		// This message type is used to confirm OTAA message to the node
 		// XXX This message format may also be used for other downstream communication
 		case PKT_PULL_RESP:	// 0x03 DOWN
-#if _DUSB>=1
+#			if _MONITOR>=1
 			if (( debug>=0 ) && ( pdebug & P_MAIN )) {
-				Serial.println(F("M readUdp:: PKT_PULL_RESP received"));
+				mPrint("readUdp:: PKT_PULL_RESP received");
 			}
-#endif
+#			endif //_MONITOR
 //			lastTmst = micros();					// Store the tmst this package was received
 			
 			// Send to the LoRa Node first (timing) and then do reporting to Serial
@@ -221,11 +219,11 @@ int readUdp(int packetSize)
 			sendTime = micros();					// record when we started sending the message
 			
 			if (sendPacket(data, packetSize-4) < 0) {
-#if _DUSB>=1
+#				if _MONITOR>=1
 				if ( debug>=0 ) {
-					Serial.println(F("A readUdp:: Error: PKT_PULL_RESP sendPacket failed"));
+					mPrint("A readUdp:: ERROR: PKT_PULL_RESP sendPacket failed");
 				}
-#endif
+#				endif //_MONITOR
 				return(-1);
 			}
 
@@ -244,11 +242,11 @@ int readUdp(int packetSize)
 			buff[10]=MAC_array[4];
 			buff[11]=MAC_array[5];
 			buff[12]=0;
-#if _DUSB>=1
+#			if _MONITOR>=1
 			if (( debug >= 2 ) && ( pdebug & P_MAIN )) {
-				Serial.println(F("M readUdp:: TX buff filled"));
+				mPrint("M readUdp:: TX buff filled");
 			}
-#endif
+#			endif //_MONITOR
 			// Only send the PKT_PULL_ACK to the UDP socket that just sent the data!!!
 			Udp.beginPacket(remoteIpNo, remotePortNo);
 			if (Udp.write((unsigned char *)buff, 12) != 12) {
@@ -315,18 +313,16 @@ int readUdp(int packetSize)
 #else
 
 #endif
-#if _DUSB>=1
-			Serial.print(F(", ERROR ident not recognized="));
-			Serial.println(ident);
-#endif
+#			if _MONITOR>=1
+				mPrint(", ERROR ident not recognized="+String(ident));
+#			endif //_MONITOR
 		break;
 		}
-#if _DUSB>=2
-		if (debug>=1) {
-			Serial.print(F("readUdp:: returning=")); 
-			Serial.println(packetSize);
+#		if _MONITOR>=2
+		if (debug>=2) {
+			mPrint("readUdp:: returning=" + String(packetSize)); 
 		}
-#endif
+#		endif //_MONITOR
 		// For downstream messages
 		return packetSize;
 	}
@@ -351,12 +347,11 @@ int sendUdp(IPAddress server, int port, uint8_t *msg, int length) {
 
 	// Check whether we are conected to Wifi and the internet
 	if (WlanConnect(3) < 0) {
-#if _DUSB>=1
+#		if _MONITOR>=1
 		if (( debug>=0 ) && ( pdebug & P_MAIN )) {
-			Serial.print(F("M sendUdp: ERROR connecting to WiFi"));
-			Serial.flush();
+			mPrint("sendUdp: ERROR connecting to WiFi");
 		}
-#endif
+#		endif //_MONITOR
 		Udp.flush();
 		yield();
 		return(0);
@@ -365,29 +360,29 @@ int sendUdp(IPAddress server, int port, uint8_t *msg, int length) {
 	yield();
 
 	//send the update
-#if _DUSB>=1
+#	if _MONITOR>=1
 	if (( debug>=3 ) && ( pdebug & P_MAIN )) {
-		Serial.println(F("M WiFi connected"));
+		mPrint("M WiFi connected");
 	}
-#endif	
+#	endif //_MONITOR
+
 	if (!Udp.beginPacket(server, (int) port)) {
-#if _DUSB>=1
+#		if _MONITOR>=1
 		if (( debug>=1 ) && ( pdebug & P_MAIN )) {
-			Serial.println(F("M sendUdp:: Error Udp.beginPacket"));
+			mPrint("M sendUdp:: Error Udp.beginPacket");
 		}
-#endif
+#		endif //_MONITOR
 		return(0);
 	}
 	
 	yield();
-	
 
 	if (Udp.write((unsigned char *)msg, length) != length) {
-#if _DUSB>=1
+#		if _MONITOR>=1
 		if (( debug<=1 ) && ( pdebug & P_MAIN )) {
-			Serial.println(F("M sendUdp:: Error write"));
+			mPrint("M sendUdp:: Error write");
 		}
-#endif
+#		endif //_MONITOR
 		Udp.endPacket();						// Close UDP
 		return(0);								// Return error
 	}
@@ -395,12 +390,11 @@ int sendUdp(IPAddress server, int port, uint8_t *msg, int length) {
 	yield();
 	
 	if (!Udp.endPacket()) {
-#if _DUSB>=1
+#	if _MONITOR>=1
 		if (debug>=1) {
-			Serial.println(F("sendUdp:: Error Udp.endPacket"));
-			Serial.flush();
+			mPrint("sendUdp:: Error Udp.endPacket");
 		}
-#endif
+#	endif //_MONITOR
 		return(0);
 	}
 	return(1);
@@ -455,13 +449,12 @@ void pullData() {
 	yield();
 #endif
 
-#if _DUSB>=1
+#	if _MONITOR>=1
 	if (pullPtr != pullDataReq) {
-		Serial.println(F("pullPtr != pullDatReq"));
-		Serial.flush();
+		mPrint("pullPtr != pullDatReq");
 	}
+#	endif //_MONITOR
 
-#endif
 #ifdef _THINGSERVER
 	sendUdp(thingServer, _THINGPORT, pullDataReq, pullIndex);
 #endif
@@ -551,9 +544,9 @@ void sendstat() {
 	}
 #endif	
 	if (stat_index > STATUS_SIZE) {
-#if _DUSB>=1
-		Serial.println(F("A sendstat:: ERROR buffer too big"));
-#endif
+#		if _MONITOR>=1
+			mPrint("A sendstat:: ERROR buffer too big");
+#		endif //_MONITOR
 		return;
 	}
 	

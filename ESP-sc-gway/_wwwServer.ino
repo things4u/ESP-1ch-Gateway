@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.4
-// Date: 2019-11-29
+// Version 6.1.5
+// Date: 2019-12-20
 //
 // 	based on work done by many people and making use of several libraries.
 //
@@ -122,20 +122,18 @@ boolean YesNo()
 void wwwFile(String fn) {
 
 	if (!SPIFFS.exists(fn)) {
-#if _DUSB>=1
-		Serial.print(F("wwwFile:: ERROR: file not found="));
-		Serial.println(fn);
-#endif
+#		if _MONITOR>=1
+			mPrint("wwwFile:: ERROR: SPIFFS file not found=");
+#		endif
 		return;
-	}
-#if _DUSB>=2
+	} // _MONITOR
+#	if _MONITOR>=2
 	else {
-		Serial.print(F("wwwFile:: File existist= "));
-		Serial.println(fn);
+		mPrint("wwwFile:: SPIFFS File existist= " + String(fn));
 	}
-#endif
+#	endif //_MONITOR
 
-#if _DUSB>=1
+#	if _MONITOR>=1
 	File f = SPIFFS.open(fn, "r");					// Open the file for reading
 		
 	int j;
@@ -153,7 +151,7 @@ void wwwFile(String fn) {
 	
 	f.close();
 
-#endif
+#	endif //_MONITOR
 	
 }
 
@@ -207,25 +205,6 @@ void buttonLog()
 //	server.sendContent(response);
 }
 
-// --------------------------------------------------------------------------------
-// BUTTONSEEN
-// List the listSeen array.
-// Read the logfiles and display info about nodes (last seend, SF used etc).
-// This is a button on the top of the USB GUI screen
-// --------------------------------------------------------------------------------
-void buttonSeen() 
-{
-	String fn = "";
-	int i = 0;
-	
-	printSeen(listSeen);
-#if _DUSB>=1
-	if (( debug>=1 ) && ( pdebug & P_MAIN )) {
-		Serial.println(F("buttonSeen:: printSeen called"));
-	}
-#endif	
-
-}
 
 // --------------------------------------------------------------------------------
 // Navigate webpage by buttons. This method has some advantages:
@@ -236,15 +215,20 @@ static void wwwButtons()
 {
 	String response = "";
 	String mode = (gwayConfig.expert ? "Basic Mode" : "Expert Mode");
+	String moni = (gwayConfig.monitor ? "Hide Monitor" : "Monitor ON");
+	String seen = (gwayConfig.seen ? "Seen OFF" : "Node last seen");
 
 	YesNo();												// Init the Yes/No function
 	buttonDocu();
 
 	response += "<input type=\"button\" value=\"Documentation\" onclick=\"showDocu()\" >";
+	response += "<a href=\"LOG\" download><button type=\"button\">Log Files</button></a>";
 	
 	response += "<a href=\"EXPERT\" download><button type=\"button\">" + mode + "</button></a>";
-	response += "<a href=\"SEEN\" download><button type=\"button\">Nodes Seen</button></a>";
-	response += "<a href=\"LOG\" download><button type=\"button\">Log Files</button></a>";
+#	if _MONITOR>=1
+	response += "<a href=\"MONITOR\" download><button type=\"button\">" +moni+ "</button></a>";
+#	endif
+	response += "<a href=\"SEEN\" download><button type=\"button\">" +seen+ "</button></a>";
 
 	server.sendContent(response);							// Send to the screen
 }
@@ -427,17 +411,19 @@ static void openWebPage()
 	//
 	server.setContentLength(CONTENT_LENGTH_UNKNOWN);
 	server.send(200, "text/html", "");
+	String tt=""; printIP((IPAddress)WiFi.localIP(),'.',tt);	// Time with separator
+	
 #if A_REFRESH==1
 	if (gwayConfig.refresh) {
 		response += String() + "<!DOCTYPE HTML><HTML><HEAD><meta http-equiv='refresh' content='"+_WWW_INTERVAL+";http://";
-		printIP((IPAddress)WiFi.localIP(),'.',response);
-		response += "'><TITLE>ESP8266 1ch Gateway</TITLE>";
+		response += tt;
+		response += "'><TITLE>1ch Gateway " + String(tt) + "</TITLE>";
 	}
 	else {
-		response += String() + "<!DOCTYPE HTML><HTML><HEAD><TITLE>ESP8266 1ch Gateway</TITLE>";
+		response += String("<!DOCTYPE HTML><HTML><HEAD><TITLE>1ch Gateway " + String(tt) + "</TITLE>");
 	}
 #else
-	response += String() + "<!DOCTYPE HTML><HTML><HEAD><TITLE>ESP8266 1ch Gateway</TITLE>";
+	response += String("<!DOCTYPE HTML><HTML><HEAD><TITLE>1ch Gateway " + String(tt) + "</TITLE>");
 #endif
 	response += "<META HTTP-EQUIV='CONTENT-TYPE' CONTENT='text/html; charset=UTF-8'>";
 	response += "<META NAME='AUTHOR' CONTENT='M. Westenberg (mw1554@hotmail.com)'>";
@@ -460,13 +446,10 @@ static void openWebPage()
 	uint8_t _hour   = hour(secs);
 	uint8_t _minute = minute(secs);
 	uint8_t _second = second(secs);
-	response += String() + days + "-";
-	if (_hour < 10) response += "0";
-	response += String() + _hour + ":";
-	if (_minute < 10) response += "0";
-	response += String() + _minute + ":";
-	if (_second < 10) response += "0";
-	response += String() + _second;
+	response += String(days) + "-";
+	if (_hour < 10) response += "0"; response += String(_hour) + ":";
+	if (_minute < 10) response += "0"; response += String(_minute) + ":";
+	if (_second < 10) response += "0"; 	response += String(_second);
 	
 	response +="<br>Current time    "; 					// CURRENT TIME
 	stringTime(now(), response);
@@ -534,7 +517,7 @@ static void gatewaySettings()
 		response += "AUTO</td>";
 	}
 	else {
-		response += String() + ifreq; 
+		response += String(ifreq); 
 		response +="</td>";
 		response +="<td class=\"cell\"><a href=\"FREQ=-1\"><button>-</button></a></td>";
 		response +="<td class=\"cell\"><a href=\"FREQ=1\"><button>+</button></a></td>";
@@ -553,23 +536,13 @@ static void gatewaySettings()
 
 	// Debugging options, only when _DUSB is set, otherwise no
 	// serial activity
-#if _DUSB>=1	
+#if _DUSB>=1 || _MONITOR>=1
 	response +="<tr><td class=\"cell\">Debug Level</td><td class=\"cell\" colspan=\"2\">"; 
 	response +=debug; 
 	response +="</td>";
 	response +="<td class=\"cell\"><a href=\"DEBUG=-1\"><button>-</button></a></td>";
 	response +="<td class=\"cell\"><a href=\"DEBUG=1\"><button>+</button></a></td>";
 	response +="</tr>";
-
-	// Time Correction
-	if (gwayConfig.expert) {
-		response +="<tr><td class=\"cell\">Time Correction (uSec)</td><td class=\"cell\" colspan=\"2\">"; 
-		response += gwayConfig.txDelay; 
-		response +="</td>";
-		response +="<td class=\"cell\"><a href=\"DELAY=-1\"><button>-</button></a></td>";
-		response +="<td class=\"cell\"><a href=\"DELAY=1\"><button>+</button></a></td>";
-		response +="</tr>";
-	}
 	
 	// Debug Pattern
 	response +="<tr><td class=\"cell\">Debug pattern</td>"; 
@@ -664,6 +637,16 @@ static void gatewaySettings()
 	response +="</tr>";
 #endif
 
+	// Time Correction DELAY
+	if (gwayConfig.expert) {
+		response +="<tr><td class=\"cell\">Time Correction (uSec)</td><td class=\"cell\" colspan=\"2\">"; 
+		response += gwayConfig.txDelay; 
+		response +="</td>";
+		response +="<td class=\"cell\"><a href=\"DELAY=-1\"><button>-</button></a></td>";
+		response +="<td class=\"cell\"><a href=\"DELAY=1\"><button>+</button></a></td>";
+		response +="</tr>";
+	}
+
 	// Reset Accesspoint
 #if _WIFIMANAGER==1
 	response +="<tr><td><tr><td>";
@@ -712,11 +695,11 @@ static void statisticsData()
 	response +="<h2>Package Statistics</h2>";
 	response +="<table class=\"config_table\">";
 	response +="<tr><th class=\"thead\">Counter</th>";
-#if _STATISTICS == 3
-	response +="<th class=\"thead\">C 0</th>";
-	response +="<th class=\"thead\">C 1</th>";
-	response +="<th class=\"thead\">C 2</th>";
-#endif
+#	if _STATISTICS == 3
+		response +="<th class=\"thead\">C 0</th>";
+		response +="<th class=\"thead\">C 1</th>";
+		response +="<th class=\"thead\">C 2</th>";
+#	endif //_STATISTICS==3
 	response +="<th class=\"thead\">Pkgs</th>";
 	response +="<th class=\"thead\">Pkgs/hr</th>";
 	response +="</tr>";
@@ -725,35 +708,35 @@ static void statisticsData()
 	// Table rows
 	//
 	response +="<tr><td class=\"cell\">Packages Downlink</td>";
-#if _STATISTICS == 3
+#	if _STATISTICS == 3
 		response +="<td class=\"cell\">" + String(statc.msg_down_0) + "</td>";
 		response +="<td class=\"cell\">" + String(statc.msg_down_1) + "</td>";
 		response +="<td class=\"cell\">" + String(statc.msg_down_2) + "</td>"; 
-#endif
+#	endif
 	response += "<td class=\"cell\">" + String(statc.msg_down) + "</td>";
 	response +="<td class=\"cell\"></td></tr>";
 		
 	response +="<tr><td class=\"cell\">Packages Uplink Total</td>";
-#if _STATISTICS == 3
+#	if	 _STATISTICS == 3
 		response +="<td class=\"cell\">" + String(statc.msg_ttl_0) + "</td>";
 		response +="<td class=\"cell\">" + String(statc.msg_ttl_1) + "</td>";
 		response +="<td class=\"cell\">" + String(statc.msg_ttl_2) + "</td>";
-#endif
-		response +="<td class=\"cell\">" + String(statc.msg_ttl) + "</td>";
-		response +="<td class=\"cell\">" + String((statc.msg_ttl*3600)/(now() - startTime)) + "</td></tr>";
+#	endif //_STATISTICS==3
+	response +="<td class=\"cell\">" + String(statc.msg_ttl) + "</td>";
+	response +="<td class=\"cell\">" + String((statc.msg_ttl*3600)/(now() - startTime)) + "</td></tr>";
 		
 	response +="<tr><td class=\"cell\">Packages Uplink OK </td>";
-#if _STATISTICS == 3
+#if	 _STATISTICS == 3
 		response +="<td class=\"cell\">" + String(statc.msg_ok_0) + "</td>";
 		response +="<td class=\"cell\">" + String(statc.msg_ok_1) + "</td>";
 		response +="<td class=\"cell\">" + String(statc.msg_ok_2) + "</td>";
-#endif
+#	endif //_STATISTICS==3
 	response +="<td class=\"cell\">" + String(statc.msg_ok) + "</td>";
 	response +="<td class=\"cell\"></td></tr>";
 		
 
 	// Provide a table with all the SF data including percentage of messsages
-#if _STATISTICS == 2
+	#if _STATISTICS == 2
 	response +="<tr><td class=\"cell\">SF7 rcvd</td>"; 
 		response +="<td class=\"cell\">"; response +=statc.sf7; 
 		response +="<td class=\"cell\">"; response += String(statc.msg_ttl>0 ? 100*statc.sf7/statc.msg_ttl : 0)+" %"; 
@@ -778,8 +761,9 @@ static void statisticsData()
 		response +="<td class=\"cell\">"; response +=statc.sf12; 
 		response +="<td class=\"cell\">"; response += String(statc.msg_ttl>0 ? 100*statc.sf12/statc.msg_ttl : 0)+" %"; 
 		response +="</td></tr>";
-#endif
-#if _STATISTICS == 3
+#	endif //_STATISTICS==2
+
+#	if _STATISTICS == 3
 	response +="<tr><td class=\"cell\">SF7 rcvd</td>";
 		response +="<td class=\"cell\">"; response +=statc.sf7_0; 
 		response +="<td class=\"cell\">"; response +=statc.sf7_1; 
@@ -827,7 +811,7 @@ static void statisticsData()
 		response +="<td class=\"cell\">"; response +=statc.sf12;		
 		response +="<td class=\"cell\">"; response += String(statc.msg_ttl>0 ? 100*statc.sf12/statc.msg_ttl : 0)+" %"; 
 		response +="</td></tr>";
-#endif
+#	endif //_STATISTICS==3
 
 	response +="</table>";
 	server.sendContent(response);
@@ -913,9 +897,9 @@ static void messageHistory()
 				break;
 			case 3: // Value and we do not print unless also defined for LOCAL_SERVER
 			default:
-#if _DUSB>=1
-				Serial.println("Unknow value for gwayConfig.trusted");
-#endif			
+#				if _MONITOR>=1
+					mPrint("Unknow value for gwayConfig.trusted");
+#				endif	 //_MONITOR		
 				break;
 		}
 		
@@ -968,7 +952,7 @@ static void messageHistory()
 static void nodeHistory() 
 {
 #if _SEENMAX > 0
-	if (gwayConfig.expert) {
+	if (gwayConfig.seen) {
 		// First draw the headers
 		String response="";
 	
@@ -977,7 +961,7 @@ static void nodeHistory()
 		response += "<tr>";
 		response += "<th class=\"thead\" style=\"width: 220px;\">Time</th>";
 		response += "<th class=\"thead\">Node</th>";
-		response += "<th class=\"thead\">Count</th>";
+		response += "<th class=\"thead\">Pkgs</th>";
 //#if _LOCALSERVER==1
 //		response += "<th class=\"thead\">Data</th>";
 //#endif
@@ -1013,21 +997,19 @@ static void nodeHistory()
 					break;
 				case 3: // Value 3 and we do not print unless also defined for LOCAL_SERVER
 				default:
-#if _DUSB>=1
-					Serial.println("Unknow value for gwayConfig.trusted");
-#endif
+#					if _MONITOR>=1
+						mPrint("Unknow value for gwayConfig.trusted");
+#					endif //_MONITOR
 					break;
 			}	
-#else // _TRUSTED_NODES
+#else
 			printHEX((char *)(& (listSeen[i].idSeen)),' ',response);
 #endif // _TRUSTED_NODES
 			
 			response += "</td>";
 			
 			response += String() + "<td class=\"cell\">" + listSeen[i].cntSeen + "</td>";			// Counter		
-
 			response += String() + "<td class=\"cell\">" + listSeen[i].chnSeen + "</td>";								// Channel
-			
 			response += String() + "<td class=\"cell\">" + listSeen[i].sfSeen + "</td>";			// SF
 			
 			server.sendContent(response);
@@ -1038,453 +1020,42 @@ static void nodeHistory()
 } // nodeHistory()
 
 
+
 // --------------------------------------------------------------------------------
-// SEND WEB PAGE() 
-// Call the webserver and send the standard content and the content that is 
-// passed by the parameter. Each time a variable is changed, this function is 
-// called to display the webpage again/
-//
-// NOTE: This is the only place where yield() or delay() calls are used.
-//
+// MONITOR DATA
+// This function will print monitor data for the gateway based on the settings in
+// _MONITOR in file configGway.h
+// Only when the _MONITOR is positive then the function will be executed. 
+// If less then nothing will be displayed.
+// XXX We have to make the function such that when printed, the webpage refreshes.
 // --------------------------------------------------------------------------------
-void sendWebPage(const char *cmd, const char *arg)
+int monitorData() 
 {
-	openWebPage(); yield();						// Do the initial website setup
+#	if _MONITOR>=1
+	if (gwayConfig.monitor) {
+		String response="";
+		response +="<h2>Monitoring Console</h2>";
 	
-	wwwButtons();								// Display buttons such as Documentation, Mode, Logfiles
-	
-	setVariables(cmd,arg); yield();				// Read Webserver commands from line
+		response +="<table class=\"config_table\">";
+		response +="<tr>";
+		response +="<th class=\"thead\">Monitor Console</th>";
+		response +="</tr>";
+		
 
-	statisticsData(); yield();		 			// Node statistics
-	messageHistory(); yield();					// Display the sensor history, message statistics
-	nodeHistory(); yield();						// Display the lastSeen array
-
-	gatewaySettings(); yield();					// Display web configuration
-	wifiConfig(); yield();						// WiFi specific parameters
-	
-	systemStatus(); yield();					// System statistics such as heap etc.
-	interruptData(); yield();					// Display interrupts only when debug >= 2
-	
-	websiteFooter(); yield();
-	
-
-	
-	server.client().stop();
+		for (int i=0; i<_MONITOR; i++) {
+			if (monitor[i].txt == "") {
+				break;
+			}
+			// DISPLAY line
+			response +="<tr><td class=\"cell\">" ;
+			response += String(monitor[i].txt);
+			response += "</td></tr>";
+		}
+		response +="</table>";
+		server.sendContent(response);
+	}
+#	endif
 }
-
-
-// --------------------------------------------------------------------------------
-// setupWWW is the main function for webserver functions/
-// SetupWWW function called by main setup() program to setup webserver
-// It does actually not much more than installing all the callback handlers
-// for messages sent to the webserver
-//
-// Implemented is an interface like:
-// http://<server>/<Variable>=<value>
-//
-// --------------------------------------------------------------------------------
-void setupWWW() 
-{
-	server.begin();									// Start the webserver
-	
-	// -----------------
-	// BUTTONS, define what should happen with the buttons we press on the homepage
-	
-	server.on("/", []() {
-		sendWebPage("","");							// Send the webPage string
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-
-	
-	server.on("/HELP", []() {
-		sendWebPage("HELP","");					// Send the webPage string
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-
-	// Format the filesystem
-	server.on("/FORMAT", []() {
-		Serial.print(F("FORMAT ..."));
-		
-		SPIFFS.format();							// Normally disabled. Enable only when SPIFFS corrupt
-		initConfig(&gwayConfig);
-		writeConfig( CONFIGFILE, &gwayConfig);
-		writeSeen( _SEENFILE, listSeen);			// Write the last time record  is seen
-#if _DUSB>=1
-		Serial.println(F("DONE"));
-#endif
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-	
-	
-	// Reset the statistics
-	server.on("/RESET", []() {
-		Serial.println(F("RESET"));
-		startTime= now() - 1;					// Reset all timers too	
-		
-		statc.msg_ttl = 0;						// Reset package statistics
-		statc.msg_ok = 0;
-		statc.msg_down = 0;
-		
-#if _STATISTICS >= 3
-		statc.msg_ttl_0 = 0;
-		statc.msg_ttl_1 = 0;
-		statc.msg_ttl_2 = 0;
-		statc.msg_ok_0 = 0;
-		statc.msg_ok_1 = 0;
-		statc.msg_ok_2 = 0;
-		statc.msg_down_0 = 0;
-		statc.msg_down_1 = 0;
-		statc.msg_down_2 = 0;	
-#endif
-
-#if _STATISTICS >= 1
-		for (int i=0; i<MAX_STAT; i++) { statr[i].sf = 0; }
-#if _STATISTICS >= 2
-		statc.sf7 = 0;
-		statc.sf8 = 0;
-		statc.sf9 = 0;
-		statc.sf10= 0;
-		statc.sf11= 0;
-		statc.sf12= 0;
-		
-		statc.resets= 0;
-		writeGwayCfg(CONFIGFILE);
-#if _STATISTICS >= 3
-		statc.sf7_0 = 0; statc.sf7_1 = 0; statc.sf7_2 = 0;
-		statc.sf8_0 = 0; statc.sf8_1 = 0; statc.sf8_2 = 0;
-		statc.sf9_0 = 0; statc.sf9_1 = 0; statc.sf9_2 = 0;
-		statc.sf10_0= 0; statc.sf10_1= 0; statc.sf10_2= 0;
-		statc.sf11_0= 0; statc.sf11_1= 0; statc.sf11_2= 0;
-		statc.sf12_0= 0; statc.sf12_1= 0; statc.sf12_2= 0;
-#endif
-#endif
-#endif
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-
-	// Reset the boot counter
-	server.on("/BOOT", []() {
-#if _STATISTICS >= 2
-		gwayConfig.boots = 0;
-		gwayConfig.wifis = 0;
-		gwayConfig.views = 0;
-		gwayConfig.ntpErr = 0;					// NTP errors
-		gwayConfig.ntpErrTime = 0;				// NTP last error time
-		gwayConfig.ntps = 0;					// Number of NTP calls
-#endif
-		gwayConfig.reents = 0;					// Re-entrance
-
-		writeGwayCfg(CONFIGFILE);
-#if _DUSB>=1
-		Serial.println(F("BOOT, config written"));
-#endif
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-
-	server.on("/NEWSSID", []() {
-		sendWebPage("NEWSSID","");				// Send the webPage string
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-
-	// Set debug parameter
-	server.on("/DEBUG=-1", []() {				// Set debug level 0-2						
-		debug = (debug+3)%4;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
-#if _DUSB>=1
-		Serial.println(F("DEBUG -1: config written"));
-#endif
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-	server.on("/DEBUG=1", []() {
-		debug = (debug+1)%4;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
-#if _DUSB>=1
-		Serial.println(F("DEBUG +1: config written"));
-#endif
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-
-	// Set PDEBUG parameter
-	//
-	server.on("/PDEBUG=SCAN", []() {		// Set debug level 0-2						
-		pdebug ^= P_SCAN;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-	server.on("/PDEBUG=CAD", []() {				// Set debug level 0-2						
-		pdebug ^= P_CAD;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-	server.on("/PDEBUG=RX", []() {				// Set debug level 0-2						
-		pdebug ^= P_RX;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-	server.on("/PDEBUG=TX", []() {				// Set debug level 0-2						
-		pdebug ^= P_TX;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-	server.on("/PDEBUG=PRE", []() {				// Set debug level 0-2						
-		pdebug ^= P_PRE;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-	server.on("/PDEBUG=MAIN", []() {				// Set debug level 0-2						
-		pdebug ^= P_MAIN;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-	server.on("/PDEBUG=GUI", []() {				// Set debug level 0-2						
-		pdebug ^= P_GUI;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-	server.on("/PDEBUG=RADIO", []() {				// Set debug level 0-2						
-		pdebug ^= P_RADIO;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-
-	
-	// Set delay in microseconds
-	server.on("/DELAY=1", []() {
-		gwayConfig.txDelay+=5000;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
-#if _DUSB>=1
-		Serial.println(F("DELAY +, config written"));
-#endif
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-	server.on("/DELAY=-1", []() {
-		gwayConfig.txDelay-=5000;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
-#if _DUSB>=1
-		Serial.println(F("DELAY +, config written"));
-#endif
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-
-	// Set Trusted Node Parameter
-	server.on("/TRUSTED=1", []() {
-	gwayConfig.trusted = (gwayConfig.trusted +1)%4;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
-#if _DUSB>=2
-		Serial.println(F("TRUSTED +, config written"));
-#endif
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-	server.on("/TRUSTED=-1", []() {
-		gwayConfig.trusted = (gwayConfig.trusted -1)%4;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
-#if _DUSB>=2
-		Serial.println(F("TRUSTED +, config written"));
-#endif
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-
-	// Spreading Factor setting
-	server.on("/SF=1", []() {
-		if (sf>=SF12) sf=SF7; else sf= (sf_t)((int)sf+1);
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-	server.on("/SF=-1", []() {
-		if (sf<=SF7) sf=SF12; else sf= (sf_t)((int)sf-1);
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-
-	// Set Frequency of the GateWay node
-	server.on("/FREQ=1", []() {
-		uint8_t nf = sizeof(freqs)/sizeof(freqs[0]);	// Number of elements in array
-#if _DUSB>=2
-		Serial.print("FREQ==1:: For freq[0] sizeof vector=");
-		Serial.print(sizeof(freqs[0]));
-		Serial.println();
-#endif
-		if (ifreq==(nf-1)) ifreq=0; else ifreq++;
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-	server.on("/FREQ=-1", []() {
-		uint8_t nf = sizeof(freqs)/sizeof(freqs[0]);	// Number of elements in array
-		if (ifreq==0) ifreq=(nf-1); else ifreq--;
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-
-	// Set CAD function off/on
-	server.on("/CAD=1", []() {
-		_cad=(bool)1;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-	server.on("/CAD=0", []() {
-		_cad=(bool)0;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-
-	// GatewayNode
-	server.on("/NODE=1", []() {
-#if GATEWAYNODE==1
-		gwayConfig.isNode =(bool)1;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
-#endif
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-	server.on("/NODE=0", []() {
-#if GATEWAYNODE==1
-		gwayConfig.isNode =(bool)0;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
-#endif
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-
-#if GATEWAYNODE==1	
-	// Framecounter of the Gateway node
-	server.on("/FCNT", []() {
-
-		frameCount=0; 
-		rxLoraModem();							// Reset the radio with the new frequency
-		writeGwayCfg(CONFIGFILE);
-
-		//sendWebPage("","");						// Send the webPage string
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-#endif
-	// WWW Page refresh function
-	server.on("/REFR=1", []() {					// WWW page auto refresh ON
-#if A_REFRESH==1
-		gwayConfig.refresh =1;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
-#endif		
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-	server.on("/REFR=0", []() {					// WWW page auto refresh OFF
-#if A_REFRESH==1
-		gwayConfig.refresh =0;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
-#endif
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-
-	
-	// Switch off/on the HOP functions
-	server.on("/HOP=1", []() {
-		_hop=true;
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-	server.on("/HOP=0", []() {
-		_hop=false;
-		ifreq=0; 
-		setFreq(freqs[ifreq].upFreq);
-		rxLoraModem();
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-
-#if !defined ESP32_ARCH
-	// Change speed to 160 MHz
-	server.on("/SPEED=80", []() {
-		system_update_cpu_freq(80);
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-	server.on("/SPEED=160", []() {
-		system_update_cpu_freq(160);
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-#endif
-	// Display Documentation pages
-	server.on("/DOCU", []() {
-
-		server.sendHeader("Location", String("/"), true);
-		buttonDocu();
-		server.send ( 302, "text/plain", "");
-	});
-
-	// Display LOGging information
-	server.on("/LOG", []() {
-		server.sendHeader("Location", String("/"), true);
-#if _DUSB>=2
-		Serial.println(F("LOG button"));
-#endif
-		buttonLog();
-		server.send ( 302, "text/plain", "");
-	});
-	
-	// Display Expert mode or Simple mode
-	server.on("/EXPERT", []() {
-		server.sendHeader("Location", String("/"), true);
-		gwayConfig.expert = bool(1 - (int) gwayConfig.expert) ;
-		server.send ( 302, "text/plain", "");
-	});
-	
-	// Display the SEEN statistics
-	server.on("/SEEN", []() {
-		server.sendHeader("Location", String("/"), true);
-#if _DUSB>=1
-		Serial.println(F("SEEN button"));
-		printSeen(listSeen);
-#endif
-		buttonSeen();
-		server.send ( 302, "text/plain", "");
-	});
-
-	
-	// Update the sketch. Not yet implemented
-	server.on("/UPDATE=1", []() {
-#if A_OTA==1
-		updateOtaa();
-#endif
-		server.sendHeader("Location", String("/"), true);
-		server.send ( 302, "text/plain", "");
-	});
-
-	// -----------
-	// This section from version 4.0.7 defines what PART of the
-	// webpage is shown based on the buttons pressed by the user
-	// Maybe not all information should be put on the screen since it
-	// may take too much time to serve all information before a next
-	// package interrupt arrives at the gateway
-	
-	Serial.print(F("WWW Server started on port "));
-	Serial.println(A_SERVERPORT);
-	return;
-} // setupWWW
-
 
 
 // --------------------------------------------------------------------------------
@@ -1664,6 +1235,479 @@ static void interruptData()
 		server.sendContent(response);
 	}// if gwayConfig.expert
 } // interruptData
+
+
+
+// --------------------------------------------------------------------------------
+// setupWWW is the main function for webserver functions/
+// SetupWWW function called by main setup() program to setup webserver
+// It does actually not much more than installing all the callback handlers
+// for messages sent to the webserver
+//
+// Implemented is an interface like:
+// http://<server>/<Variable>=<value>
+//
+// --------------------------------------------------------------------------------
+void setupWWW() 
+{
+	server.begin();									// Start the webserver
+	
+	// -----------------
+	// BUTTONS, define what should happen with the buttons we press on the homepage
+	
+	server.on("/", []() {
+		sendWebPage("","");							// Send the webPage string
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+
+	
+	server.on("/HELP", []() {
+		sendWebPage("HELP","");					// Send the webPage string
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+
+	// Format the filesystem
+	server.on("/FORMAT", []() {
+		Serial.print(F("FORMAT ..."));
+		
+		SPIFFS.format();							// Normally disabled. Enable only when SPIFFS corrupt
+		initConfig(&gwayConfig);
+		writeConfig( CONFIGFILE, &gwayConfig);
+		writeSeen( _SEENFILE, listSeen);			// Write the last time record  is seen
+#		if _MONITOR>=1
+		if ((debug>=1) && (pdebug & P_GUI )) {
+			mPrint("Format DONE");
+		}
+#		endif //_MONITOR
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+	
+	
+	// Reset the statistics
+	server.on("/RESET", []() {
+		Serial.println(F("RESET"));
+		startTime= now() - 1;					// Reset all timers too	
+		
+		statc.msg_ttl = 0;						// Reset package statistics
+		statc.msg_ok = 0;
+		statc.msg_down = 0;
+		
+#if _STATISTICS >= 3
+		statc.msg_ttl_0 = 0;
+		statc.msg_ttl_1 = 0;
+		statc.msg_ttl_2 = 0;
+		statc.msg_ok_0 = 0;
+		statc.msg_ok_1 = 0;
+		statc.msg_ok_2 = 0;
+		statc.msg_down_0 = 0;
+		statc.msg_down_1 = 0;
+		statc.msg_down_2 = 0;	
+#endif
+
+#if _STATISTICS >= 1
+		for (int i=0; i<MAX_STAT; i++) { statr[i].sf = 0; }
+#if _STATISTICS >= 2
+		statc.sf7 = 0;
+		statc.sf8 = 0;
+		statc.sf9 = 0;
+		statc.sf10= 0;
+		statc.sf11= 0;
+		statc.sf12= 0;
+		
+		statc.resets= 0;
+		writeGwayCfg(CONFIGFILE);
+#if _STATISTICS >= 3
+		statc.sf7_0 = 0; statc.sf7_1 = 0; statc.sf7_2 = 0;
+		statc.sf8_0 = 0; statc.sf8_1 = 0; statc.sf8_2 = 0;
+		statc.sf9_0 = 0; statc.sf9_1 = 0; statc.sf9_2 = 0;
+		statc.sf10_0= 0; statc.sf10_1= 0; statc.sf10_2= 0;
+		statc.sf11_0= 0; statc.sf11_1= 0; statc.sf11_2= 0;
+		statc.sf12_0= 0; statc.sf12_1= 0; statc.sf12_2= 0;
+#endif
+#endif
+#endif
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+
+	// Reset the boot counter
+	server.on("/BOOT", []() {
+#if _STATISTICS >= 2
+		gwayConfig.boots = 0;
+		gwayConfig.wifis = 0;
+		gwayConfig.views = 0;
+		gwayConfig.ntpErr = 0;					// NTP errors
+		gwayConfig.ntpErrTime = 0;				// NTP last error time
+		gwayConfig.ntps = 0;					// Number of NTP calls
+#endif
+		gwayConfig.reents = 0;					// Re-entrance
+		writeGwayCfg(CONFIGFILE);
+#if _MONITOR>=1
+		if ((debug>=2) && (pdebug & P_MAIN)) {
+			mPrint("BOOT, config written");
+		}
+#endif
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+
+	// Reboot the Gateway
+	// NOTE: There is no button for this code yet
+	server.on("/REBOOT", []() {
+		sendWebPage("",""); 					// Send the webPage string
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+		ESP.restart();
+	});
+
+	server.on("/NEWSSID", []() {
+		sendWebPage("NEWSSID","");				// Send the webPage string
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+
+	// Set debug parameter
+	server.on("/DEBUG=-1", []() {				// Set debug level 0-2. Note: +3 is same as -1					
+		debug = (debug+3)%4;
+		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+#		if _DUSB>=1 || _MONITOR>=1
+		if ((debug>=1) && (pdebug & P_MAIN)) {
+			mPrint("DEBUG -1: config written");
+		}
+#		endif // _DUSB _MONITOR
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+	server.on("/DEBUG=1", []() {
+		debug = (debug+1)%4;
+		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+#		if _DUSB>=1 || _MONITOR>=1
+		if ((debug>=1) && (pdebug & P_MAIN)) {
+			mPrint("DEBUG +1: config written");
+		}
+#		endif // _DUSB _MONITOR
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+
+	// Set PDEBUG parameter
+	//
+	server.on("/PDEBUG=SCAN", []() {			// Set debug level 0x01						
+		pdebug ^= P_SCAN;
+		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+	server.on("/PDEBUG=CAD", []() {				// Set debug level 0x02						
+		pdebug ^= P_CAD;
+		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+	server.on("/PDEBUG=RX", []() {				// Set debug level 0x04						
+		pdebug ^= P_RX;
+		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+	server.on("/PDEBUG=TX", []() {				// Set debug level 0x08						
+		pdebug ^= P_TX;
+		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+	server.on("/PDEBUG=PRE", []() {				// Set debug level 0-2						
+		pdebug ^= P_PRE;
+		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+	server.on("/PDEBUG=MAIN", []() {				// Set debug level 0-2						
+		pdebug ^= P_MAIN;
+		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+	server.on("/PDEBUG=GUI", []() {				// Set debug level 0-2						
+		pdebug ^= P_GUI;
+		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+	server.on("/PDEBUG=RADIO", []() {				// Set debug level 0-2						
+		pdebug ^= P_RADIO;
+		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+
+	
+	// Set delay in microseconds
+	server.on("/DELAY=1", []() {
+		gwayConfig.txDelay+=5000;
+		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+#		if _MONITOR>=1
+		if ((debug>=1) && (pdebug & P_MAIN)) {
+			mPrint("DELAY +, config written");
+		}
+#		endif
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+	server.on("/DELAY=-1", []() {
+		gwayConfig.txDelay-=5000;
+		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+#		if _MONITOR>=1
+		if ((debug>=1) && (pdebug & P_MAIN)) {
+			mPrint("DELAY -, config written");
+		}
+#		endif
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+
+	// Set Trusted Node Parameter
+	server.on("/TRUSTED=1", []() {
+	gwayConfig.trusted = (gwayConfig.trusted +1)%4;
+		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+#		if _MONITOR>=2
+			mPrint("TRUSTED +, config written");
+#		endif //_MONITOR
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+	server.on("/TRUSTED=-1", []() {
+		gwayConfig.trusted = (gwayConfig.trusted -1)%4;
+		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+#if _DUSB>=2
+		Serial.println(F("TRUSTED +, config written"));
+#endif
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+
+	// Spreading Factor setting
+	server.on("/SF=1", []() {
+		if (sf>=SF12) sf=SF7; else sf= (sf_t)((int)sf+1);
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+	server.on("/SF=-1", []() {
+		if (sf<=SF7) sf=SF12; else sf= (sf_t)((int)sf-1);
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+
+	// Set Frequency of the GateWay node
+	server.on("/FREQ=1", []() {
+		uint8_t nf = sizeof(freqs)/sizeof(freqs[0]);	// Number of elements in array
+#if _DUSB>=2
+		Serial.print("FREQ==1:: For freq[0] sizeof vector=");
+		Serial.print(sizeof(freqs[0]));
+		Serial.println();
+#endif
+		if (ifreq==(nf-1)) ifreq=0; else ifreq++;
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+	server.on("/FREQ=-1", []() {
+		uint8_t nf = sizeof(freqs)/sizeof(freqs[0]);	// Number of elements in array
+		if (ifreq==0) ifreq=(nf-1); else ifreq--;
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+
+	// Set CAD function off/on
+	server.on("/CAD=1", []() {
+		_cad=(bool)1;
+		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+	server.on("/CAD=0", []() {
+		_cad=(bool)0;
+		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+
+	// GatewayNode
+	server.on("/NODE=1", []() {
+#if GATEWAYNODE==1
+		gwayConfig.isNode =(bool)1;
+		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+#endif
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+	server.on("/NODE=0", []() {
+#if GATEWAYNODE==1
+		gwayConfig.isNode =(bool)0;
+		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+#endif
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+
+#if GATEWAYNODE==1	
+	// Framecounter of the Gateway node
+	server.on("/FCNT", []() {
+
+		frameCount=0; 
+		rxLoraModem();							// Reset the radio with the new frequency
+		writeGwayCfg(CONFIGFILE);
+
+		//sendWebPage("","");						// Send the webPage string
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+#endif
+	// WWW Page refresh function
+	server.on("/REFR=1", []() {					// WWW page auto refresh ON
+#if A_REFRESH==1
+		gwayConfig.refresh =1;
+		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+#endif		
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+	server.on("/REFR=0", []() {					// WWW page auto refresh OFF
+#if A_REFRESH==1
+		gwayConfig.refresh =0;
+		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+#endif
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+
+	
+	// Switch off/on the HOP functions
+	server.on("/HOP=1", []() {
+		_hop=true;
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+	server.on("/HOP=0", []() {
+		_hop=false;
+		ifreq=0; 
+		setFreq(freqs[ifreq].upFreq);
+		rxLoraModem();
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+
+#if !defined ESP32_ARCH
+	// Change speed to 160 MHz
+	server.on("/SPEED=80", []() {
+		system_update_cpu_freq(80);
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+	server.on("/SPEED=160", []() {
+		system_update_cpu_freq(160);
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+#endif
+	// Display Documentation pages
+	server.on("/DOCU", []() {
+
+		server.sendHeader("Location", String("/"), true);
+		buttonDocu();
+		server.send ( 302, "text/plain", "");
+	});
+
+	// Display LOGging information
+	server.on("/LOG", []() {
+		server.sendHeader("Location", String("/"), true);
+#if _DUSB>=2
+		Serial.println(F("LOG button"));
+#endif
+		buttonLog();
+		server.send ( 302, "text/plain", "");
+	});
+	
+	// Display Expert mode or Simple mode
+	server.on("/EXPERT", []() {
+		server.sendHeader("Location", String("/"), true);
+		gwayConfig.expert = bool(1 - (int) gwayConfig.expert) ;
+		server.send ( 302, "text/plain", "");
+	});
+
+#if _MONITOR>=1
+	// Display Monitor Console or not
+	server.on("/MONITOR", []() {
+		server.sendHeader("Location", String("/"), true);
+		gwayConfig.monitor = bool(1 - (int) gwayConfig.monitor) ;
+		server.send ( 302, "text/plain", "");
+	});
+#endif
+	
+	// Display the SEEN statistics
+	server.on("/SEEN", []() {
+		server.sendHeader("Location", String("/"), true);
+		gwayConfig.seen = bool(1 - (int) gwayConfig.seen) ;
+		server.send ( 302, "text/plain", "");
+	});
+
+	
+	// Update the sketch. Not yet implemented
+	server.on("/UPDATE=1", []() {
+#if A_OTA==1
+		updateOtaa();
+#endif
+		server.sendHeader("Location", String("/"), true);
+		server.send ( 302, "text/plain", "");
+	});
+
+	// -----------
+	// This section from version 4.0.7 defines what PART of the
+	// webpage is shown based on the buttons pressed by the user
+	// Maybe not all information should be put on the screen since it
+	// may take too much time to serve all information before a next
+	// package interrupt arrives at the gateway
+#	if _DUSB>=1
+		Serial.print(F("WWW Server started on port "));
+		Serial.println(A_SERVERPORT);
+#	endif //_DUSB
+
+	return;
+} // setupWWW
+
+// --------------------------------------------------------------------------------
+// SEND WEB PAGE() 
+// Call the webserver and send the standard content and the content that is 
+// passed by the parameter. Each time a variable is changed, this function is 
+// called to display the webpage again/
+//
+// NOTE: This is the only place where yield() or delay() calls are used.
+//
+// --------------------------------------------------------------------------------
+void sendWebPage(const char *cmd, const char *arg)
+{
+	openWebPage(); yield();						// Do the initial website setup
+	
+	wwwButtons();								// Display buttons such as Documentation, Mode, Logfiles
+	
+	setVariables(cmd,arg); yield();				// Read Webserver commands from line
+
+	statisticsData(); yield();		 			// Node statistics
+	messageHistory(); yield();					// Display the sensor history, message statistics
+	nodeHistory(); yield();						// Display the lastSeen array
+	monitorData(); yield();						// Console
+	
+	gatewaySettings(); yield();					// Display web configuration
+	wifiConfig(); yield();						// WiFi specific parameters
+	systemStatus(); yield();					// System statistics such as heap etc.
+	interruptData(); yield();					// Display interrupts only when debug >= 2
+
+	websiteFooter(); yield();
+	
+	server.client().stop();
+}
 
 
 // --------------------------------------------------------------------------------

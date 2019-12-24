@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.4 E EU868
-// Date: 2019-11-29
+// Version 6.1.5 E EU868
+// Date: 2019-12-20
 //
 // Based on work done by Thomas Telkamp for Raspberry PI 1ch gateway and many others.
 // Contibutions of Dorijan Morelj and Andreas Spies for OLED support.
@@ -20,7 +20,7 @@
 // too much code compiled and loaded on your ESP device.
 //
 // NOTE: 
-// If version if vor ESP32 Heltec board, compile with ESP32 setting and board 
+// If version is for ESP32 Heltec board, compile with ESP32 setting and board 
 // "ESP32 Dev Module" or "Heltec WiFi Lora 32"
 // 
 // For ESP8266 Wemos: compile with "Wemos R1 D1" and choose
@@ -30,31 +30,46 @@
 // ========================================================================================
 
 // Specify the correct version and date of your gateway here.
-// Normally it is provided with teh GitHub version
-#define VERSION "V.6.1.4.E.EU868; 191129a"
-
-// This value of DEBUG determines whether some parts of code get compiled.
-// Also this is the initial value of debug parameter. 
-// The value can be changed using the admin webserver
-// For operational use, set initial DEBUG vaulue 0
-#define DEBUG 1
-
-
-// Debug message will be put on Serial is this one is set.
-// If set to 0, no USB Serial prints are done
-// Set to 1 it will prinr all user level messages (with correct debug set)
-// If set to 2 it will also print interrupt messages (not recommended)
-#define _DUSB 1
+// Normally it is provided with the GitHub version
+#define VERSION "V.6.1.5.E.EU868; 191220g"
 
 
 // Define whether we should do a formatting of SPIFFS when starting the gateway
 // This is usually a good idea if the webserver is interrupted halfway a writing
 // operation. Also to be used when software is upgraded
-// Normally, value 0 is a good default.
+// Normally, value 0 is a good default and should not be changed.
 #define _SPIFF_FORMAT 0
 
 
-// Define the frequency band the gateway will listen on. Valid options are:
+// Define the CLASS mode of the gateway
+// A: Baseline Class
+// B: Beacon/Battery Class
+// C: Continuous Listen Class
+#define _CLASS "A"
+
+
+// Debug message will be put on Serial is this one is set.
+// If set to 0, no printing to USB devices is done.
+// Set to 1 it will print all user level messages (with correct debug set)
+// If set to 2 it will also print interrupt messages (not recommended)
+#define _DUSB 1
+
+
+// Define the monitor screen. When it is greater than 0 then logging is displayed in
+// the special screen at the GUI.
+// If _DUSB is also set to 1 then most messages will also be copied to USB devices.
+#define _MONITOR 20
+
+
+// Gather statistics on sensor and Wifi status
+// 0= No statistics
+// 1= Keep track of messages statistics, number determined by MAX_STAT
+// 2= Option 1 + Keep track of messages received PER each SF (default)
+// 3= See Option 2, but with extra channel info (Not used when Hopping is not selected)
+#define _STATISTICS 3
+
+
+// Define the frequency band the gateway will listen on. Valid options are
 // EU863_870	Europe 
 // US902_928	North America
 // AU925_928	Australia
@@ -63,9 +78,8 @@
 // CN779-787	(Not Used!)
 // EU433		Europe
 // AS923		(Not Used)
-// See https://www.thethingsnetwork.org/docs/lorawan/frequency-plans.html
 // You can find the definitions in "loraModem.h" and frequencies in
-
+// See https://www.thethingsnetwork.org/docs/lorawan/frequency-plans.html
 #define EU863_870 1
  
  
@@ -96,6 +110,11 @@
 // device and also connect enable dio1 to detect this state. 
 #define _CAD 1
 
+// CRCCHECK
+// Defines whether we should check on the CRC of RXDONE messages (see stateMachine.ino)
+// This should prevent us from getting a lot os stranges messgages of unknown nodes.
+// Note: DIO3 must be connected for this to work (Heltec and later Wemos gateways). 
+#define _CRCCHECK 1
 
 // Definitions for the admin webserver.
 // A_SERVER determines whether or not the admin webpage is included in the sketch.
@@ -120,34 +139,26 @@
 //	1: HALLARD
 //	2: COMRESULT pin out
 //	3: ESP32 Wemos pin out
-//	4: ESP32 TTGO pinning (should work for 433 and OLED too).
-//	5: ESP32 TTGO EU868/EU433 MHz with OLED
-//	6: Other, define your own in loraModem.h
+//	4: ESP32 TTGO pin out (should work for Heltec, 433 and OLED too).
+//	5: Other, define your own in loraModem.h (does not include GPS Code)
 #define _PIN_OUT 4
-
-// Gather statistics on sensor and Wifi status
-// 0= No statistics
-// 1= Keep track of messages statistics, number determined by MAX_STAT
-// 2= Option 1 + Keep track of messages received PER each SF (default)
-// 3= See Option 2, but with extra channel info (Do not use when no Hopping is selected)
-#define _STATISTICS 3
-
-
 
 
 // Single channel gateways if they behave strict should only use one frequency 
-// channel and one spreading factor. However, the TTN backend replies on RX2 
-// timeslot for spreading factors SF9-SF12. 
-// Also, the server will respond with SF12 in the RX2 timeslot.
+// channel and one, or in case _CAD all, spreading factors. 
+// The TTN backend replies on RX1 timeslot for spreading factors SF9-SF12. 
 // If the 1ch gateway is working in and for nodes that ONLY transmit and receive on the set
 // and agreed frequency and spreading factor. make sure to set STRICT to 1.
 // In this case, the frequency and spreading factor for downlink messages is adapted by this
 // gateway
 // NOTE: If your node has only one frequency enabled and one SF, you must set this to 1
-//		in order to receive downlink messages
+//		in order to receive downlink messages. This is the default mode.
 // NOTE: In all other cases, value 0 works for most gateways with CAD enabled
 #define _STRICT_1CH 1
-
+//
+// Also, normally the server will respond with SF12 in the RX2 timeslot.
+// For TTN, thr RX2 timeslot is SF9, and we should use that one for TTN
+#define _RX2_SF 9
 
 // Allows configuration through WifiManager AP setup. Must be 0 or 1					
 #define _WIFIMANAGER 0
@@ -213,7 +224,7 @@
 
 
 // This defines whether or not we would use the gateway as 
-// as sort of backend system which decodes
+// as sort of backend system for local sensors which decodes
 // 1: _LOCALSERVER is used
 // 0: Do not use _LOCALSERVER 
 #define _LOCALSERVER 1						// See server definitions for decodes
@@ -221,11 +232,11 @@
 
 // Gateway Ident definitions. Where is the gateway located?
 #define _DESCRIPTION "ESP Gateway"			// Name of the gateway
-#define _EMAIL "your@email.com"		// Owner
+#define _EMAIL "mw12554@hotmail.com"		// Owner
 #define _PLATFORM "ESP8266"
-#define _LAT 52.0
-#define _LON 5.0
-#define _ALT 1								// Altitude
+#define _LAT 52.237367
+#define _LON 5.978654
+#define _ALT 14								// Altitude
 
 // ntp
 // Please add daylight saving time to NTP_TIMEZONES when desired
@@ -236,8 +247,8 @@
 
 
 // lora sensor code definitions
-// Defines whether the gateway will also report sensor/status value on MQTT
-// such as GPS, battery or temperature.
+// Defines whether the gateway will also report sensor/status value on MQTT 
+// (such as battery and GPS)
 // after all, a gateway can be a node to the system as well. Some sensors like GPS can be
 // sent to the backend as a parameter, some (like humidity for example) can only be sent
 // as a regular sensor value.
@@ -246,14 +257,13 @@
 #define _CHECK_MIC 0
 
 
-
 // We can put the gateway in such a mode that it will (only) recognize
-// nodes that are put in a list of trusted nodes.
+// nodes that are put in a list of trusted nodes 
 // Values:
 // 0: Do not use names for trusted Nodes
 // 1: Use the nodes as a translation table for hex codes to names (in TLN)
-// 2: Same as 1, but is nodes NOT in the nodes list below they are NOT shown.
-// NOTE: This list is dynamic!
+// 2: Same as 1, but is nodes NOT in the nodes list below they are NOT shown
+// NOTE: We probably will make this list dynamic!
 #define _TRUSTED_NODES 1
 #define _TRUSTED_DECODE 1
 
@@ -266,8 +276,8 @@
 // ========================================================================
 
 
-// Maximum number of statistics records gathered. 20 is a good maximum (memory intensive)
-// For ESP32 maybe 30 could be used as well
+// Maximum number of Message History statistics records gathered. 20 is a good maximum 
+// (memory intensive). For ESP32 maybe 30 could be used as well
 #define MAX_STAT 20
 
 
@@ -276,10 +286,11 @@
 //	- node Number, or known node name
 //	- Last seen 'seconds since 1/1/1970'
 //	- SF seen (8-bit integer with SF per bit)
-// The initial version _NUMMAX stores max this many nodes, please 
-// "define _SEENMAX 0" when not used
-#define _SEENMAX 25
+// The initial version _NUMMAX stores max this many nodes, please make
+// _SEENMAX==0 when not used
+#define _SEENMAX 20
 #define _SEENFILE "/gwayNum.txt"
+
 
 // Name of he configfile in SPIFFs	filesystem
 // In this file we store the configuration and other relevant info that should
@@ -293,30 +304,12 @@
 
 
 // Serial Port speed
-#define _BAUDRATE 115200					// Works for debug messages to serial momitor
+#define _BAUDRATE 115200						// Works for debug messages to serial momitor
 
 
 // MQTT definitions, these settings should be standard for TTN
 // and need no changing
 #define _TTNSERVER "router.eu.thethings.network"
-#define _TTNPORT 1700						// Standard port for TTN
+#define _TTNPORT 1700							// Standard port for TTN
 
 
-// If you have a second back-end server defined such as Semtech or loriot.io
-// your can define _THINGPORT and _THINGSERVER with your own value.
-// If not, make sure that you do not define these, which will save CPU time
-// Port is UDP port in this program
-//
-// Default for testing: Switched off
-#define _THINGSERVER "your,webserver.org"		// Server URL of the LoRa-udp.js handler
-#define _THINGPORT 1700						// Port 1700 is old compatibility
-
-
-
-// For asserting and testing the following defines are used.
-//
-#if !defined(CFG_noassert)
-#define ASSERT(cond) if(!(cond)) gway_failed(__FILE__, __LINE__)
-#else
-#define ASSERT(cond) /**/
-#endif

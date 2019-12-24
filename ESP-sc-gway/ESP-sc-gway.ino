@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg
-// Version 6.1.4
-// Date: 2019-11-29
+// Version 6.1.5
+// Date: 2019-12-20
 // Author: Maarten Westenberg (mw12554@hotmail.com)
 //
 // Based on work done by Thomas Telkamp for Raspberry PI 1-ch gateway and many others.
@@ -102,6 +102,7 @@ extern "C" {
 #include <ESP8266WebServer.h>
 #include <Streaming.h>          							// http://arduiniana.org/libraries/streaming/
 #endif //A_SERVER
+
 #if A_OTA==1
 #include <ESP8266httpUpdate.h>
 #include <ArduinoOTA.h>
@@ -111,7 +112,7 @@ extern "C" {
 
 // ----------- Declaration of vars --------------
 uint8_t debug=1;											// Debug level! 0 is no msgs, 1 normal, 2 extensive
-uint8_t pdebug=0xFF;										// Allow all atterns (departments)
+uint8_t pdebug=0xFF;										// Allow all patterns for debugging
 
 #if GATEWAYNODE==1
 
@@ -140,8 +141,6 @@ bool sx1272 = true;											// Actually we use sx1276/RFM95
 uint8_t	 ifreq = 0;											// Channel Index
 //unsigned long freq = 0;
 
-
-
 uint8_t MAC_array[6];
 
 // ----------------------------------------------------------------------------
@@ -152,7 +151,7 @@ uint8_t MAC_array[6];
 
 // Set spreading factor (SF7 - SF12)
 sf_t sf 			= _SPREADING;
-sf_t sfi 			= _SPREADING;								// Initial value of SF
+sf_t sfi 			= _SPREADING;							// Initial value of SF
 
 // Set location, description and other configuration parameters
 // Defined in ESP-sc_gway.h
@@ -220,9 +219,13 @@ static void printIP(IPAddress ipa, const char sep, String& response);	// _wwwSer
 void setupWWW();											// _wwwServer.ino forward
 
 void SerialTime();											// _utils.ino forward
+static void mPrint(String txt);								// _utils.ino (static void)
+int mStat(uint8_t intr, String & response);					// _utils.ini
 void SerialStat(uint8_t intr);								// _utils.ino
 void printHexDigit(uint8_t digit);							// _utils.ino
 int inDecodes(char * id);									// _utils.ino
+
+int initMonitor(struct moniLine *monitor);					// _loraFiles.ino
 
 void init_oLED();											// _oLED.ino
 void acti_oLED();											// _oLED.ino
@@ -259,8 +262,9 @@ void ICACHE_FLASH_ATTR ReleaseMutex(int *mutex);
 void die(const char *s)
 {
 	Serial.println(s);
+#	if _DUSB>=1 || _MONITOR>=1
 	if (debug>=2) Serial.flush();
-
+#	endif //_DUSB _MONITOR
 	delay(50);
 	// system_restart();									// SDK function
 	// ESP.reset();				
@@ -272,11 +276,14 @@ void die(const char *s)
 //
 // ----------------------------------------------------------------------------
 void gway_failed(const char *file, uint16_t line) {
-	Serial.print(F("Program failed in file: "));
-	Serial.print(file);
-	Serial.print(F(", line: "));
-	Serial.println(line);
-	if (debug>=2) Serial.flush();
+#if _DUSB>=1 || _MONITOR>=1
+	String response="";
+	response += "Program failed in file: ";
+	response += String(file);
+	response += ", line: ";
+	response += String(line);
+	mPrint(response);
+#endif //_DUSB||_MONITOR
 }
 
 
@@ -356,8 +363,9 @@ time_t getNtpTime()
 	
     if (!sendNtpRequest(ntpServer))							// Send the request for new time
 	{
-		if (( debug>=0 ) && ( pdebug & P_MAIN ))
-			Serial.println(F("M sendNtpRequest failed"));
+		if (pdebug & P_MAIN) {
+			mPrint("M sendNtpRequest failed");
+		}
 		return(0);
 	}
 	
@@ -396,11 +404,12 @@ time_t getNtpTime()
 	// So increase the counter
 	gwayConfig.ntpErr++;
 	gwayConfig.ntpErrTime = now();
-#if _DUSB>=1
-	if (( debug>=0 ) && ( pdebug & P_MAIN )) {
-		Serial.println(F("M getNtpTime:: read failed"));
+
+#	if _MONITOR>=1
+	if (pdebug & P_MAIN) {
+		mPrint("getNtpTime:: read failed");
 	}
-#endif
+#	endif //_MONITOR
 	return(0); 												// return 0 if unable to get the time
 }
 
@@ -429,57 +438,57 @@ void setup() {
 	char MAC_char[19];										// XXX Unbelievable
 	MAC_char[18] = 0;
 
-	Serial.begin(_BAUDRATE);								// As fast as possible for bus
+#	if _DUSB>=1
+		Serial.begin(_BAUDRATE);							// As fast as possible for bus
+#	endif
 	delay(500);	
+
+#if _MONITOR>=1
+	initMonitor(monitor);
+#endif
+
 
 #if _GPS==1
 	// Pins are define in LoRaModem.h together with other pins
 	sGps.begin(9600, SERIAL_8N1, GPS_TX, GPS_RX);// PIN 12-TX 15-RX
-#endif
+#endif //_GPS
 
 #ifdef ESP32
-#if _DUSB>=1
-	Serial.print(F("ESP32 defined, freq="));
-	Serial.print(freqs[0].upFreq);
-	Serial.println();
-#endif
-#endif
+#	if _MONITOR>=1
+		mPrint("ESP32 defined, freq=" + String(freqs[0].upFreq));
+#	endif //_MONITOR
+#endif //ESP32
+
 #ifdef ARDUINO_ARCH_ESP32
-#if _DUSB>=1
-	Serial.println(F("ARDUINO_ARCH_ESP32 defined"));
-#endif
-#endif
+#	if _MONITOR>=1
+		mPrint("ARDUINO_ARCH_ESP32 defined");
+#	endif //_MONITOR
+#endif //ARDUINO_ARCH_ESP32
 
 
-#if _DUSB>=1
-	Serial.flush();
-
+#	if _DUSB>=1
+		Serial.flush();
+#	endif //_DUSB
 	delay(500);
 
 	if (SPIFFS.begin()) {
-#if _DUSB>=1
-		Serial.println(F("SPIFFS init success"));
-#endif
+#		if _MONITOR>=1
+			mPrint("SPIFFS init success");
+#		endif //_MONITOR
 	}
 	else {
-#if _DUSB>=1
-		Serial.println(F("SPIFFS not found"));
-#endif
+		if (pdebug & P_MAIN) {
+			mPrint("SPIFFS not found");
+		}
 	}
-#endif	
-#if _SPIFF_FORMAT>=1
-#if _DUSB>=1
-	if (( debug >= 0 ) && ( pdebug & P_MAIN )) {
-		Serial.println(F("M Format Filesystem ... "));
-	}
-#endif
+	
+#	if _SPIFF_FORMAT>=1
 	SPIFFS.format();										// Normally disabled. Enable only when SPIFFS corrupt
-#if _DUSB>=1
-	if (( debug >= 0 ) && ( pdebug & P_MAIN )) {
-		Serial.println(F("Format Done"));
+	if ((debug>=1) && (pdebug & P_MAIN)) {
+		mPrint("Format SPIFFS Filesystem Done");
 	}
-#endif
-#endif
+#	endif //_SPIFF_FORMAT>=1
+
 	delay(500);
 	
 	// Read the config file for all parameters not set in the setup() or configGway.h file
@@ -489,26 +498,21 @@ void setup() {
 	readConfig(CONFIGFILE, &gwayConfig);
 	readSeen(_SEENFILE, listSeen);							// read the seenFile records
 
-	Serial.print(F("Assert="));
-#if defined CFG_noassert
-	Serial.println(F("No Asserts"));
-#else
-	Serial.println(F("Do Asserts"));
-#endif
+#	if _MONITOR>=1
+		mPrint("Assert=");
+#		if defined CFG_noassert
+			mPrint("No Asserts");
+#		else
+			mPrint("Do Asserts");
+#		endif //CFG_noassert
+#	endif //_MONITOR
 
 #if OLED>=1
 	init_oLED();											// When done display "STARTING" on OLED
-#endif
+#endif //OLED
 
 	delay(500);
 	yield();
-#if _DUSB>=1	
-	if (debug>=1) {
-		Serial.print(F("debug=")); 
-		Serial.println(debug);
-		yield();
-	}
-#endif
 
 	WiFi.mode(WIFI_STA);
 	WiFi.setAutoConnect(true);
@@ -542,21 +546,23 @@ void setup() {
 #else
 	sprintf(hostname, "%s%02x%02x%02x", "esp8266-", MAC_array[3], MAC_array[4], MAC_array[5]);
 	wifi_station_set_hostname( hostname );
-#endif	
+#endif	//ESP32_ARCH
 
-	
-	Serial.print(F("Host "));
+#	if _DUSB>=1
+		Serial.print(F("Host "));
 #if ESP32_ARCH==1
-	Serial.print(WiFi.getHostname());
+		Serial.print(WiFi.getHostname());
 #else
-	Serial.print(wifi_station_get_hostname());
-#endif
-	Serial.print(F(" WiFi Connected to "));
-	Serial.print(WiFi.SSID());
-	Serial.print(F(" on IP="));
-	Serial.print(WiFi.localIP());
-	Serial.println();
-	
+		Serial.print(wifi_station_get_hostname());
+#endif //ESP32_ARCH
+
+		Serial.print(F(" WiFi Connected to "));
+		Serial.print(WiFi.SSID());
+		Serial.print(F(" on IP="));
+		Serial.print(WiFi.localIP());
+		Serial.println();
+#	endif //_DUSB	
+
 	delay(500);
 	// If we are here we are connected to WLAN
 	
@@ -567,12 +573,15 @@ void setup() {
 	}
 #elif defined(_TTNROUTER)
 	if (!connectTtn()) {
+#	if _DUSB>=1
 		Serial.println(F("Error connectTtn"));
+#	endif //_DUSB
 	}
 #else
-	Serial.print(F("Setup:: No UDP or TCP Connection defined"));
-	
-#endif
+#	if _MONITOR>=1
+		mPrint(F("Setup:: ERROR, No UDP or TCP Connection defined"));
+#	endif //_MONITOR	
+#endif //_UDPROUTER
 	delay(200);
 	
 	// Pins are defined and set in loraModem.h
@@ -580,78 +589,75 @@ void setup() {
 	pinMode(pins.rst, OUTPUT);
     pinMode(pins.dio0, INPUT);								// This pin is interrupt
 	pinMode(pins.dio1, INPUT);								// This pin is interrupt
-	//pinMode(pins.dio2, INPUT);
+	//pinMode(pins.dio2, INPUT);							// XXX
 
 	// Init the SPI pins
 #if ESP32_ARCH==1
 	SPI.begin(SCK, MISO, MOSI, SS);
 #else
 	SPI.begin();
-#endif
+#endif //ESP32_ARCH==1
 
 	delay(500);
 	
 	// We choose the Gateway ID to be the Ethernet Address of our Gateway card
     // display results of getting hardware address
 	//
+#	if _DUSB>=1
+		Serial.print(F("Gateway ID: "));
+		printHexDigit(MAC_array[0]);
+		printHexDigit(MAC_array[1]);
+		printHexDigit(MAC_array[2]);
+		printHexDigit(0xFF);
+		printHexDigit(0xFF);
+		printHexDigit(MAC_array[3]);
+		printHexDigit(MAC_array[4]);
+		printHexDigit(MAC_array[5]);
 
-    Serial.print(F("Gateway ID: "));
-	printHexDigit(MAC_array[0]);
-    printHexDigit(MAC_array[1]);
-    printHexDigit(MAC_array[2]);
-	printHexDigit(0xFF);
-	printHexDigit(0xFF);
-    printHexDigit(MAC_array[3]);
-    printHexDigit(MAC_array[4]);
-    printHexDigit(MAC_array[5]);
+		Serial.print(F(", Listening at SF"));
+		Serial.print(sf);
+		Serial.print(F(" on "));
+		Serial.print((double)freqs[ifreq].upFreq/1000000);
+		Serial.println(" MHz.");
+#	endif //_DUSB
 
-    Serial.print(F(", Listening at SF"));
-	Serial.print(sf);
-	Serial.print(F(" on "));
-	Serial.print((double)freqs[ifreq].upFreq/1000000);
-	Serial.println(" MHz.");
-
-	if (!WiFi.hostByName(NTP_TIMESERVER, ntpServer))		// Get IP address of Timeserver
-	{
-		die("Setup:: ERROR hostByName NTP");
-	};
+	ntpServer = resolveHost(NTP_TIMESERVER);
+#	if _MONITOR>=1
+		if (debug>=1) mPrint("NTP Server found and contacted");
+#	endif
 	delay(100);
+	
 #ifdef _TTNSERVER
-	if (!WiFi.hostByName(_TTNSERVER, ttnServer))			// Use DNS to get server IP once
-	{
-		die("Setup:: ERROR hostByName TTN");
-	};
+	ttnServer = resolveHost(_TTNSERVER);					// Use DNS to get server IP
 	delay(100);
-#endif
+#endif //_TTNSERVER
+
 #ifdef _THINGSERVER
-	if (!WiFi.hostByName(_THINGSERVER, thingServer))
-	{
-		die("Setup:: ERROR hostByName THING");
-	}
+	thingServer = resolveHost(_THINGSERVER);					// Use DNS to get server IP
 	delay(100);
-#endif
+#endif //_THINGSERVER
 
 	// The Over the Air updates are supported when we have a WiFi connection.
 	// The NTP time setting does not have to be precise for this function to work.
 #if A_OTA==1
 	setupOta(hostname);										// Uses wwwServer 
-#endif
+#endif //A_OTA
 
 	// Set the NTP Time
 	// As long as the time has not been set we try to set the time.
 #if NTP_INTR==1
 	setupTime();											// Set NTP time host and interval
-#else
+#else //NTP_INTR
 	// If not using the standard libraries, do a manual setting
 	// of the time. This method works more reliable than the 
 	// interrupt driven method.
 	
 	//setTime((time_t)getNtpTime());
 	while (timeStatus() == timeNotSet) {
-#if _DUSB>=1
+#		if _DUSB>=1 || _MONITOR>=1
 		if (( debug>=0 ) && ( pdebug & P_MAIN )) 
-			Serial.println(F("M setupTime:: Time not set (yet)"));
-#endif
+			mPrint("setupTime:: Time not set (yet)");
+#		endif //_DUSB
 		delay(500);
 		time_t newTime;
 		newTime = (time_t)getNtpTime();
@@ -659,24 +665,21 @@ void setup() {
 	}
 	// When we are here we succeeded in getting the time
 	startTime = now();										// Time in seconds
-#if _DUSB>=1
-	Serial.print("Time: "); printTime();
-	Serial.println();
-#endif
+#	if _DUSB>=1
+		Serial.print("writeGwayCfg: "); printTime();
+		Serial.println();
+	#endif //_DUSB
 	writeGwayCfg(CONFIGFILE );
-#if _DUSB>=1
-	Serial.println(F("Gateway configuration saved"));
-#endif
 #endif //NTP_INTR
 
 #if A_SERVER==1	
 	// Setup the webserver
 	setupWWW();
-#endif
+#endif //A_SERVER
 
 	delay(100);												// Wait after setup
 	
-	// Setup and initialise LoRa state machine of _loramModem.ino
+	// Setup and initialise LoRa state machine of _loraModem.ino
 	_state = S_INIT;
 	initLoraModem();
 	
@@ -708,16 +711,18 @@ void setup() {
 	
 	writeConfig(CONFIGFILE, &gwayConfig);					// Write config
 	writeSeen( _SEENFILE, listSeen);						// Write the last time record  is seen
-#if _DUSB>=1
-	printSeen(listSeen);
-#endif	
+
 	// activate OLED display
 #if OLED>=1
 	acti_oLED();
 	addr_oLED();
-#endif
+#endif //OLED
 
-	Serial.println(F("--------------------------------------"));
+#	if _DUSB>=1
+		Serial.println(F("--------------------------------------"));
+#	endif //_DUSB
+
+	mPrint("Setup() ended, Starting loop()");
 }//setup
 
 
@@ -752,22 +757,25 @@ void loop ()
 	// After a quiet period, make sure we reinit the modem and state machine.
 	// The interval is in seconds (about 15 seconds) as this re-init
 	// is a heavy operation. 
-	// SO it will kick in if there are not many messages for the gateway.
+	// So it will kick in if there are not many messages for the gateway.
 	// Note: Be careful that it does not happen too often in normal operation.
 	//
 	if ( ((nowSeconds - statr[0].tmst) > _MSG_INTERVAL ) &&
 		(msgTime <= statr[0].tmst) ) 
 	{
-#if _DUSB>=1
-		if (( debug>=1 ) && ( pdebug & P_MAIN )) {
-			Serial.print("M REINIT:: ");
-			Serial.print( _MSG_INTERVAL );
-			Serial.print(F(" "));
-			SerialStat(0);
+#		if _MONITOR>=1
+		if (( debug>=2 ) && ( pdebug & P_MAIN )) {
+			String response="";
+			response += "REINIT:: ";
+			response += String( _MSG_INTERVAL );
+			response += (" ");
+			mStat(0, response);
+			mPrint(response);
 		}
-#endif
+#		endif //_MONITOR
 
-		// startReceiver() ??
+		yield();											// Allow buffer operations to finish
+
 		if ((_cad) || (_hop)) {
 			_state = S_SCAN;
 			sf = SF7;
@@ -788,7 +796,7 @@ void loop ()
 	// start of the loop() function.
 	yield();
 	server.handleClient();
-#endif
+#endif //A_SERVER
 
 #if A_OTA==1
 	// Perform Over the Air (OTA) update if enabled and requested by user.
@@ -797,7 +805,7 @@ void loop ()
 	//
 	yield();
 	ArduinoOTA.handle();
-#endif
+#endif //A_OTA
 
 	// If event is set, we know that we have a (soft) interrupt.
 	// After all necessary web/OTA services are scanned, we will
@@ -813,10 +821,11 @@ void loop ()
 	// If we are not connected, try to connect.
 	// We will not read Udp in this loop cycle then
 	if (WlanConnect(1) < 0) {
-#if _DUSB>=1
-		if (( debug >= 0 ) && ( pdebug & P_MAIN ))
-			Serial.println(F("M ERROR reconnect WLAN"));
-#endif
+#		if _DUSB>=1 || _MONITOR>=1
+		if (( debug >= 0 ) && ( pdebug & P_MAIN )) {
+			mPrint("M ERROR reconnect WLAN");
+		}
+#		endif //_DUSB || _MONITOR
 		yield();
 		return;												// Exit loop if no WLAN connected
 	}
@@ -829,17 +838,19 @@ void loop ()
 	//
 	else {
 		while( (packetSize = Udp.parsePacket()) > 0) {
-#if _DUSB>=2
-			Serial.println(F("loop:: readUdp calling"));
-#endif
+#			if _MONITOR>=1
+				if (debug>=2) {
+					mPrint("loop:: readUdp calling");
+				}
+#			endif //_MONITOR
 			// DOWNSTREAM
 			// Packet may be PKT_PUSH_ACK (0x01), PKT_PULL_ACK (0x03) or PKT_PULL_RESP (0x04)
 			// This command is found in byte 4 (buffer[3])
 			if (readUdp(packetSize) <= 0) {
-#if _DUSB>=1
-				if (( debug>0 ) && ( pdebug & P_MAIN ))
-					Serial.println(F("M readUdp error"));
-#endif
+				#if _MONITOR>=1
+				if ( debug>=0 )
+					mPrint("readUdp ERROR, retuning <=0");
+#				endif //_MONITOR
 				break;
 			}
 			// Now we know we succesfully received message from host
@@ -849,25 +860,18 @@ void loop ()
 		}
 	}
 	
-	yield();					// XXX 26/12/2017
+	yield();					// on 26/12/2017
 
 	// stat PUSH_DATA message (*2, par. 4)
 	//	
 
     if ((nowSeconds - statTime) >= _STAT_INTERVAL) {		// Wake up every xx seconds
-#if _DUSB>=1
-		if (( debug>=1 ) && ( pdebug & P_MAIN )) {
-			Serial.print(F("M STAT:: ..."));
-			Serial.flush();
-		}
-#endif
         sendstat();											// Show the status message and send to server
-#if _DUSB>=1
+#		if _MONITOR>=1
 		if (( debug>=1 ) && ( pdebug & P_MAIN )) {
-			Serial.println(F(" done"));
-			if (debug>=2) Serial.flush();
+			mPrint("Send sendstat");
 		}
-#endif	
+#		endif //_MONITOR
 
 		// If the gateway behaves like a node, we do from time to time
 		// send a node message to the backend server.
@@ -883,12 +887,14 @@ void loop ()
 			// could be battery but also other status info or sensor info
 		
 			if (sensorPacket() < 0) {
-#if _DUSB>=1
-				Serial.println(F("sensorPacket: Error"));
-#endif
+#			if _MONITOR>=1
+				if ((debug>=1) || (pdebug & P_MAIN)) {
+					mPrint("sensorPacket: Error");
+				}
+#			endif// _MONITOR
 			}
 		}
-#endif
+#endif//GATEWAYNODE
 		statTime = nowSeconds;
     }
 	
@@ -899,12 +905,11 @@ void loop ()
 	//
 	nowSeconds = now();
     if ((nowSeconds - pulltime) >= _PULL_INTERVAL) {		// Wake up every xx seconds
-#if _DUSB>=1
+#		if _DUSB>=1 || _MONITOR>=1
 		if (( debug>=2) && ( pdebug & P_MAIN )) {
-			Serial.println(F("M PULL"));
-			if (debug>=1) Serial.flush();
+			mPrint("M PULL");
 		}
-#endif
+#		endif//_DUSB _MONITOR
         pullData();											// Send PULL_DATA message to server
 		startReceiver();
 	
@@ -927,7 +932,7 @@ void loop ()
 		if (newTime != 0) setTime(newTime);
 		ntptimer = nowSeconds;
 	}
-#endif
+#endif//NTP_INTR
 	
 
 }//loop

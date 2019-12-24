@@ -1,6 +1,6 @@
 # Single Channel LoRaWAN Gateway
 
-Version 6.1.4, November 25, 2019	  
+Version 6.1.5, December 20, 2019	  
 Author: M. Westenberg (mw12554@hotmail.com)  
 Copyright: M. Westenberg (mw12554@hotmail.com)  
 
@@ -16,7 +16,22 @@ Maintained by Maarten Westenberg (mw12554@hotmail.com)
 
 # Release Notes
 
-Features release 6.1.4 (November 29, 2019)
+Features release 6.1.5 (December 20, 2019)
+- Bug fix for "#define _DUSB 0"
+- Added number of times a node has been called to the history records listSeen
+- Fix LastSeen issues.
+- Added 3 Indian frequencies as published by TTN
+- Changes configGway.h to contain better info
+- Added a message console on the GUI page (_define _MONITOR 1)
+- Changed the DNS code to allow .local domains with MDNS
+- Added buttons for Expert mode, Monitor and Last Seen.
+- Added code for "REBOOT" to be used from the API only *http://your_IP/REBOOT '
+- Added the IP to the www server header (visible in browser).
+- Removed version 5 of pi-out as it is the same as version 4.
+- Added "monitor" functions. This allows to write to monitor screen on browser or use 
+USB for desbugging messages.
+
+Features release 6.1.4 (November 25, 2019)
 - Compacting Code and Solve Errors
 - Look at _DUSB define and add to Serial.print directive where not found
 - Renewed the GPS functions, changed "Serial1" to "sGps" to avoid double definitions.
@@ -264,7 +279,7 @@ New features in version 3.1 (September 29, 2016)):
 New features in version 3.0 (September 27, 2016):
 
 - WiFiManager support
-- Limited SPIFF (filesystem) support for persistent data storage
+- Limited SPIFFS (filesystem) support for persistent data storage
 - Added functions to webserver. Webserver port now 80 by default (!)
 
 Other

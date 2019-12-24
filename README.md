@@ -1,7 +1,7 @@
 # Single Channel LoRaWAN Gateway
 
-Version 6.1.4, 
-Data: November 29, 2019  
+Version 6.1.5, 
+Data: December 20, 2019  
 Author: M. Westenberg (mw12554@hotmail.com)  
 Copyright: M. Westenberg (mw12554@hotmail.com)  
 
@@ -160,14 +160,27 @@ When setting _DUSB to 0 all output by Serial is disabled
 
  \#define _DUSB 1
 
+### Selecting Class mode of operation
 
-### Debug
+Define the class of operation that is supported by the gateway. 
+Class A is supported and contains the basic operation for battery sensors. 
 
-The user can set the initial value of the DEBUG parameter. 
-Setting this parameter will also detemine some settings of the webserver.
+Class B contains the beacon/battery mode of operation. The Gateway will send ou a beacon to the 
+connected sensors which enables them to synchronize downlink messagaging.
 
- \#define DEBUG 1
+Class C (Continuous) mode of operation contains support for devices that are probably NOT battery 
+operated and will listen to the network at all times. As a result the latency of these devices 
+is also shorter than for class A devices.
+Class C devices are not dependent on battery power and will extend the receive windows
+until the next transmission window. In fact, only transmissions will make the device abort 
+listening as long as this tranmission lasts. 
+Class C devices cannot do Class B operation.
 
+ \#define _CLASS "A"
+ 
+ All devices will start as class A devices, and may decide to "upgrade" to class B or C.
+Also the gateway may or may not support Class B, which is a superset of class A.
+ NOTE: Only class A is supported
  
 ### Selecting you standard pin-out
 

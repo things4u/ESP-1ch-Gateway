@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg
-// Verison 6.1.4
-// Date: 2019-11-29
+// Verison 6.1.5
+// Date: 2019-12-20
 //
 // All rights reserved. This program and the accompanying materials
 // are made available under the terms of the MIT License

@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.4
-// Date: 2019-11-29
+// Version 6.1.5
+// Date: 2019-12-20
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -34,25 +34,23 @@ int WlanStatus() {
 
 	switch (WiFi.status()) {
 		case WL_CONNECTED:
-#if _DUSB>=1
-			if ( debug>=0 ) {
-				Serial.print(F("A WlanStatus:: CONNECTED to "));				// 3
-				Serial.println(WiFi.SSID());
+#			if _MONITOR>=1
+			if ( debug>=1 ) {
+				mPrint("A WlanStatus:: CONNECTED to " + String(WiFi.SSID()));	// 3
 			}
-#endif
-			WiFi.setAutoReconnect(true);				// Reconenct to this AP if DISCONNECTED
+#			endif //_MONITOR
+			WiFi.setAutoReconnect(true);				// Reconect to this AP if DISCONNECTED
 			return(1);
 			break;
 
 		// In case we get disconnected from the AP we loose the IP address.
 		// The ESP is configured to reconnect to the last router in memory.
 		case WL_DISCONNECTED:
-#if _DUSB>=1
+#			if _MONITOR>=1
 			if ( debug>=0 ) {
-				Serial.print(F("A WlanStatus:: DISCONNECTED, IP="));			// 6
-				Serial.println(WiFi.localIP());
+				mPrint("A WlanStatus:: DISCONNECTED, IP=" + String(WiFi.localIP().toString())); // 6
 			}
-#endif
+#			endif
 			//while (! WiFi.isConnected() ) {
 				// Wait
 				delay(1);
@@ -62,61 +60,60 @@ int WlanStatus() {
 
 		// When still pocessing
 		case WL_IDLE_STATUS:
-#if _DUSB>=1
+#			if _MONITOR>=1
 			if ( debug>=0 ) {
-				Serial.println(F("A WlanStatus:: IDLE"));					// 0
+				mPrint("A WlanStatus:: IDLE");								// 0
 			}
-#endif
+#			endif //_MONITOR
 			break;
 		
 		// This code is generated as soonas the AP is out of range
 		// Whene detected, the program will search for a better AP in range
 		case WL_NO_SSID_AVAIL:
-#if _DUSB>=1
+#			if _MONITOR>=1
 			if ( debug>=0 )
-				Serial.println(F("WlanStatus:: NO SSID"));					// 1
-#endif
+				mPrint("WlanStatus:: NO SSID");								// 1
+#			endif //_MONITOR
 			break;
 			
 		case WL_CONNECT_FAILED:
-#if _DUSB>=1
+#			if _MONITOR>=1
 			if ( debug>=0 )
-				Serial.println(F("A WlanStatus:: FAILED"));					// 4
-#endif
+				mPrint("A WlanStatus:: FAILED");							// 4
+#			endif //_MONITOR
 			break;
 			
 		// Never seen this code
 		case WL_SCAN_COMPLETED:
-#if _DUSB>=1
+#			if _MONITOR>=1
 			if ( debug>=0 )
-				Serial.println(F("A WlanStatus:: SCAN COMPLETE"));			// 2
-#endif
+				mPrint("A WlanStatus:: SCAN COMPLETE");						// 2
+#			endif //_MONITOR
 			break;
 			
 		// Never seen this code
 		case WL_CONNECTION_LOST:
-#if _DUSB>=1
+#			if _MONITOR>=1
 			if ( debug>=0 )
-				Serial.println(F("A WlanStatus:: LOST"));					// 5
-#endif
+				mPrint("A WlanStatus:: Connection LOST");					// 5
+#			endif //_MONITOR
 			break;
 			
 		// This code is generated for example when WiFi.begin() has not been called
 		// before accessing WiFi functions
 		case WL_NO_SHIELD:
-#if _DUSB>=1
+#			if _MONITOR>=1
 			if ( debug>=0 )
-				Serial.println(F("A WlanStatus:: WL_NO_SHIELD"));				// 
-#endif
+				Serial.println(F("A WlanStatus:: WL_NO_SHIELD"));			// 
+#			endif //_MONITOR
 			break;
 			
 		default:
-#if _DUSB>=1
+#			if _MONITOR>=1
 			if ( debug>=0 ) {
-				Serial.print(F("A WlanStatus Error:: code="));
-				Serial.println(WiFi.status());								// 255 means ERROR
+				mPrint("A WlanStatus Error:: code=" + String(WiFi.status()));	// 255 means ERROR
 			}
-#endif
+#			endif //_MONITOR
 			break;
 	}
 	return(-1);
@@ -173,15 +170,11 @@ int WlanReadWpa() {
 #if _WIFIMANAGER==1
 int WlanWriteWpa( char* ssid, char *pass) {
 
-#if _DUSB>=1
+#	if _MONITOR>=1
 	if (( debug >=0 ) && ( pdebug & P_MAIN )) {
-		Serial.print(F("M WlanWriteWpa:: ssid=")); 
-		Serial.print(ssid);
-		Serial.print(F(", pass=")); 
-		Serial.print(pass); 
-		Serial.println();
+		mPrint("WlanWriteWpa:: ssid="+mPrint(ssid)+", pass="+mPrint(pass)); 
 	}
-#endif
+#	endif //_MONITOR
 	// Version 3.3 use of config file
 	String s((char *) ssid);
 	gwayConfig.ssid = s;
@@ -189,9 +182,9 @@ int WlanWriteWpa( char* ssid, char *pass) {
 	String p((char *) pass);
 	gwayConfig.pass = p;
 
-#if GATEWAYNODE==1	
-	gwayConfig.fcnt = frameCount;
-#endif
+#	if GATEWAYNODE==1	
+		gwayConfig.fcnt = frameCount;
+#	endif
 	gwayConfig.ch = ifreq;
 	gwayConfig.sf = sf;
 	gwayConfig.cad = _cad;
@@ -240,7 +233,9 @@ int WlanConnect(int maxTry) {
 	// We clear the WiFi memory and start with previous AP.
 	//
 	if (maxTry==0) {
-		Serial.println(F("WlanConnect:: Init para 0"));
+#		if _MONITOR>=1
+		mPrint("WlanConnect:: Init para 0");
+#		endif //_MONITOR
 		WiFi.persistent(false);
 		WiFi.mode(WIFI_OFF);   // this is a temporary line, to be removed after SDK update to 1.5.4
 		if (gwayConfig.ssid.length() >0) {
@@ -295,7 +290,7 @@ int WlanConnect(int maxTry) {
 			// -1 = No SSID or other cause			
 			int stat = WlanStatus();
 			if ( stat == 1) {
-				writeGwayCfg(CONFIGFILE);					// XXX Write configuration to SPIFFS
+				writeGwayCfg(CONFIGFILE);					// Write configuration to SPIFFS
 				return(1);
 			}
 		
@@ -305,16 +300,16 @@ int WlanConnect(int maxTry) {
 			while (((WiFi.status()) != WL_CONNECTED) && (agains < 10)) {
 				agains++;
 				delay(agains*500);
-#if _DUSB>=1
+#				if _DUSB>=1
 				if ( debug>=0 ) {
 					Serial.print(".");
 				}
-#endif
+#				endif //_DUSB
 			}
-#if _DUSB>=1
-			Serial.println();
-#endif		
-			//if ( WiFi.status() == WL_DISCONNECTED) return(0);				// XXX 180811 removed
+#			if _DUSB>=1
+				Serial.println();
+#			endif //_DUSB		
+			//if ( WiFi.status() == WL_DISCONNECTED) return(0);				// 180811 removed
 
 
 			// Make sure that we can connect to different AP's than 1
@@ -332,13 +327,12 @@ int WlanConnect(int maxTry) {
 	// we can invoike _WIFIMANAGER or else return unsuccessful.
 	if (WiFi.status() != WL_CONNECTED) {
 #if _WIFIMANAGER==1
-#if _DUSB>=1
-		Serial.println(F("Starting Access Point Mode"));
-		Serial.print(F("Connect Wifi to accesspoint: "));
-		Serial.print(AP_NAME);
-		Serial.print(F(" and connect to IP: 192.168.4.1"));
-		Serial.println();
-#endif
+#		if _MONITOR>=1
+		if (debug>=1) {
+			mPrint("Starting Access Point Mode"));
+			mPrint("Connect Wifi to accesspoint: "+mPrint(AP_NAME)+" and connect to IP: 192.168.4.1");
+		}
+#		endif //_MONITOR
 		wifiManager.autoConnect(AP_NAME, AP_PASSWD );
 		//wifiManager.startConfigPortal(AP_NAME, AP_PASSWD );
 		// At this point, there IS a Wifi Access Point found and connected
@@ -353,20 +347,64 @@ int WlanConnect(int maxTry) {
 		//WlanWriteWpa(ssidBuf, (char *)sta_conf.password);
 		WlanWriteWpa((char *)sta_conf.ssid, (char *)sta_conf.password);
 #else
-#if _DUSB>=1
+#		if _MONITOR>=1
 		if (debug>=0) {
-			Serial.println(F("WlanConnect:: Not connected after all"));
-			Serial.print(F("WLAN retry="));
-			Serial.print(i);
-			Serial.print(F(" , stat="));
-			Serial.print(WiFi.status() );						// Status. 3 is WL_CONNECTED
-			Serial.println();
+			mPrint("WlanConnect:: Not connected, WLAN retry="+String(i)+", stat="+String(WiFi.status()) );
 		}
-#endif// _DUSB
+#		endif // _MONITOR
 		return(-1);
 #endif
 	}
 
 	yield();
 	return(1);
+}
+
+// ----------------------------------------------------------------------------
+// resolveHost
+// This function will use MDNS or DNS to resolve a hostname. 
+// So it may be .local or a normal hostname.
+// Return:
+//	svrIP: 4 byte IP address of machine resolved
+// ----------------------------------------------------------------------------
+IPAddress resolveHost(String svrName) 
+{
+	IPAddress svrIP;
+	
+#	if MONITOR>=1
+		mPrint("Server " + String(svrName));
+#	endif
+
+	if (svrName.endsWith(".local")) {
+#		if ESP32_ARCH==1
+			svrName=svrName.substring(0,svrName.length()-6);
+			svrIP = MDNS.queryHost(svrName);
+			for (byte i=0; i<5; i++) {						// Try 5 times MDNS
+				svrIP = MDNS.queryHost(svrName);
+				if (svrIP.toString() != "0.0.0.0") break;
+#				if (_MONITOR>=1)
+					mPrint("ReTrying to resolve with mDNS");
+#				endif
+				die("resolveHost:: ERROR hostByName .local");
+				delay(1000);
+			}
+#		else
+			char cc[svrName.length() +1 ];
+			strcpy(cc, svrName.c_str());
+			if (!WiFi.hostByName(cc, svrIP)) 		// Use DNS to get server IP once
+			{
+				die("resolveHost:: ERROR hostByName");
+			};
+#		endif
+	}
+	else 
+	{
+		char cc[svrName.length() +1 ];
+		strcpy(cc, svrName.c_str());
+		if (!WiFi.hostByName(cc, svrIP)) // Use DNS to get server IP once
+		{
+			die("resolveHost:: ERROR hostByName");
+		};
+	}
+	return svrIP;
 }

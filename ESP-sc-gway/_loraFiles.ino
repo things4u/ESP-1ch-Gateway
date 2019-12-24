@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.4		
-// Date: 2019-11-29	
+// Version 6.1.5		
+// Date: 2019-12-20	
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -18,6 +18,24 @@
 // This file contains the LoRa filesystem specific code
 
 
+#if _MONITOR>=1
+// ----------------------------------------------------------------------------
+// LoRa Monitor logging code.
+// Define one print function and depending on the loggin parameter output
+// to _USB of to the www screen function
+// ----------------------------------------------------------------------------
+int initMonitor(struct moniLine *monitor) {
+	for (int i=0; i< _MONITOR; i++) {
+		//monitor[i].txt[0]=0;
+		monitor[i].txt="";
+	}
+	return(1);
+}
+
+
+
+#endif //_MONITOR
+
 // ============================================================================
 // LORA SPIFFS FILESYSTEM FUNCTIONS
 //
@@ -33,8 +51,11 @@ void id_print (String id, String val) {
 		Serial.print(F("=\t"));
 		Serial.println(val);
 	}
-#endif
+#endif //_DUSB
 }
+
+
+
 
 // ----------------------------------------------------------------------------
 // INITCONFIG; Init the gateway configuration file
@@ -49,7 +70,9 @@ int initConfig(struct espGwayConfig *c) {
 	(*c).pdebug = P_GUI;
 	(*c).cad = _CAD;
 	(*c).hop = false;
+	(*c).seen = false;
 	(*c).expert = false;
+	(*c).monitor = false;
 	(*c).txDelay = 0;					// First Value without saving is 0;
 	(*c).trusted = 1;
 }
@@ -63,13 +86,14 @@ int readConfig(const char *fn, struct espGwayConfig *c) {
 	int tries = 0;
 #if _DUSB>=1
 	Serial.println(F("readConfig:: Starting "));
-#endif
+#endif //_DUSB
+
 	if (!SPIFFS.exists(fn)) {
 #if _DUSB>=1
 		Serial.print(F("readConfig ERR:: file="));
 		Serial.print(fn);
 		Serial.println(F(" does not exist .. Formatting"));
-#endif
+#endif //_DUSB
 		SPIFFS.format();
 		initConfig(c);					// If we cannot read teh config, at least init known values
 		return(-1);
@@ -79,7 +103,7 @@ int readConfig(const char *fn, struct espGwayConfig *c) {
 	if (!f) {
 #if _DUSB>=1
 		Serial.println(F("ERROR:: SPIFFS open failed"));
-#endif
+#endif //_DUSB
 		return(-1);
 	}
 
@@ -89,16 +113,17 @@ int readConfig(const char *fn, struct espGwayConfig *c) {
 		if (( debug>=0 ) && ( pdebug & P_MAIN )) {
 			Serial.print('.');
 		}
-#endif
+#endif //_DUSB
 		// If we wait for more than 10 times, reformat the filesystem
 		// We do this so that the system will be responsive (over OTA for example).
 		//
 		if (tries >= 10) {
 			f.close();
 #if _DUSB>=1
-			if (( debug>=0 ) && ( pdebug & P_MAIN ))
+			if (( debug>=0 ) && ( pdebug & P_MAIN )) {
 				Serial.println(F("Formatting"));
-#endif
+			}
+#endif //_DUSB
 			SPIFFS.format();
 			initConfig(c);
 			f = SPIFFS.open(fn, "r");
@@ -114,7 +139,7 @@ int readConfig(const char *fn, struct espGwayConfig *c) {
 		Serial.print(F("="));
 		Serial.print(val);
 		Serial.println();
-#endif	
+#endif //_DUSB
 
 		if (id == "SSID") {										// WiFi SSID
 			id_print(id, val);
@@ -204,9 +229,17 @@ int readConfig(const char *fn, struct espGwayConfig *c) {
 			id_print(id, val);
 			(*c).logFileNum = (uint16_t) val.toInt();
 		}
-		else if (id == "EXPERT") {								// EXPERT setting
+		else if (id == "EXPERT") {								// EXPERT button setting
 			id_print(id, val);
 			(*c).expert = (uint8_t) val.toInt();
+		}
+		else if (id == "SEEN") {								// SEEN button setting
+			id_print(id, val);
+			(*c).seen = (uint8_t) val.toInt();
+		}
+		else if (id == "MONITOR") {								// MONITOR button setting
+			id_print(id, val);
+			(*c).monitor = (uint8_t) val.toInt();
 		}
 		else if (id == "DELAY") {								// DELAY setting
 			id_print(id, val);
@@ -219,7 +252,7 @@ int readConfig(const char *fn, struct espGwayConfig *c) {
 		else {
 #if _DUSB>=1
 			Serial.print(F("readConfig:: tries++"));
-#endif
+#endif //_DUSB
 			tries++;
 		}
 	}
@@ -230,7 +263,7 @@ int readConfig(const char *fn, struct espGwayConfig *c) {
 		Serial.println(F("readConfig:: Fini"));
 	}
 	Serial.println();
-#endif
+#endif //_DUSB
 
 	return(1);
 }//readConfig
@@ -256,7 +289,7 @@ int writeGwayCfg(const char *fn) {
 
 #if GATEWAYNODE==1
 	gwayConfig.fcnt = frameCount;
-#endif
+#endif //GATEWAYNODE
 	return(writeConfig(fn, &gwayConfig));
 }
 
@@ -275,16 +308,22 @@ int writeConfig(const char *fn, struct espGwayConfig *c) {
 	// If it is not there we should format first.
 	// NOTE: Do not format for other files!
 	if (!SPIFFS.exists(fn)) {
+#if _DUSB>=1
 		Serial.print("WARNING:: writeConfig, file not exists, formatting ");
+#endif //_DUSB
 		SPIFFS.format();
 		initConfig(c);		// XXX make all initial declarations here if config vars need to have a value
+#if _DUSB>=1		
 		Serial.println(fn);
+#endif //_DUSB
 	}
 	File f = SPIFFS.open(fn, "w");
 	if (!f) {
+#if _DUSB>=1	
 		Serial.print("writeConfig: ERROR open file=");
 		Serial.print(fn);
 		Serial.println();
+#endif //_DUSB
 		return(-1);
 	}
 
@@ -313,6 +352,8 @@ int writeConfig(const char *fn, struct espGwayConfig *c) {
 	f.print("DELAY");  f.print('='); f.print((*c).txDelay); f.print('\n');
 	f.print("TRUSTED");  f.print('='); f.print((*c).trusted); f.print('\n');
 	f.print("EXPERT");  f.print('='); f.print((*c).expert); f.print('\n');
+	f.print("SEEN");  f.print('='); f.print((*c).seen); f.print('\n');
+	f.print("MONITOR");  f.print('='); f.print((*c).monitor); f.print('\n');
 	
 	f.close();
 	return(1);
@@ -325,6 +366,7 @@ int writeConfig(const char *fn, struct espGwayConfig *c) {
 // the function without STAT_LOG being proper defined
 // ToDo: Store the fileNo and the fileRec in the status file to save for 
 // restarts
+//
 // Parameters:
 //		line; char array with characters to write to log
 //		cnt;
@@ -352,7 +394,7 @@ int addLog(const unsigned char * line, int cnt)
 			Serial.print(F("G addLog:: Too many logfile, deleting="));
 			Serial.println(fn);
 		}
-#endif
+#endif //_DUSB
 		SPIFFS.remove(fn);
 		gwayConfig.logFileNum--;
 	}
@@ -371,7 +413,7 @@ int addLog(const unsigned char * line, int cnt)
 			Serial.print(gwayConfig.logFileRec);
 			Serial.println();
 		}
-#endif
+#endif //_DUSB
 	}
 	
 	File f = SPIFFS.open(fn, "a");
@@ -381,7 +423,7 @@ int addLog(const unsigned char * line, int cnt)
 			Serial.println("G file open failed=");
 			Serial.println(fn);
 		}
-#endif
+#endif //_DUSB
 		return(0);								// If file open failed, return
 	}
 	
@@ -401,12 +443,12 @@ int addLog(const unsigned char * line, int cnt)
 		}
 #else
 		i+=12;
-#endif
+#endif //_DUSB>=2
 		Serial.print((char *) &line[i]);	// The rest if the buffer contains ascii
 
 		Serial.println();
 	}
-#endif //DUSB
+#endif //_DUSB
 
 
 	for (i=0; i< 12; i++) {					// The first 12 bytes contain non printable characters
@@ -448,11 +490,29 @@ void printLog()
 		}
 		i++;
 	}
-#endif
+#endif //_DUSB
 } //printLog
 
 
 #if _SEENMAX>0
+
+
+// ----------------------------------------------------------------------------
+// initSeen
+// Init the lisrScreen array
+// ----------------------------------------------------------------------------
+int initSeen(struct nodeSeen *listSeen) {
+	int i;
+	for (i=0; i< _SEENMAX; i++) {
+		listSeen[i].idSeen=0;
+		listSeen[i].sfSeen=0;
+		listSeen[i].cntSeen=0;
+		listSeen[i].chnSeen=0;
+		listSeen[i].timSeen=0;
+	}
+	return(1);
+}
+
 
 // ----------------------------------------------------------------------------
 // readSeen
@@ -466,16 +526,18 @@ int readSeen(const char *fn, struct nodeSeen *listSeen) {
 	if (!SPIFFS.exists(fn)) {
 #if _DUSB>=1
 		Serial.print("WARNING:: readSeen, history file not exists ");
-#endif
+#endif //_DUSB
 		initSeen(listSeen);		// XXX make all initial declarations here if config vars need to have a value
 		Serial.println(fn);
 		return(-1);
 	}
 	File f = SPIFFS.open(fn, "r");
 	if (!f) {
+#if _DUSB>=1
 		Serial.print("readConfig:: ERROR open file=");
 		Serial.print(fn);
 		Serial.println();
+#endif //_DUSB
 		return(-1);
 	}
 	for (i=0; i<_SEENMAX; i++) {
@@ -483,7 +545,7 @@ int readSeen(const char *fn, struct nodeSeen *listSeen) {
 		if (!f.available()) {
 #if _DUSB>=1
 			Serial.println(F("readSeen:: No more info left in file"));
-#endif
+#endif //_DUSB
 		}
 		val=f.readStringUntil('\t'); listSeen[i].timSeen = (uint32_t) val.toInt();
 		val=f.readStringUntil('\t'); listSeen[i].idSeen = (uint32_t) val.toInt();
@@ -494,7 +556,7 @@ int readSeen(const char *fn, struct nodeSeen *listSeen) {
 	f.close();
 #if _DUSB>=1
 	printSeen(listSeen);
-#endif
+#endif //_DUSB
 }
 
 
@@ -512,15 +574,19 @@ int writeSeen(const char *fn, struct nodeSeen *listSeen) {
 	if (!SPIFFS.exists(fn)) {
 #if _DUSB>=1
 		Serial.print("WARNING:: writeSeen, file not exists, formatting ");
-#endif
+#endif //_DUSB
 		initSeen(listSeen);		// XXX make all initial declarations here if config vars need to have a value
+#if _DUSB>=1
 		Serial.println(fn);
+#endif //_DUSB
 	}
 	File f = SPIFFS.open(fn, "w");
 	if (!f) {
+#if _DUSB>=1
 		Serial.print("writeConfig:: ERROR open file=");
 		Serial.print(fn);
 		Serial.println();
+#endif //_DUSB
 		return(-1);
 	}
 
@@ -528,13 +594,13 @@ int writeSeen(const char *fn, struct nodeSeen *listSeen) {
 
 			unsigned long timSeen;
 			f.print(listSeen[i].timSeen);		f.print('\t');
-			// Typecast to long to avoid errors in unsigned conversion.
-			f.print((long) listSeen[i].idSeen);		f.print('\t');
-			//f.print(listSeen[i].datSeen);		f.print('\t');
+			// Typecast to long to avoid errors in unsigned conversion!
+			f.print((long) listSeen[i].idSeen);	f.print('\t');
 			f.print(listSeen[i].cntSeen);		f.print('\t');
 			f.print(listSeen[i].chnSeen);		f.print('\t');
+			f.print(listSeen[i].sfSeen);		f.print('\n');
 			//f.print(listSeen[i].rssiSeen);	f.print('\t');
-			f.print(listSeen[i].sfSeen);		f.print('\n');		
+			//f.print(listSeen[i].datSeen);		f.print('\n');			
 	}
 	
 	f.close();
@@ -544,12 +610,12 @@ int writeSeen(const char *fn, struct nodeSeen *listSeen) {
 
 // ----------------------------------------------------------------------------
 // printSeen
-// - Once every few messages, update the SPIFFS file and write the array.
+// - This function writes the last seen array to the USB
 // ----------------------------------------------------------------------------
 int printSeen(struct nodeSeen *listSeen) {
     int i;
 #if _DUSB>=1
-	if (( debug>=0 ) && ( pdebug & P_MAIN )) {
+	if (( debug>=2 ) && ( pdebug & P_MAIN )) {
 		Serial.println(F("printSeen:: "));
 		for (i=0; i<_SEENMAX; i++) {
 			if (listSeen[i].idSeen != 0) {
@@ -569,7 +635,7 @@ int printSeen(struct nodeSeen *listSeen) {
 			}
 		}
 	}
-#endif
+#endif //_DUSB
 	return(1);
 }
 
@@ -594,7 +660,7 @@ int addSeen(struct nodeSeen *listSeen, struct stat_t stat) {
 				Serial.print(F("addSeen:: index="));
 				Serial.print(i);
 			}
-#endif
+#endif //_DUSB
 			listSeen[i].idSeen = stat.node;
 			listSeen[i].chnSeen = stat.ch;
 			listSeen[i].sfSeen |= stat.sf;			// Or the argument
@@ -612,27 +678,10 @@ int addSeen(struct nodeSeen *listSeen, struct stat_t stat) {
 			Serial.print(F("addSeen:: exit=0, index="));
 			Serial.println(i);
 		}
-#endif
+#endif //_DUSB
 		return(0);
 	}
 
-	return(1);
-}
-
-
-// ----------------------------------------------------------------------------
-// initSeen
-// Init the lisrScreen array
-// ----------------------------------------------------------------------------
-int initSeen(struct nodeSeen *listSeen) {
-	int i;
-	for (i=0; i< _SEENMAX; i++) {
-		listSeen[i].idSeen=0;
-		listSeen[i].sfSeen=0;
-		listSeen[i].cntSeen=0;
-		listSeen[i].chnSeen=0;
-		listSeen[i].timSeen=0;
-	}
 	return(1);
 }
 
@@ -646,6 +695,9 @@ void listDir(char * dir)
 {
 #if _DUSB>=1
 	// Nothing here
-#endif
+#endif //_DUSB
 }
-#endif //_SEENMAX>0
+
+
+
+#endif //_SEENMAX>0 End of File

@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.4
-// Date: 2019-11-29
+// Version 6.1.5
+// Date: 2019-12-20
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many other contributors.
@@ -47,15 +47,15 @@
 // How long will it take when hopping before a CDONE or CDETD value
 // is present and can be measured.
 //
-#define EVENT_WAIT 15000						// XXX 180520 was 25 milliseconds before CDDETD timeout
-#define DONE_WAIT 1950							// 2000 microseconds (1/500) sec between CDDONE events
+#define EVENT_WAIT	15000						// XXX 180520 was 25 milliseconds before CDDETD timeout
+#define DONE_WAIT	1950						// 2000 microseconds (1/500) sec between CDDONE events
 
 
 // SPI setting. 8MHz seems to be the max
 #define SPISPEED 8000000						// Set to 8 * 10E6
 
 // Frequencies
-// Set center frequency. If in doubt, choose the first one, comment all others
+// Set center frequency. If in doubt, choose the first one, comment out all others
 // Each "real" gateway should support the first 3 frequencies according to LoRa spec.
 // NOTE: This means you have to specify at least 3 frequencies here for the single
 //	channel gateway to work. 
@@ -162,7 +162,7 @@ vector freqs [] = {
 #else
 int freqs [] = {
 	// Print an Error, Not supported
-#error "Sorry, but your frequency plan is not supported"
+#	error "Sorry, but your frequency plan is not supported"
 };
 #endif
 
@@ -260,34 +260,6 @@ struct pins {
 #define GPS_TX 12
 #endif // _GPS
 
-#elif _PIN_OUT==5
-// ----------------------------------------------------------------------------
-// For ESP32/TTGO based board for EU32 with 0.9" OLED
-// NOTE: This board should be same as general type TTGO (nr 4)
-// but for the moment we include this as a separate item
-//
-// SCK  == GPIO5/ PIN5
-// SS   == GPIO18/PIN18 CS
-// MISO == GPIO19/ PIN19
-// MOSI == GPIO27/ PIN27
-// RST  == GPIO14/ PIN14
-struct pins {
-	uint8_t dio0=26;		// GPIO26 / Dio0 used for one frequency and one SF
-	uint8_t dio1=33;		// GPIO26 / Used for CAD, may or not be shared with DIO0
-	uint8_t dio2=32;		// GPIO26 / Used for frequency hopping, don't care
-	uint8_t ss=18;			// GPIO18 / Dx. Select pin connected to GPIO18
-	uint8_t rst=14;			// GPIO0 / D3. Reset pin not used	
-} pins;
-#define SCK 5				// Check
-#define MISO 19				// Check
-#define MOSI 27				// Check
-#define RST 14				// Check
-#define SS 18
-
-#if _GPS==1
-#define GPS_RX 15
-#define GPS_TX 12
-#endif // _GPS
 
 #else
 // ----------------------------------------------------------------------------
@@ -388,7 +360,7 @@ struct LoraBuffer {
 } LoraDown;
 
 // Up buffer (from Lora sensor to UDP)
-//
+// This struct contains all data of the buffer received from devices to gateway
 
 struct LoraUp {
 	uint8_t		payLoad[128];

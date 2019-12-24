@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.4
-// Date: 2019-11-29
+// Version 6.1.5
+// Date: 2019-12-20
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -17,6 +17,7 @@
 //
 // This file contains the LoRa modem specific code enabling to receive
 // and transmit packages/messages.
+// The functions implemented work in user-space so not with interrupt.
 // ========================================================================================
 //
 //
@@ -122,7 +123,7 @@ uint8_t readRegister(uint8_t addr)
 }
 
 
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 // Write value to a register with address addr. 
 // Function writes one byte at a time.
 // Parameters:
@@ -130,7 +131,7 @@ uint8_t readRegister(uint8_t addr)
 //	value: The value to write to address
 // Returns:
 //	<void>
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 
 // define the settings for SPI writing
 SPISettings writeSettings(SPISPEED, MSBFIRST, SPI_MODE0);
@@ -149,7 +150,7 @@ void writeRegister(uint8_t addr, uint8_t value)
 }
 
 
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 // Write a buffer to a register with address addr. 
 // Function writes one byte at a time.
 // Parameters:
@@ -157,7 +158,7 @@ void writeRegister(uint8_t addr, uint8_t value)
 //	value: The value to write to address
 // Returns:
 //	<void>
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 
 void writeBuffer(uint8_t addr, uint8_t *buf, uint8_t len)
 {
@@ -175,7 +176,7 @@ void writeBuffer(uint8_t addr, uint8_t *buf, uint8_t len)
 	SPI.endTransaction();
 }
 
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 //  setRate is setting rate and spreading factor and CRC etc. for transmission
 //  for example
 //		Modem Config 1 (MC1) == 0x72 for sx1276
@@ -187,21 +188,21 @@ void writeBuffer(uint8_t addr, uint8_t *buf, uint8_t len)
 //		CRC_ON == 0x04
 //
 //	sf is SF7 to SF12
-//	crc is 0x00 (off) or 
-// ----------------------------------------------------------------------------
+//	CRC is 0x00 (off) or 
+// ----------------------------------------------------------------------------------------
 
 void setRate(uint8_t sf, uint8_t crc) 
 {
 	uint8_t mc1=0, mc2=0, mc3=0;
-#if _DUSB>=2
+#	if _MONITOR>=2
 	if ((sf<SF7) || (sf>SF12)) {
 		if (( debug>=1 ) && ( pdebug & P_RADIO )) {
-			Serial.print(F("setRate:: SF="));
-			Serial.println(sf);
+			mPrint("setRate:: SF=" + String(sf));
 		}
 		return;
 	}
-#endif
+#	endif //_MONITOR
+
 	// Set rate based on Spreading Factor etc
     if (sx1272) {
 		mc1= 0x0A;				// SX1276_MC1_BW_250 0x80 | SX1276_MC1_CR_4_5 0x02
@@ -229,7 +230,7 @@ void setRate(uint8_t sf, uint8_t crc)
         if (sf == SF11 || sf == SF12) { mc3|= 0x08; }		// 0x08 | 0x04
     }
 	
-	// Implicit Header (IH), for class b beacons (&& SF6)
+	// Implicit Header (IH), for CLASS B beacons (&& SF6)
 	//if (getIh(LMIC.rps)) {
     //   mc1 |= SX1276_MC1_IMPLICIT_HEADER_MODE_ON;
     //    writeRegister(REG_PAYLOAD_LENGTH, getIh(LMIC.rps)); // required length
@@ -249,11 +250,11 @@ void setRate(uint8_t sf, uint8_t crc)
 }
 
 
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 // Set the frequency for our gateway
 // The function has no parameter other than the freq setting used in init.
 // Since we are using a 1ch gateway this value is set fixed.
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 
 void  setFreq(uint32_t freq)
 {
@@ -267,9 +268,9 @@ void  setFreq(uint32_t freq)
 }
 
 
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 //	Set Power for our gateway
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 void setPow(uint8_t powe)
 {
 	if (powe >= 16) powe = 15;
@@ -281,36 +282,18 @@ void setPow(uint8_t powe)
 	uint8_t pac = (0x80 | (powe & 0xF)) & 0xFF;
 	writeRegister(REG_PAC, (uint8_t)pac);								// set 0x09 to pac
 	
-	// XXX Power settings for CFG_sx1272 are different
+	// Note: Power settings for CFG_sx1272 are different
 	
 	return;
 }
 
 
-// ----------------------------------------------------------------------------
-// Used to set the radio to LoRa mode (transmitter)
-// Please note that this mode can only be set in SLEEP mode and not in Standby.
-// Also there should be not need to re-init this mode is set in the setup() 
-// function.
-// For high freqs (>860 MHz) we need to & with 0x08 otherwise with 0x00
-// ----------------------------------------------------------------------------
 
-//void ICACHE_RAM_ATTR opmodeLora()
-//{
-//#ifdef CFG_sx1276_radio
-//       uint8_t u = OPMODE_LORA | 0x80;   					// TBD: sx1276 high freq 
-//#else // SX-1272
-//	    uint8_t u = OPMODE_LORA | 0x08;
-//#endif
-//    writeRegister(REG_OPMODE, (uint8_t) u);
-//}
-
-
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 // Set the opmode to a value as defined on top
 // Values are 0x00 to 0x07
 // The value is set for the lowest 3 bits, the other bits are as before.
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 void  opmode(uint8_t mode)
 {
 	if (mode == OPMODE_LORA) 
@@ -319,11 +302,11 @@ void  opmode(uint8_t mode)
 		writeRegister(REG_OPMODE, (uint8_t)((readRegister(REG_OPMODE) & ~OPMODE_MASK) | mode));
 }
 
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 // Hop to next frequency as defined by NUM_HOPS
 // This function should only be used for receiver operation. The current
 // receiver frequency is determined by ifreq index like so: freqs[ifreq] 
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 void hop() {
 
 	// 1. Set radio to standby
@@ -359,7 +342,6 @@ void hop() {
 	
 	// Set 0x4D PADAC for SX1276 ; XXX register is 0x5a for sx1272
 	writeRegister(REG_PADAC_SX1276,  0x84); 					// set 0x4D (PADAC) to 0x84
-	//writeRegister(REG_PADAC, readRegister(REG_PADAC) | 0x4);
 	
 	// 8. Reset interrupt Mask, enable all interrupts
 	writeRegister(REG_IRQ_FLAGS_MASK, 0x00);
@@ -370,74 +352,88 @@ void hop() {
 	// Be aware that micros() has increased significantly from calling 
 	// the hop function until printed below
 	//
-#if _DUSB>=1
+#	if _MONITOR>=1
 	if (( debug>=2 ) && ( pdebug & P_RADIO )){
-			Serial.print(F("hop:: hopTime:: "));
-			Serial.print(micros() - hopTime);
-			Serial.print(F(", "));
-			SerialStat(0);
+			String response = "hop:: hopTime:: " + String(micros() - hopTime);
+			mStat(0, response);
+			mPrint(response);
 	}
-#endif
+#	endif //_MONITOR
 	// Remember the last time we hop
 	hopTime = micros();									// At what time did we hop
 }
 	
 
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
+// UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP
 // This LoRa function reads a message from the LoRa transceiver
-// on Success: returns message length read when message correctly received
+// on Success: returns message length read when message correctly received.
 // on Failure: it returns a negative value on error (CRC error for example).
-// UP function
 // This is the "lowlevel" receive function called by stateMachine()
-// dealing with the radio specific LoRa functions
+// dealing with the radio specific LoRa functions.
+//
+// |         | CR = 4/8  | CR= Coding Rate      |             |
+// |Preamble |Header| CRC| Payload              | Payload CRC |
+// |---------|------|----|----------------------|-------------|
+//
+// The function deals with Explicit Header Mode. Implicit header mode is only
+// valid for SF6 and only for Uplink so it does not work for LoraWAN.
 //
 // Parameters:
 //		Payload: uint8_t[] message. when message is read it is returned in payload.
 // Returns:
 //		Length of payload received
 //
-// 9 bytes header
-// followed by data N bytes
-// 4 bytes MIC end
-// ----------------------------------------------------------------------------
+// 9 bytes header (Explicit Header mode only)
+//	Code Rate is 4/8 for Header, might be different for Payload content
+//
+//	1: Payload Length (in bytes)
+//	2: Forward Error Correction Rate
+//	3: Optional 16 Bit (2 Byte) PHDR_CRC for the PHDR (Physical Header)
+//
+// followed by data N bytes Payload (Max 255)
+//
+// 4 bytes MIC end 
+//
+// ----------------------------------------------------------------------------------------
 uint8_t receivePkt(uint8_t *payload)
 {
-    uint8_t irqflags = readRegister(REG_IRQ_FLAGS);			// 0x12; read back flags
 
-    statc.msg_ttl++;											// Receive statistics counter
+    statc.msg_ttl++;													// Receive statistics counter
 
-	uint8_t crcUsed = readRegister(REG_HOP_CHANNEL);
+    uint8_t irqflags = readRegister(REG_IRQ_FLAGS);						// 0x12; read back flags											
+	uint8_t crcUsed = readRegister(REG_HOP_CHANNEL);					// Is CRC used? (Register 0x1C)
 	if (crcUsed & 0x40) {
-#if _DUSB>=1
+#	if _DUSB>=1
 		if (( debug>=2) && (pdebug & P_RX )) {
 			Serial.println(F("R rxPkt:: CRC used"));
 		}
-#endif
+#	endif //_DUSB
 	}
 	
     //  Check for payload IRQ_LORA_CRCERR_MASK=0x20 set
-    if (irqflags & IRQ_LORA_CRCERR_MASK)
+    if (irqflags & IRQ_LORA_CRCERR_MASK)								// Is CRC error?
     {
-#if _DUSB>=1
+#		if _DUSB>=1
         if (( debug>=0) && ( pdebug & P_RADIO )) {
-			Serial.print(F("rxPkt:: Err CRC, ="));
+			Serial.print(F("rxPkt:: Err CRC, t="));
 			SerialTime();
 			Serial.println();
 		}
-#endif
+#		endif //_DUSB
 		return 0;
     }
 	
 	// Is header OK?
 	// Please note that if we reset the HEADER interrupt in RX,
 	// that we would here conclude that there is no HEADER
-	else if ((irqflags & IRQ_LORA_HEADER_MASK) == false)
+	else if ((irqflags & IRQ_LORA_HEADER_MASK) == false)				// Header not ok?
     {
-#if _DUSB>=1
-        if (( debug>=0) && ( pdebug & P_RADIO )) {
-			Serial.println(F("rxPkt:: Err HEADER"));
-		}
-#endif
+#		if _DUSB>=1
+			if (( debug>=0) && ( pdebug & P_RADIO )) {
+				Serial.println(F("rxPkt:: Err HEADER"));
+			}
+#		endif //_DUSB
 		// Reset VALID-HEADER flag 0x10
         writeRegister(REG_IRQ_FLAGS, (uint8_t)(IRQ_LORA_HEADER_MASK  | IRQ_LORA_RXDONE_MASK));	// 0x12; clear HEADER (== 0x10) flag
         return 0;
@@ -454,7 +450,8 @@ uint8_t receivePkt(uint8_t *payload)
 		}
 
 		if (readRegister(REG_FIFO_RX_CURRENT_ADDR) != readRegister(REG_FIFO_RX_BASE_AD)) {
-			if (( debug>=0 ) && ( pdebug & P_RADIO )) {
+#if			_DUSB>=1
+			if (( debug>=1 ) && ( pdebug & P_RADIO )) {
 				Serial.print(F("RX BASE <"));
 				Serial.print(readRegister(REG_FIFO_RX_BASE_AD));
 				Serial.print(F("> != RX CURRENT <"));
@@ -462,40 +459,41 @@ uint8_t receivePkt(uint8_t *payload)
 				Serial.print(F(">"));
 				Serial.println();
 			}
+#			endif //_DUSB
 		}
 		
         //uint8_t currentAddr = readRegister(REG_FIFO_RX_CURRENT_ADDR);	// 0x10
 		uint8_t currentAddr = readRegister(REG_FIFO_RX_BASE_AD);		// 0x0F
         uint8_t receivedCount = readRegister(REG_RX_NB_BYTES);			// 0x13; How many bytes were read
-#if _DUSB>=1
-		if ((debug>=0) && (currentAddr > 64)) {
-			Serial.print(F("rxPkt:: Rx addr>64"));
-			Serial.println(currentAddr);
-		}
-#endif
+#		if _DUSB>=1
+			if ((debug>=1) && (currentAddr > 64)) {						// More than 64 read?
+				Serial.print(F("rxPkt:: Rx addr>64"));
+				Serial.println(currentAddr);
+			}
+#		endif //_DUSB
         writeRegister(REG_FIFO_ADDR_PTR, (uint8_t) currentAddr);		// 0x0D 
 
 		if (receivedCount > PAYLOAD_LENGTH) {
-#if _DUSB>=1
-			if (( debug>=0 ) & ( pdebug & P_RADIO )) {
-				Serial.print(F("rxPkt:: receivedCount="));
-				Serial.println(receivedCount);
-			}
-#endif
+#			if _DUSB>=1
+				if (( debug>=1 ) & ( pdebug & P_RADIO )) {
+					Serial.print(F("rxPkt:: receivedCount="));
+					Serial.println(receivedCount);
+				}
+#			endif //_DUSB
 			receivedCount=PAYLOAD_LENGTH;
 		}
 
         for(int i=0; i < receivedCount; i++)
         {
-            payload[i] = readRegister(REG_FIFO);			// 0x00, FIFO will auto shift register
+            payload[i] = readRegister(REG_FIFO);						// 0x00, FIFO will auto shift register
         }
 
-		writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);		// Reset ALL interrupts
+		writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);					// Reset ALL interrupts
 		
-		// A long as _DUSB is enabled, and RX debug messages are selected,
-		//the received packet is displayed on the output.
-#if _DUSB>=1
-		if (( debug>=0 ) && ( pdebug & P_RX )){
+		// A long as _DUSB is enabled, and P_RX debug messages are selected,
+		// the received packet is displayed on the output.
+#		if _DUSB>=1
+		if (( debug>=1 ) && ( pdebug & P_RX )){
 		
 			Serial.print(F("rxPkt:: t="));
 			SerialTime();
@@ -519,8 +517,9 @@ uint8_t receivePkt(uint8_t *payload)
 			// If debug level 1 is specified, we display the content of the message as well
 			// We need to decode the message as well will it make any sense
 
+#			if _TRUSTED_DECODE>=2
 			if (debug>=1)  {							// Must be 1 for operational use
-#if _TRUSTED_DECODE==2
+
 				int index;								// The index of the codex struct to decode
 				String response="";
 
@@ -531,13 +530,13 @@ uint8_t receivePkt(uint8_t *payload)
 					DevAddr[1] = payload[3];
 					DevAddr[2] = payload[2];
 					DevAddr[3] = payload[1];
-				
-				if ((index = inDecodes((char *)(payload+1))) >=0 ) {
+			
+				if ((index = inDecodes((char *)(payload+1))) >=0 ) {	
 					Serial.print(F(", Ind="));
 					Serial.print(index);
 					//Serial.println();
 				}
-				else if (debug>=1) {
+				else if (debug>=1) {	
 					Serial.print(F(", No Index"));
 					Serial.println();
 					return(receivedCount);
@@ -546,15 +545,10 @@ uint8_t receivePkt(uint8_t *payload)
 				// ------------------------------
 				
 				Serial.print(F(", data="));
-				for (int i=0; i<receivedCount; i++) { data[i] = payload[i]; }		// Copy array
-				
-				//for (int i=0; i<receivedCount; i++) {
-				//	if (payload[i]<=0xF) Serial.print('0');
-				//	Serial.print(payload[i], HEX);
-				//	Serial.print(' ');
-				//}
 
-
+				for (int i=0; i<receivedCount; i++) { 			// Copy array
+					data[i] = payload[i]; 
+				}
 
 				uint16_t frameCount=payload[7]*256 + payload[6];
 				
@@ -567,7 +561,9 @@ uint8_t receivePkt(uint8_t *payload)
 				Serial.print(F(", addr="));
 				
 				for (int i=0; i<4; i++) {
-					if (DevAddr[i]<=0xF) Serial.print('0');
+					if (DevAddr[i]<=0xF) {
+						Serial.print('0');
+					}
 					Serial.print(DevAddr[i], HEX);
 					Serial.print(' ');
 				}
@@ -581,14 +577,14 @@ uint8_t receivePkt(uint8_t *payload)
 					Serial.print(data[i], HEX);
 					Serial.print(' ');
 				}
-#endif // _TRUSTED_DECODE
-			}
+			|
+#			endif // _TRUSTED_DECODE
 			
 			Serial.println();
 			
 			if (debug>=2) Serial.flush();
 		}
-#endif //DUSB
+#		endif //DUSB
 		return(receivedCount);
     }
 
@@ -598,19 +594,20 @@ uint8_t receivePkt(uint8_t *payload)
 		IRQ_LORA_HEADER_MASK | 
 		IRQ_LORA_CRCERR_MASK));							// 0x12; Clear RxDone IRQ_LORA_RXDONE_MASK
     return 0;
-} //receivePkt
+} //receivePkt UP
 	
 	
 	
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
+// DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN 
 // This DOWN function sends a payload to the LoRa node over the air
 // Radio must go back in standby mode as soon as the transmission is finished
 // 
 // NOTE:: writeRegister functions should not be used outside interrupts
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 bool sendPkt(uint8_t *payLoad, uint8_t payLength)
 {
-#if _DUSB>=2
+#	if _DUSB>=2
 	if (payLength>=128) {
 		if (debug>=1) {
 			Serial.print("sendPkt:: len=");
@@ -618,16 +615,18 @@ bool sendPkt(uint8_t *payLoad, uint8_t payLength)
 		}
 		return false;
 	}
-#endif
+#	endif
+	
 	writeRegister(REG_FIFO_ADDR_PTR, (uint8_t) readRegister(REG_FIFO_TX_BASE_AD));	// 0x0D, 0x0E
 	
 	writeRegister(REG_PAYLOAD_LENGTH, (uint8_t) payLength);				// 0x22
-	payLoad[payLength] = 0x00;
+	payLoad[payLength] = 0x00;											// terminate buffer
 	writeBuffer(REG_FIFO, (uint8_t *) payLoad, payLength);
+	
 	return true;
 }
 
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 // loraWait()
 // This function implements the wait protocol needed for downstream transmissions.
 // Note: Timing of downstream and JoinAccept messages is VERY critical.
@@ -644,13 +643,13 @@ bool sendPkt(uint8_t *payLoad, uint8_t payLength)
 // 
 // Parameter: uint32-t tmst gives the micros() value when transmission should start. (!!!)
 // Note: We assume LoraDown.sfTx contains the SF we will use for downstream message.
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 
 void loraWait(const uint32_t timestamp)
 {
 	uint32_t startMics = micros();						// Start of the loraWait function
 	uint32_t tmst = timestamp;
-// XXX
+
 	int32_t adjust=0;
 	switch (LoraDown.sfTx) {
 		case 7: adjust= 60000; break;					// Make time for SF7 longer 
@@ -660,12 +659,12 @@ void loraWait(const uint32_t timestamp)
 		case 11: break;
 		case 12: break;
 		default:
-#if _DUSB>=1
+#		if _DUSB>=1
 		if (( debug>=1 ) && ( pdebug & P_TX )) {
 			Serial.print(F("T loraWait:: unknown SF="));
 			Serial.print(LoraDown.sfTx);
 		}
-#endif
+#		endif
 		break;
 	}
 	tmst = tmst + gwayConfig.txDelay + adjust;			// tmst based on txDelay and spreading factor
@@ -685,7 +684,7 @@ void loraWait(const uint32_t timestamp)
 	// And we use delayMicroseconds() to wait
 	if (waitTime>0) delayMicroseconds(waitTime);
 
-#if _DUSB>=1
+#	if _DUSB>=1
 	else if ((waitTime+20) < 0) {
 		Serial.println(F("loraWait:: TOO LATE"));		// Never happens
 	}
@@ -704,11 +703,11 @@ void loraWait(const uint32_t timestamp)
 		Serial.println();
 		if (debug>=2) Serial.flush();
 	}
-#endif
+#	endif
 }
 
 
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 // txLoraModem
 // Init the transmitter and transmit the buffer
 // After successful transmission (dio0==1) TxDone re-init the receiver
@@ -732,7 +731,7 @@ void loraWait(const uint32_t timestamp)
 // 14. Write buffer (byte by byte)
 // 15. Wait until the right time to transmit has arrived
 // 16. opmode TX
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 
 void txLoraModem(
 				uint8_t *payLoad, 		// Payload contents
@@ -745,7 +744,7 @@ void txLoraModem(
 				uint8_t iiq				// Interrupt
 				)
 {
-#if _DUSB>=2
+#	if _DUSB>=2
 	if (debug>=1) {
 		// Make sure that all serial stuff is done before continuing
 		Serial.print(F("txLoraModem::"));
@@ -756,7 +755,8 @@ void txLoraModem(
 		Serial.println();
 		if (debug>=2) Serial.flush();
 	}
-#endif
+#	endif
+
 	_state = S_TX;
 		
 	// 1. Select LoRa modem from sleep mode
@@ -824,7 +824,7 @@ void txLoraModem(
 }// txLoraModem
 
 
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 // Setup the LoRa receiver on the connected transceiver.
 // - Determine the correct transceiver type (sx1272/RFM92 or sx1276/RFM95)
 // - Set the frequency to listen to (1-channel remember)
@@ -836,11 +836,11 @@ void txLoraModem(
 // 3. Set Frequency
 // 4. Spreading Factor
 // 5. Set interrupt mask
-// 6. Clear all interrupt flags
+// 6. 
 // 7. Set opmode to OPMODE_RX
 // 8. Set _state to S_RX
 // 9. Reset all interrupts
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 
 void rxLoraModem()
 {
@@ -864,7 +864,7 @@ void rxLoraModem()
 	//For TX we have to set the PAYLOAD_LENGTH
     //writeRegister(REG_PAYLOAD_LENGTH, (uint8_t) PAYLOAD_LENGTH);	// set 0x22, 0x40==64Byte long
 
-	// Set CRC Protection or MAX payload protection
+	// Set CRC Protection for MAX payload protection
 	//writeRegister(REG_MAX_PAYLOAD_LENGTH, (uint8_t) MAX_PAYLOAD_LENGTH);	// set 0x23 to 0x80==128
 	
 	//Set the start address for the FiFO (Which should be 0)
@@ -873,7 +873,7 @@ void rxLoraModem()
 	// Low Noise Amplifier used in receiver
 	writeRegister(REG_LNA, (uint8_t) LNA_MAX_GAIN);  						// 0x0C, 0x23
 	
-	// Accept no interrupts except RXDONE, RXTOUT en RXCRC
+	// 5. Accept no interrupts except RXDONE, RXTOUT en RXCRC
 	writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) ~(
 		IRQ_LORA_RXDONE_MASK | 
 		IRQ_LORA_RXTOUT_MASK | 
@@ -895,19 +895,23 @@ void rxLoraModem()
 			MAP_DIO2_LORA_NOP |			
 			MAP_DIO3_LORA_CRC));
 
-	// Set the opmode to either single or continuous receive. The first is used when
+	// 7+8.  Set the opmode to either single or continuous receive. The first is used when
 	// every message can come on a different SF, the second when we have fixed SF
 	if (_cad) {
 		// cad Scanner setup, set _state to S_RX
-		// Set Single Receive Mode, goes in STANDBY mode after receipt
-		_state= S_RX;
-		opmode(OPMODE_RX_SINGLE);								// 0x80 | 0x06 (listen one message)
+		// Set Single Receive Mode, and go in STANDBY mode after receipt
+		_state= S_RX;											// 8.
+		opmode(OPMODE_RX_SINGLE);								// 7. 0x80 | 0x06 (listen one message)
 	}
 	else {
 		// Set Continous Receive Mode, useful if we stay on one SF
-		_state= S_RX;
-		if (_hop) Serial.println(F("rxLoraModem:: ERROR continuous receive in hop mode"));
-		opmode(OPMODE_RX);										// 0x80 | 0x05 (listen)
+		_state= S_RX;											// 8.
+#		if _DUSB>=1
+		if (_hop) {
+			Serial.println(F("rxLoraModem:: ERROR continuous receive in hop mode"));
+		}
+#		endif
+		opmode(OPMODE_RX);										// 7. 0x80 | 0x05 (listen)
 	}
 	
 	// 9. clear all radio IRQ flags
@@ -917,7 +921,7 @@ void rxLoraModem()
 }// rxLoraModem
 
 
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 // function cadScanner()
 //
 // CAD Scanner will scan on the given channel for a valid Symbol/Preamble signal.
@@ -926,7 +930,7 @@ void rxLoraModem()
 // we will set the radio to the SF with best rssi (indicating reception on that sf).
 // The function sets the _state to S_SCAN
 // NOTE: DO not set the frequency here but use the frequency hopper
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 void cadScanner()
 {
 	// 1. Put system in LoRa mode (which destroys all other modes)
@@ -974,11 +978,20 @@ void cadScanner()
 }// cadScanner
 
 
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 // First time initialisation of the LoRa modem
 // Subsequent changes to the modem state etc. done by txLoraModem or rxLoraModem
 // After initialisation the modem is put in rx mode (listen)
-// ----------------------------------------------------------------------------
+//	1.	Set Radio to sleep
+//	2.	Set opmode to LoRa
+//	3.	Set Frequency
+//	4.	Set rate and Spreading Factor
+//	5.	Set chip version
+//	6.	Set SYNC word
+//	7.	Set ranp-up time
+//	8.	Set interrupt masks
+//	9.	Clear INT flags
+// ----------------------------------------------------------------------------------------
 void initLoraModem(
 				)
 {
@@ -989,9 +1002,6 @@ void initLoraModem(
     digitalWrite(pins.rst, HIGH);
 	delayMicroseconds(10000);
 	digitalWrite(pins.ss, HIGH);
-#if _DUSB>=1
-
-#endif
 
 #else
 	// Reset the transceiver chip with a pulse of 10 mSec
@@ -1000,10 +1010,10 @@ void initLoraModem(
     digitalWrite(pins.rst, LOW);
 	delayMicroseconds(10000);
 #endif
-	// 2. Set radio to sleep
+	// 1. Set radio to sleep
 	opmode(OPMODE_SLEEP);										// set register 0x01 to 0x00
 
-	// 1 Set LoRa Mode
+	// 2 Set LoRa Mode
 	opmode(OPMODE_LORA);										// set register 0x01 to 0x80
 	
 	// 3. Set frequency based on value in freq
@@ -1014,24 +1024,26 @@ void initLoraModem(
 	
 	// Low Noise Amplifier used in receiver
     writeRegister(REG_LNA, (uint8_t) LNA_MAX_GAIN);  			// 0x0C, 0x23
-#if _PIN_OUT==4
-	delay(1);
-#endif
+#	if _PIN_OUT==4
+		delay(1);
+#	endif
+
+	// 5. Set chip type/version
     uint8_t version = readRegister(REG_VERSION);				// Read the LoRa chip version id
     if (version == 0x22) {
         // sx1272
-#if _DUSB>=2
-        Serial.println(F("WARNING:: SX1272 detected"));
-#endif
+#		if _DUSB>=2
+			Serial.println(F("WARNING:: SX1272 detected"));
+#		endif
         sx1272 = true;
     } 
 	
 	else if (version == 0x12) {
         // sx1276?
-#if _DUSB>=2
+#			if _DUSB>=2
             if (debug >=1) 
 				Serial.println(F("SX1276 starting"));
-#endif
+#			endif
             sx1272 = false;
 	}
 	else {
@@ -1039,22 +1051,22 @@ void initLoraModem(
 		// therefore specified the wrong type of wiring/pins to the software
 		// Maybe this issue can be resolved of we try one of the other defined 
 		// boards. (Comresult or Hallard or ...)
-#if _DUSB>=1
-		Serial.print(F("Unknown transceiver="));
-		Serial.print(version,HEX);
-		Serial.print(F(", pins.rst ="));	Serial.print(pins.rst);
-		Serial.print(F(", pins.ss  ="));	Serial.print(pins.ss);
-		Serial.print(F(", pins.dio0 ="));	Serial.print(pins.dio0);
-		Serial.print(F(", pins.dio1 ="));	Serial.print(pins.dio1);
-		Serial.print(F(", pins.dio2 ="));	Serial.print(pins.dio2);
-		Serial.println();
-		Serial.flush();
-#endif
+#		if _DUSB>=1
+			Serial.print(F("Unknown transceiver="));
+			Serial.print(version,HEX);
+			Serial.print(F(", pins.rst ="));	Serial.print(pins.rst);
+			Serial.print(F(", pins.ss  ="));	Serial.print(pins.ss);
+			Serial.print(F(", pins.dio0 ="));	Serial.print(pins.dio0);
+			Serial.print(F(", pins.dio1 ="));	Serial.print(pins.dio1);
+			Serial.print(F(", pins.dio2 ="));	Serial.print(pins.dio2);
+			Serial.println();
+			Serial.flush();
+#		endif
 		die("");												// Maybe first try another kind of receiver
     }
 	// If we are here, the chip is recognized successfully
 	
-	// 7. set sync word
+	// 6. set sync word
 	writeRegister(REG_SYNC_WORD, (uint8_t) 0x34);				// set 0x39 to 0x34 LORA_MAC_PREAMBLE
 	
 	// prevent node to node communication
@@ -1068,14 +1080,14 @@ void initLoraModem(
 	writeRegister(REG_FIFO_ADDR_PTR, (uint8_t) readRegister(REG_FIFO_RX_BASE_AD));	// set reg 0x0D to 0x0F
 	writeRegister(REG_HOP_PERIOD,0x00);							// reg 0x24, set to 0x00
 
-	// 5. Config PA Ramp up time								// set reg 0x0A  
+	// 7. Config PA Ramp up time								// set reg 0x0A  
 	writeRegister(REG_PARAMP, (readRegister(REG_PARAMP) & 0xF0) | 0x08); // set PA ramp-up time 50 uSec
 	
 	// Set 0x4D PADAC for SX1276 ; XXX register is 0x5a for sx1272
 	writeRegister(REG_PADAC_SX1276,  0x84); 					// set 0x4D (PADAC) to 0x84
 	//writeRegister(REG_PADAC, readRegister(REG_PADAC) | 0x4);
 	
-	// Reset interrupt Mask, enable all interrupts
+	// 8. Reset interrupt Mask, enable all interrupts
 	writeRegister(REG_IRQ_FLAGS_MASK, 0x00);
 	
 	// 9. clear all radio IRQ flags
@@ -1083,22 +1095,22 @@ void initLoraModem(
 }// initLoraModem
 
 
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 // Void function startReceiver.
 // This function starts the receiver loop of the LoRa service.
 // It starts the LoRa modem with initLoraModem(), and then starts
 // the receiver either in single message (CAD) of in continuous
 // reception (STD).
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 void startReceiver() {
 	initLoraModem();								// XXX 180326, after adapting this function 
 	if (_cad) {
-#if _DUSB>=1
+#		if _DUSB>=1
 		if (( debug>=1 ) && ( pdebug & P_SCAN )) {
 			Serial.println(F("S PULL:: _state set to S_SCAN"));
 			if (debug>=2) Serial.flush();
 		}
-#endif
+#		endif
 		_state = S_SCAN;
 		sf = SF7;
 		cadScanner();
@@ -1112,21 +1124,21 @@ void startReceiver() {
 }
 
 
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 // Interrupt_0 Handler.
 // Both interrupts DIO0 and DIO1 are mapped on GPIO15. Se we have to look at 
 // the interrupt flags to see which interrupt(s) are called.
 //
 // NOTE:: This method may work not as good as just using more GPIO pins on 
 //  the ESP8266 mcu. But in practice it works good enough
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 void ICACHE_RAM_ATTR Interrupt_0()
 {
 	_event=1;
 }
 
 
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 // Interrupt handler for DIO1 having High Value
 // As DIO0 and DIO1 may be multiplexed on one GPIO interrupt handler
 // (as we do) we have to be careful only to call the right Interrupt_x
@@ -1136,15 +1148,15 @@ void ICACHE_RAM_ATTR Interrupt_0()
 //		- CDDETD
 //		- RXTIMEOUT
 //		- (RXDONE error only)
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 void ICACHE_RAM_ATTR Interrupt_1()
 {
 	_event=1;
 }
 
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 // Frequency Hopping Channel (FHSS) dio2
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 void ICACHE_RAM_ATTR Interrupt_2() 
 {
 	_event=1;

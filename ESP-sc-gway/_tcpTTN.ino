@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.4
-// Date: 2019-11-29
+// Version 6.1.5
+// Date: 2019-12-20
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -35,7 +35,7 @@
 
 #if defined(_TTNROUTER)
 #if defined(_UDPROUTER)
-#error "Error: Please undefine _UDPROUTER if you like to use _TTNROUTER"
+#	error "Error: Please undefine _UDPROUTER if you like to use _TTNROUTER"
 #endif
 
 // The following functions ae defined in this modue:
@@ -49,7 +49,7 @@
 // Add gateway code of functions here
 
 void connectTtn() {
-#error "Error: Please define and use _UDPROUTER instead of _TTNROUTER"
+#	error "Error: Please define and use _UDPROUTER instead of _TTNROUTER"
 }
 
 int readTtn(int Packetsize) {

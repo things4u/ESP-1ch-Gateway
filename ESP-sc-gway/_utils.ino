@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.4
-// Date: 2019-11-29
+// Version 6.1.5
+// Date: 2019-12-20
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -19,12 +19,130 @@
 // ========================================================================================
 
 
-// ==================== STRING STRING STRING ==================================
+// ==================== STRING STRING STRING ==============================================
+
+
+// ----------------------------------------------------------------------------------------
+// Print to the monitor console.
+// This function is used all over the gateway code as a substitue for USB debug code.
+// It allows webserver users to view printed/debugging code.
+//
+// Parameters:
+//	txt: The text to be printed.
+// return:
+//	<None>
+// ----------------------------------------------------------------------------------------
+
+static void mPrint(String txt) 
+{
+	
+#	if DUSB>=1
+		Serial.println(F(txt));
+		if (debug>=2) Serial.flush();
+#	endif //_DUSB
+
+#	if _MONITOR>=1
+	time_t tt = now();
+	
+	for (int i=_MONITOR; i>0; i--) {		// Do only for values present....
+		monitor[i]= monitor[i-1];
+	}
+	
+	monitor[0].txt  = String(day(tt))	+ "-";
+	monitor[0].txt += String(month(tt))	+ "-";
+	monitor[0].txt += String(year(tt))	+ " ";
+	
+	byte _hour   = hour(tt);
+	byte _minute = minute(tt);
+	byte _second = second(tt);
+
+	if (_hour   < 10) monitor[0].txt += "0"; monitor[0].txt += String( _hour )+ ":";
+	if (_minute < 10) monitor[0].txt += "0"; monitor[0].txt += String(_minute) + ":";
+	if (_second < 10) monitor[0].txt += "0"; monitor[0].txt += String(_second) + "- ";
+	
+	monitor[0].txt += String(txt);
+	
+#	endif //_MONITOR
+	return;
+}
+
 
 // ----------------------------------------------------------------------------
+// mStat
+// Print the statistics on Serial (USB) port and/or Monitor
+// Depending on setting of _DUSB and _MONITOR.
+// Note: This function does not initialise the response var, will only append.
+// Parameters:
+//	Interrupt:	8-bit
+//	Response:	String
+// Return:
+//	1: If successful
+//	0: No Success
+// ----------------------------------------------------------------------------
+
+int mStat(uint8_t intr, String & response) 
+{
+#if _MONITOR>=1
+
+	if (debug>=0) {
+	
+		response += "I=";
+
+		if (intr & IRQ_LORA_RXTOUT_MASK) response += String("RXTOUT ");		// 0x80
+		if (intr & IRQ_LORA_RXDONE_MASK) response += String("RXDONE ");		// 0x40
+		if (intr & IRQ_LORA_CRCERR_MASK) response += "CRCERR ";		// 0x20
+		if (intr & IRQ_LORA_HEADER_MASK) response += "HEADER ";		// 0x10
+		if (intr & IRQ_LORA_TXDONE_MASK) response += "TXDONE ";		// 0x08
+		if (intr & IRQ_LORA_CDDONE_MASK) response += String("CDDONE ");		// 0x04
+		if (intr & IRQ_LORA_FHSSCH_MASK) response += "FHSSCH ";		// 0x02
+		if (intr & IRQ_LORA_CDDETD_MASK) response += "CDDETD ";		// 0x01
+
+		if (intr == 0x00) response += "  --  ";
+			
+		response += ", F=" + String(ifreq);
+		response += ", SF=" + String(sf);
+		response += ", E=" + String(_event);
+			
+		response += ", S=";
+
+		switch (_state) {
+			case S_INIT:
+				response += "INIT ";
+			break;
+			case S_SCAN:
+				response += "SCAN ";
+			break;
+			case S_CAD:
+				response += "CAD  ";
+			break;
+			case S_RX:
+				response += String("RX   ");
+			break;
+			case S_TX:
+				response += "TX   ";
+			break;
+			case S_TXDONE:
+				response += "TXDONE";
+			break;
+			default:
+				response += " -- ";
+		}
+		response += ", eT=";
+		response += String( micros() - eventTime );
+		response += ", dT=";
+		response += String( micros() - doneTime );
+
+		//mPrint(response);							// Do actual printing
+	}
+#endif //_MONITOR
+	return(1);
+}
+
+
+// ----------------------------------------------------------------------------------------
 // Fill a HEXadecimal String  from a 4-byte char array
 //
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 static void printHEX(char * hexa, const char sep, String& response) 
 {
 	char m;
@@ -36,13 +154,13 @@ static void printHEX(char * hexa, const char sep, String& response)
 
 
 
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 // stringTime
 // Print the time t into the String reponse. t is of type time_t in seconds.
 // Only when RTC is present we print real time values
 // t contains number of seconds since system started that the event happened.
 // So a value of 100 would mean that the event took place 1 minute and 40 seconds ago
-// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 static void stringTime(time_t t, String& response) {
 
 	if (t==0) { response += "--"; return; }
@@ -66,17 +184,14 @@ static void stringTime(time_t t, String& response) {
 		case 6: response += "Friday "; break;
 		case 7: response += "Saturday "; break;
 	}
-	response += String() + day(eTime) + "-";
-	response += String() + month(eTime) + "-";
-	response += String() + year(eTime) + " ";
-	
-	if (_hour < 10) response += "0";
-	response += String() + _hour + ":";
-	if (_minute < 10) response += "0";
-	response += String() + _minute + ":";
-	if (_second < 10) response += "0";
-	response += String() + _second;
+	response += String(day(eTime)) + "-";
+	response += String(month(eTime)) + "-";
+	response += String(year(eTime)) + " ";	
+	if (_hour < 10) response += "0";   response += String(_hour) + ":";
+	if (_minute < 10) response += "0"; response += String(_minute) + ":";
+	if (_second < 10) response += "0"; response += String(_second);
 }
+
 
 // ============== SERIAL SERIAL SERIAL ========================================
 

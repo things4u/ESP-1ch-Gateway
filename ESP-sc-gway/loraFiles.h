@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.4
-// Date: 2019-11-29
+// Version 6.1.5
+// Date: 2019-12-20
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -70,7 +70,7 @@ struct espGwayConfig {
 	uint8_t sf;					// range from SF7 to SF12
 	uint8_t debug;				// range 0 to 4
 	uint8_t pdebug;				// pattern debug, 
-	uint8_t trusted;				// pattern debug, 
+	uint8_t trusted;			// pattern debug, 
 
 
 	
@@ -78,7 +78,9 @@ struct espGwayConfig {
 	bool hop;					// Is HOP enabled (Note: default be disabled)
 	bool isNode;				// Is gateway node enabled
 	bool refresh;				// Is WWW browser refresh enabled
+	bool seen;
 	bool expert;
+	bool monitor;
 	
 	String ssid;				// SSID of the last connected WiFi Network
 	String pass;				// Password of WiFi network
@@ -109,6 +111,7 @@ struct espGwayConfig {
 #define nSF12	0x40
 #define nFSK	0x80
 
+// define the Seen functon as when we have seen seen last time nodes last time
 struct nodeSeen {
 	unsigned long timSeen;
 	uint32_t idSeen;
@@ -118,4 +121,8 @@ struct nodeSeen {
 };
 struct nodeSeen listSeen[_SEENMAX];
 
-
+// define the loggin structure used for printout of error and warning messages
+struct moniLine {
+	String txt;
+};
+struct moniLine monitor[_MONITOR];
