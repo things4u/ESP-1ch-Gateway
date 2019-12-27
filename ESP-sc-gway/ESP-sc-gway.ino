@@ -548,6 +548,7 @@ void setup() {
 #if ESP32_ARCH==1
 	sprintf(hostname, "%s%02x%02x%02x", "esp32-", MAC_array[3], MAC_array[4], MAC_array[5]);
 	WiFi.setHostname( hostname );
+	MDNS.begin(hostname);
 #else
 	sprintf(hostname, "%s%02x%02x%02x", "esp8266-", MAC_array[3], MAC_array[4], MAC_array[5]);
 	wifi_station_set_hostname( hostname );

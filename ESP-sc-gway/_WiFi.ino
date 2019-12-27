@@ -340,6 +340,7 @@ int WlanConnect(int maxTry) {
 		//String s = WiFi.SSID();
 		//char ssidBuf[s.length()+1];
 		//s.toCharArray(ssidBuf,s.length()+1);
+		
 		// Now look for the password
 		struct station_config sta_conf;
 		wifi_station_get_config(&sta_conf);
@@ -371,7 +372,7 @@ IPAddress resolveHost(String svrName)
 {
 	IPAddress svrIP;
 	
-#	if MONITOR>=1
+#	if _MONITOR>=1
 		mPrint("Server " + String(svrName));
 #	endif
 
@@ -385,7 +386,6 @@ IPAddress resolveHost(String svrName)
 #				if (_MONITOR>=1)
 					mPrint("ReTrying to resolve with mDNS");
 #				endif
-				die("resolveHost:: ERROR hostByName .local");
 				delay(1000);
 			}
 #		else
