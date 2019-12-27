@@ -118,8 +118,8 @@ codex decodes[] = {
 // Port is UDP port in this program
 //
 // Default for testing: Switched off
-#define _THINGSERVER "your.extra.server"		// Server URL of the LoRa-udp.js handler
-#define _THINGPORT 1700						// Port 1700 is old compatibility
+// #define _THINGSERVER "your.extra.server"		// Server URL of the LoRa-udp.js handler
+// #define _THINGPORT 1700						// Port 1700 is old compatibility
 
 
 // For asserting and testing the following defines are used.
