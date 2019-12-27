@@ -31,7 +31,7 @@
 
 // Specify the correct version and date of your gateway here.
 // Normally it is provided with the GitHub version
-#define VERSION "V.6.1.5.E.EU868; 191220g"
+#define VERSION "V.6.1.5.E.EU868; 191227h"
 
 
 // Define whether we should do a formatting of SPIFFS when starting the gateway
