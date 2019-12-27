@@ -77,7 +77,7 @@ static int LoRaSensors(uint8_t *buf) {
 
 #	if _MONITOR>=1
 	if (debug>=0) {
-		SmPrint("LoRaSensors:: ");
+		mPrint("LoRaSensors:: ");
 	}
 #	endif //_MONITOR
 
@@ -108,7 +108,7 @@ static int LoRaSensors(uint8_t *buf) {
 #if _GPS==1
 #	if _MONITOR>=1
 	if (debug>=1)
-		mPrint("GPS sensor"));
+		mPrint("GPS sensor");
 #	endif //_MONITOR
 
 #	if _DUSB>=1

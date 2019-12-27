@@ -20,7 +20,7 @@
 //	https://github.com/Lora-net/packet_forwarder/blob/master/PROTOCOL.TXT
 //
 // Notes: 
-// - Once call gethostbyname() to get IP for services, after that only use IP
+// - Once call hostbyname() to get IP for services, after that only use IP
 //	 addresses (too many gethost name makes the ESP unstable)
 // - Only call yield() in main stream (not for background NTP sync). 
 //
@@ -254,17 +254,22 @@ void ICACHE_FLASH_ATTR ReleaseMutex(int *mutex);
 #endif
 
 // ----------------------------------------------------------------------------
-// DIE is not used actively in the source code anymore.
+// DIE is not used actively in the source code apart from resolveHost().
 // It is replaced by a Serial.print command so we know that we have a problem
 // somewhere.
 // There are at least 3 other ways to restart the ESP. Pick one if you want.
 // ----------------------------------------------------------------------------
-void die(const char *s)
+void die(String s)
 {
+#	if _MONITOR>=1
+	mPrint(s);
+#	endif
+
+#	if _DUSB>=1
 	Serial.println(s);
-#	if _DUSB>=1 || _MONITOR>=1
 	if (debug>=2) Serial.flush();
 #	endif //_DUSB _MONITOR
+
 	delay(50);
 	// system_restart();									// SDK function
 	// ESP.reset();				

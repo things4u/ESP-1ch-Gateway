@@ -391,9 +391,9 @@ IPAddress resolveHost(String svrName)
 #		else
 			char cc[svrName.length() +1 ];
 			strcpy(cc, svrName.c_str());
-			if (!WiFi.hostByName(cc, svrIP)) 		// Use DNS to get server IP once
+			if (!WiFi.hostByName(cc, svrIP)) 				// Use DNS to get server IP once
 			{
-				die("resolveHost:: ERROR hostByName");
+				die("resolveHost:: ERROR hostByName="+ String(cc));
 			};
 #		endif
 	}
@@ -403,7 +403,7 @@ IPAddress resolveHost(String svrName)
 		strcpy(cc, svrName.c_str());
 		if (!WiFi.hostByName(cc, svrIP)) // Use DNS to get server IP once
 		{
-			die("resolveHost:: ERROR hostByName");
+			die("resolveHost:: ERROR hostByName="+ String(cc));
 		};
 	}
 	return svrIP;
