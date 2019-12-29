@@ -215,8 +215,8 @@ static void wwwButtons()
 {
 	String response = "";
 	String mode = (gwayConfig.expert ? "Basic Mode" : "Expert Mode");
-	String moni = (gwayConfig.monitor ? "Hide Monitor" : "Monitor ON");
-	String seen = (gwayConfig.seen ? "Seen OFF" : "Node last seen");
+	String moni = (gwayConfig.monitor ? "Hide Monitor" : "Show Monitor");
+	String seen = (gwayConfig.seen ? "Hide Last Seen" : "Show Last Seen");
 
 	YesNo();												// Init the Yes/No function
 	buttonDocu();
@@ -951,7 +951,7 @@ static void messageHistory()
 // --------------------------------------------------------------------------------
 static void nodeHistory() 
 {
-#if _SEENMAX > 0
+#if _SEENMAX >= 1
 	if (gwayConfig.seen) {
 		// First draw the headers
 		String response="";

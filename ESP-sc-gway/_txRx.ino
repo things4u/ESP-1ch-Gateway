@@ -597,7 +597,7 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 
 // When we have the node address and the SF, fill the array
 // listSeen with the required data. SEENMAX must be >0 for this to happen.
-#if  _SEENMAX > 0
+#if  _SEENMAX >= 1
 	addSeen(listSeen, statr[0] );
 #endif
 	
