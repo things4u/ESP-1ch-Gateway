@@ -1,7 +1,10 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.5 E EU868
-// Date: 2019-12-20
+
+// Specify the correct version and date of your gateway here.
+// Normally it is provided with the GitHub version
+#define VERSION "V.6.1.7.E.EU868; 191228a"
+
 //
 // Based on work done by Thomas Telkamp for Raspberry PI 1ch gateway and many others.
 // Contibutions of Dorijan Morelj and Andreas Spies for OLED support.
@@ -28,10 +31,6 @@
 // really matter.
 //
 // ========================================================================================
-
-// Specify the correct version and date of your gateway here.
-// Normally it is provided with the GitHub version
-#define VERSION "V.6.1.5.E.EU868; 191227h"
 
 
 // Define whether we should do a formatting of SPIFFS when starting the gateway
@@ -254,7 +253,6 @@
 // as a regular sensor value.
 // Set its LoRa address and key below in this file, See spec. para 4.3.2
 #define GATEWAYNODE 0
-#define _CHECK_MIC 0
 
 
 // We can put the gateway in such a mode that it will (only) recognize

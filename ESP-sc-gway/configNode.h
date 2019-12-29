@@ -1,7 +1,5 @@
 // sensor.h; 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.5
-// Date: 2019-12-20
 //
 // based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 // and many other contributors.
@@ -24,6 +22,13 @@
 // It is possible to use the gateway as a normal sensor node also. In this case,
 // substitute the node info below.
 #if GATEWAYNODE==1
+
+// Valid coding for internal sensors are LCODE and RAW.
+// Make sure to only select one.
+//#define _LCODE 1
+#define _RAW 1
+#define _CHECK_MIC 1
+#define _SENSOR_INTERVAL 300
 
 #define _DEVADDR { 0xAA, 0xAA, 0xAA, 0xAA }
 #define _APPSKEY { 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB }
