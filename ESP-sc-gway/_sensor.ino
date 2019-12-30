@@ -1,7 +1,5 @@
 // sensor.ino; 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg
-// Verison 6.1.5
-// Date: 2019-12-20
 //
 // All rights reserved. This program and the accompanying materials
 // are made available under the terms of the MIT License
@@ -71,48 +69,126 @@ static void smartDelay(unsigned long ms)
 //	and a parity value in byte[0] bit 7.
 // ----------------------------------------------------------------------------
 static int LoRaSensors(uint8_t *buf) {
-	
-	uint8_t tchars = 1;
-	buf[0] = 0x86;									// 134; User code <lCode + len==3 + Parity
 
-#	if _MONITOR>=1
-	if (debug>=0) {
-		mPrint("LoRaSensors:: ");
-	}
-#	endif //_MONITOR
+#	if defined(_LCODE)
+#		if defined(_RAW) 
+#		error "Only define ONE encoding in configNode.h, _LOCDE or _RAW"
+#		endif
 
-#if _BATTERY==1
-#	if _MONITOR>=1
-	if (debug>=0) {
-		mPrint("Battery ");
-	}
-#	endif //_MONITOR
+		uint8_t tchars = 1;
+		buf[0] = 0x86;				// 134; User code <lCode + len==3 + Parity
+		
+#		if _MONITOR>=1
+		if (debug>=0) {
+			mPrint("LoRaSensors:: ");
+		}
+#		endif //_MONITOR
 
-#if defined(ARDUINO_ARCH_ESP8266) || defined(ESP32)
-	// For ESP there is no standard battery library
-	// What we do is to measure GPIO35 pin which has a 100K voltage divider
-	pinMode(35, INPUT);
-#if defined(ESP32)
-	int devider=4095;
-#else
-	int devider=1023;
-#endif //ESP32
-	float volts=3.3 * analogRead(35) / 4095 * 2;	// T_Beam connects to GPIO35
-#else
-	// For ESP8266 no sensor defined
-	float volts=0;
-#endif
-	tchars += lcode.eBattery(volts, buf + tchars);
-#endif
+#		if _BATTERY==1
+#			if defined(ARDUINO_ARCH_ESP8266) || defined(ESP32)
+				// For ESP there is no standard battery library
+				// What we do is to measure GPIO35 pin which has a 100K voltage divider
+				pinMode(35, INPUT);
+				float volts=3.3 * analogRead(35) / 4095 * 2;	// T_Beam connects to GPIO35
+#			else
+				// For ESP8266 no sensor defined
+				float volts=0;
+#			endif // ARDUINO_ARCH_ESP8266 || ESP32
+#			if _MONITOR>=1
+			if ((debug>=1) && ( pdebug & P_MAIN )){
+				mPrint("Battery lcode="+String(volts));
+			}
+#			endif //_MONITOR
 
-#if _GPS==1
-#	if _MONITOR>=1
-	if (debug>=1)
-		mPrint("GPS sensor");
-#	endif //_MONITOR
+			tchars += lcode.eBattery(volts, buf + tchars);
+#		endif //_BATTERY
 
-#	if _DUSB>=1
+		// GPS sensor is the second server we check for
+#		if _GPS==1
+			smartDelay(1000);\
+			if (millis() > 5000 && gps.charsProcessed() < 10) {
+#				if _MONITOR>=1
+					mPrint("No GPS data received: check wiring");
+#				endif //_MONITOR
+				return(0);
+			}
+			// Assuming we have a value, put it in the buf
+			// The layout of this message is specific to the user,
+			// so adapt as needed.
+
+			// Use lcode to code messages to server
+#			if _MONITOR>=1
+			if ((debug>=1) && ( pdebug & P_MAIN )){
+				mPrint("gps lcode:: lat="+String(gps.location.lat())+", lng="+String(gps.location.lng())+", alt="+String(gps.altitude.feet()/3.2808)+", sats="+String(gps.satellites.value()) );
+			}
+#			endif //_MONITOR
+			tchars += lcode.eGpsL(gps.location.lat(), gps.location.lng(), gps.altitude.value(), gps.satellites.value(), buf + tchars);
+#		endif //_GPS
+		// If all sensor data is encoded, we encode the buffer
+		lcode.eMsg(buf, tchars);								// Fill byte 0 with bytecount and Parity
+
+
+// Second encoding option is RAW format. 
+// We do not use the lcode format but write all teh values to the output
+// buffer and we need to get them in sequence out off the buffer.
+#	elif defined(_RAW)
+		uint8_t tchars = 0;
+
+#		if _BATTERY==1
+#			if defined(ARDUINO_ARCH_ESP8266) || defined(ESP32)
+				// For ESP there is no standard battery library
+				// What we do is to measure GPIO35 pin which has a 100K voltage divider
+				pinMode(35, INPUT);
+				float volts=3.3 * analogRead(35) / 4095 * 2;	// T_Beam connects to GPIO35
+#			else
+				// For ESP8266 no sensor defined
+				float volts=0;
+#			endif // ARDUINO_ARCH_ESP8266 || ESP32
+			memcpy((buf+tchars), &volts, sizeof(float)); tchars += sizeof(float);
+			
+#			if _MONITOR>=1
+			if ((debug>=1) && ( pdebug & P_MAIN )){
+				mPrint("Battery raw="+String(volts));
+			}
+#			endif //_MONITOR
+#		endif //_BATTERY
+
+		// GPS sensor is the second server we check for
+#		if _GPS==1
+			smartDelay(1000);
+			if (millis() > 5000 && gps.charsProcessed() < 10) {
+#				if _MONITOR>=1
+					mPrint("No GPS data received: check wiring");
+#				endif //_MONITOR
+				return(0);
+			}
+			// Raw coding of LoRa messages to server so add the GPS data raw to the string
+#			if _MONITOR>=1
+			if ((debug>=1) && ( pdebug & P_MAIN )){
+				mPrint("Gps raw:: lat="+String(gps.location.lat())+", lng="+String(gps.location.lng())+", alt="+String(gps.altitude.feet()/3.2808)+", sats="+String(gps.satellites.value()) );
+				//mPrint("Gps raw:: sizeof double="+String(sizeof(double)) );
+			}
+#			endif // _MONITOR
+			// Length of lat and lng is double
+			double lat = gps.location.lat();
+			double lng = gps.location.lng();
+			double alt = gps.altitude.feet() / 3.2808;
+			memcpy((buf+tchars), &lat, sizeof(double)); tchars += sizeof(double);
+			memcpy((buf+tchars), &lng, sizeof(double)); tchars += sizeof(double);
+			memcpy((buf+tchars), &alt, sizeof(double)); tchars += sizeof(double);
+#		endif //_GPS
+
+
+// If neither _LCODE or _RAW is defined this is an error
+#	else
+#		error "Please define an encoding format as in configNode.h"
+#	endif
+
+
+// GENERAL part
+#	if _DUSB>=1 && _GPS==1
 	if (( debug>=2 ) && ( pdebug & P_MAIN )) {
+		Serial.print("GPS sensor");
 		Serial.print("\tLatitude  : ");
 		Serial.println(gps.location.lat(), 5);
 		Serial.print("\tLongitude : ");
@@ -129,30 +205,12 @@ static int LoRaSensors(uint8_t *buf) {
 		Serial.print(":");
 		Serial.println(gps.time.second());
 	}
-#	endif //_DUSB
+#	endif //_DUSB _GPS
 
-	smartDelay(1000);
-	
-	if (millis() > 5000 && gps.charsProcessed() < 10) {
-#		if _MONITOR>=1
-			mPrint("No GPS data received: check wiring");
-#		endif //_MONITOR
-		return(0);
-	}
-	
-	// Assuming we have a value, put it in the buf
-	// The layout of this message is specific to the user,
-	// so adapt as needed.
-	tchars += lcode.eGpsL(gps.location.lat(), gps.location.lng(), gps.altitude.value(),
-                       gps.satellites.value(), buf + tchars);
-
-#endif
-
-	// If all sensor data is encoded, we encode the buffer	
-	lcode.eMsg(buf, tchars);								// Fill byte 0 with bytecount and Parity
-	
 	return(tchars);	// return the number of bytes added to payload
-}
+}	
+
+
 
 
 // ----------------------------------------------------------------------------
@@ -479,7 +537,7 @@ int sensorPacket() {
 		}
 		Serial.println();
 	}
-#endif	
+#endif	//_DUSB
 	
 	// we have to include the AES functions at this stage in order to generate LoRa Payload.
 	uint8_t CodeLength = encodePacket((uint8_t *)(LUP.payLoad + LUP.payLength), PayLength, (uint16_t)frameCount, DevAddr, AppSKey, 0);
@@ -493,7 +551,7 @@ int sensorPacket() {
 		}
 		Serial.println();
 	}
-#endif
+#endif //_DUSB
 
 	LUP.payLength += CodeLength;								// length inclusive sensor data
 	
@@ -514,7 +572,7 @@ int sensorPacket() {
 		}
 		Serial.println();
 	}
-#endif
+#endif //_DUSB
 
 	// So now our package is ready, and we can send it up through the gateway interface
 	// Note: Be aware that the sensor message (which is bytes) in message will be
@@ -547,12 +605,13 @@ int sensorPacket() {
 	if (!sendUdp(ttnServer, _TTNPORT, buff_up, buff_index)) {
 		return(-1);
 	}
-#endif
+#endif //_TTNSERVER
+
 #ifdef _THINGSERVER
 	if (!sendUdp(thingServer, _THINGPORT, buff_up, buff_index)) {
 		return(-1);
 	}
-#endif
+#endif //_THINGSERVER
 
 #if _DUSB>=1
 	// If all is right, we should after decoding (which is the same as encoding) get
@@ -571,7 +630,7 @@ int sensorPacket() {
 		}
 		Serial.println();
 	}
-#endif
+#endif // _DUSB
 
 	if (_cad) {
 		// Set the state to CAD scanning after sending a packet
@@ -589,6 +648,7 @@ int sensorPacket() {
 }
 
 #endif //GATEWAYNODE==1
+
 
 #if (GATEWAYNODE==1) || (_LOCALSERVER==1)
 // ----------------------------------------------------------------------------
@@ -625,7 +685,7 @@ uint8_t encodePacket(uint8_t *Data, uint8_t DataLength, uint16_t FrameCount, uin
 		for (int i=0; i<16; i++ ) { Serial.print(AppSKey[i],HEX); Serial.print(' '); }
 		Serial.println();
 	}
-#endif
+#endif // _DUSB
 
 	//unsigned char AppSKey[16] = _APPSKEY ;	// see configGway.h
 	uint8_t i, j;

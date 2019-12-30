@@ -1,6 +1,6 @@
 # Single Channel LoRaWAN Gateway
 
-Version 6.1.5, December 20, 2019	  
+Version 6.1.8, December 28, 2019	  
 Author: M. Westenberg (mw12554@hotmail.com)  
 Copyright: M. Westenberg (mw12554@hotmail.com)  
 
@@ -15,6 +15,15 @@ Maintained by Maarten Westenberg (mw12554@hotmail.com)
 
 
 # Release Notes
+
+Features release 6.1.8 (December 28, 2019)
+- Repair wifimanager from ESP8266
+
+
+Features release 6.1.7 (December 27, 2019)
+- Repair bugs for DNS
+- Enable internal T-Beam sensors to output values in "raw" format. 
+See configNode.h and _sensors.ino
 
 Features release 6.1.5 (December 20, 2019)
 - Bug fix for "#define _DUSB 0"

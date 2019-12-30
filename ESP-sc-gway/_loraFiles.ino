@@ -1,7 +1,5 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.5		
-// Date: 2019-12-20	
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -494,7 +492,7 @@ void printLog()
 } //printLog
 
 
-#if _SEENMAX>=1
+#if _SEENMAX >= 1
 
 
 // ----------------------------------------------------------------------------
@@ -700,4 +698,4 @@ void listDir(char * dir)
 
 
 
-#endif //_SEENMAX>0 End of File
+#endif //_SEENMAX>=1 End of File

@@ -1,7 +1,5 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.5
-// Date: 2019-12-20
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many other contributors.
@@ -225,6 +223,7 @@ struct pins {
 // MISO == GPIO19/ PIN19
 // MOSI == GPIO27/ PIN27
 // RST  == GPIO14/ PIN14
+// This Pinning is not used and is under construction
 struct pins {
 	uint8_t dio0=26;		// GPIO26 / Dio0 used for one frequency and one SF
 	uint8_t dio1=26;		// GPIO26 / Used for CAD, may or not be shared with DIO0
@@ -237,17 +236,17 @@ struct pins {
 #elif _PIN_OUT==4
 // ----------------------------------------------------------------------------
 // For ESP32/TTGO based board.
-// SCK  == GPIO5/ PIN5
-// SS   == GPIO18/PIN18 CS
+// SCK  == GPIO5/  PIN5
+// SS   == GPIO18/ PIN18 CS
 // MISO == GPIO19/ PIN19
 // MOSI == GPIO27/ PIN27
 // RST  == GPIO14/ PIN14
 struct pins {
 	uint8_t dio0=26;		// GPIO26 / Dio0 used for one frequency and one SF
-	uint8_t dio1=33;		// GPIO26 / Used for CAD, may or not be shared with DIO0
-	uint8_t dio2=32;		// GPIO26 / Used for frequency hopping, don't care
-	uint8_t ss=18;			// GPIO18 / Dx. Select pin connected to GPIO18
-	uint8_t rst=14;			// GPIO0  / D3. Reset pin not used	
+	uint8_t dio1=33;		// GPIO33 / Used for CAD, may or not be shared with DIO0
+	uint8_t dio2=32;		// GPIO32 / Used for frequency hopping, don't care
+	uint8_t ss=18;			// GPIO18 / CS. Select pin connected to GPIO18
+	uint8_t rst=14;			// GPIO14 / D3. Reset pin not used	
 } pins;
 #define SCK 5
 #define MISO 19

@@ -1,7 +1,7 @@
 # Single Channel LoRaWAN Gateway
 
-Version 6.1.5, 
-Data: December 20, 2019  
+Version 6.1.7, 
+Data: December 28, 2019  
 Author: M. Westenberg (mw12554@hotmail.com)  
 Copyright: M. Westenberg (mw12554@hotmail.com)  
 
@@ -90,7 +90,7 @@ compiler.
 Goto <Sketch><Include Library><Manage Libraries...> in the IDE to do so. Most of the include files 
 can be loaded through this library section. Some cannot and are shipped with the Gateway.
 
-- WifiManager (Version 0.12.0 by Tzapu)
+
 - LoRaCode (Version 1.0.0, see library shipped)
 - gBase64 (changed name from Adam Rudd's Base64 version)
 - TinyGPS++ (Version 1.0.0)
@@ -110,6 +110,8 @@ Through Library Manager:
 - WiFiClientSecure (Version 1.0.0)
 - WifiEsp (Version 2.2.2)
 - Wire (Version 1.0.1)
+
+- WifiManager (Version 0.12.0 by Tzapu) for ESP8266 
 
 8. Compile the code and download the executable over USB to the gateway. If all is right, you should
 see the gateway starting up on the Serial Monitor.

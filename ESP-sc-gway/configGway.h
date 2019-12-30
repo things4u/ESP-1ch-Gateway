@@ -3,7 +3,7 @@
 
 // Specify the correct version and date of your gateway here.
 // Normally it is provided with the GitHub version
-#define VERSION "V.6.1.7.E.EU868; 191228a"
+#define VERSION "V.6.1.8.E.EU868; 191229a"
 
 //
 // Based on work done by Thomas Telkamp for Raspberry PI 1ch gateway and many others.
@@ -161,12 +161,6 @@
 
 // Allows configuration through WifiManager AP setup. Must be 0 or 1					
 #define _WIFIMANAGER 0
-
-
-// Define the name of the accesspoint if the gateway is in accesspoint mode (is
-// getting WiFi SSID and password using WiFiManager)
-#define AP_NAME "ESP8266-Gway-Things4U"
-#define AP_PASSWD "ttnAutoPw"
 
 
 // This section defines whether we use the gateway as a repeater

@@ -1,7 +1,5 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.5
-// Date: 2019-12-20
 //
 // 	based on work done by many people and making use of several libraries.
 //
@@ -127,9 +125,9 @@ void wwwFile(String fn) {
 #		endif
 		return;
 	} // _MONITOR
-#	if _MONITOR>=2
-	else {
-		mPrint("wwwFile:: SPIFFS File existist= " + String(fn));
+#	if _MONITOR>=1
+	else if (debug>=2) {
+		mPrint("wwwFile:: SPIFFS Filesystem existist= " + String(fn));
 	}
 #	endif //_MONITOR
 
@@ -215,8 +213,8 @@ static void wwwButtons()
 {
 	String response = "";
 	String mode = (gwayConfig.expert ? "Basic Mode" : "Expert Mode");
-	String moni = (gwayConfig.monitor ? "Hide Monitor" : "Show Monitor");
-	String seen = (gwayConfig.seen ? "Hide Last Seen" : "Show Last Seen");
+	String moni = (gwayConfig.monitor ? "Hide Monitor" : "Monitor ON");
+	String seen = (gwayConfig.seen ? "Seen OFF" : "Node last seen");
 
 	YesNo();												// Init the Yes/No function
 	buttonDocu();
@@ -228,8 +226,9 @@ static void wwwButtons()
 #	if _MONITOR>=1
 	response += "<a href=\"MONITOR\" download><button type=\"button\">" +moni+ "</button></a>";
 #	endif
+#	if _SEENMAX>=1
 	response += "<a href=\"SEEN\" download><button type=\"button\">" +seen+ "</button></a>";
-
+#	endif
 	server.sendContent(response);							// Send to the screen
 }
 
@@ -534,8 +533,8 @@ static void gatewaySettings()
 	response +="</tr>";
 #endif
 
-	// Debugging options, only when _DUSB is set, otherwise no
-	// serial activity
+	// Debugging options, only when _DUSB of _MONITOR is set, otherwise no
+	// serial or minotoring activity
 #if _DUSB>=1 || _MONITOR>=1
 	response +="<tr><td class=\"cell\">Debug Level</td><td class=\"cell\" colspan=\"2\">"; 
 	response +=debug; 

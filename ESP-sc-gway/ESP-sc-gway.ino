@@ -1,7 +1,5 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg
-// Version 6.1.5
-// Date: 2019-12-20
 // Author: Maarten Westenberg (mw12554@hotmail.com)
 //
 // Based on work done by Thomas Telkamp for Raspberry PI 1-ch gateway and many others.
@@ -263,12 +261,12 @@ void die(String s)
 {
 #	if _MONITOR>=1
 	mPrint(s);
-#	endif
+#	endif //_MONITOR
 
 #	if _DUSB>=1
 	Serial.println(s);
 	if (debug>=2) Serial.flush();
-#	endif //_DUSB _MONITOR
+#	endif //_DUSB
 
 	delay(50);
 	// system_restart();									// SDK function
@@ -455,7 +453,7 @@ void setup() {
 
 #if _GPS==1
 	// Pins are define in LoRaModem.h together with other pins
-	sGps.begin(9600, SERIAL_8N1, GPS_TX, GPS_RX);// PIN 12-TX 15-RX
+	sGps.begin(9600, SERIAL_8N1, GPS_TX, GPS_RX);			// PIN 12-TX 15-RX
 #endif //_GPS
 
 #ifdef ESP32
@@ -470,10 +468,10 @@ void setup() {
 #	endif //_MONITOR
 #endif //ARDUINO_ARCH_ESP32
 
-
 #	if _DUSB>=1
 		Serial.flush();
 #	endif //_DUSB
+
 	delay(500);
 
 	if (SPIFFS.begin()) {
@@ -555,7 +553,7 @@ void setup() {
 #endif	//ESP32_ARCH
 
 #	if _DUSB>=1
-		Serial.print(F("Host "));
+		Serial.print(F("Host="));
 #if ESP32_ARCH==1
 		Serial.print(WiFi.getHostname());
 #else
@@ -853,7 +851,7 @@ void loop ()
 			// Packet may be PKT_PUSH_ACK (0x01), PKT_PULL_ACK (0x03) or PKT_PULL_RESP (0x04)
 			// This command is found in byte 4 (buffer[3])
 			if (readUdp(packetSize) <= 0) {
-				#if _MONITOR>=1
+#				if _MONITOR>=1
 				if ( debug>=0 )
 					mPrint("readUdp ERROR, retuning <=0");
 #				endif //_MONITOR
@@ -884,7 +882,7 @@ void loop ()
 		// The Gateway node emessage has nothing to do with the STAT_INTERVAL
 		// message but we schedule it in the same frequency.
 		//
-#if GATEWAYNODE==1
+#		if GATEWAYNODE==1
 		if (gwayConfig.isNode) {
 			// Give way to internal some Admin if necessary
 			yield();
@@ -893,14 +891,14 @@ void loop ()
 			// could be battery but also other status info or sensor info
 		
 			if (sensorPacket() < 0) {
-#			if _MONITOR>=1
+#				if _MONITOR>=1
 				if ((debug>=1) || (pdebug & P_MAIN)) {
 					mPrint("sensorPacket: Error");
 				}
-#			endif// _MONITOR
+#				endif// _MONITOR
 			}
 		}
-#endif//GATEWAYNODE
+#		endif//GATEWAYNODE
 		statTime = nowSeconds;
     }
 	
@@ -926,19 +924,18 @@ void loop ()
 	// If we do our own NTP handling (advisable)
 	// We do not use the timer interrupt but use the timing
 	// of the loop() itself which is better for SPI
-#if NTP_INTR==0
-	// Set the time in a manual way. Do not use setSyncProvider
-	// as this function may collide with SPI and other interrupts
-	yield();												// 26/12/2017
-	nowSeconds = now();
-	if (nowSeconds - ntptimer >= _NTP_INTERVAL) {
-		yield();
-		time_t newTime;
-		newTime = (time_t)getNtpTime();
-		if (newTime != 0) setTime(newTime);
-		ntptimer = nowSeconds;
-	}
-#endif//NTP_INTR
-	
+#	if NTP_INTR==0
+		// Set the time in a manual way. Do not use setSyncProvider
+		// as this function may collide with SPI and other interrupts
+		yield();												// 26/12/2017
+		nowSeconds = now();
+		if (nowSeconds - ntptimer >= _NTP_INTERVAL) {
+			yield();
+			time_t newTime;
+			newTime = (time_t)getNtpTime();
+			if (newTime != 0) setTime(newTime);
+			ntptimer = nowSeconds;
+		}
+#	endif//NTP_INTR
 
 }//loop

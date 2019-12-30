@@ -1,7 +1,5 @@
 // 1-channel LoRa Gateway for ESP8266
 // Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
-// Version 6.1.5
-// Date: 2019-12-20
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -172,7 +170,7 @@ int WlanWriteWpa( char* ssid, char *pass) {
 
 #	if _MONITOR>=1
 	if (( debug >=0 ) && ( pdebug & P_MAIN )) {
-		mPrint("WlanWriteWpa:: ssid="+mPrint(ssid)+", pass="+mPrint(pass)); 
+		mPrint("WlanWriteWpa:: ssid="+String(ssid)+", pass="+String(pass)); 
 	}
 #	endif //_MONITOR
 	// Version 3.3 use of config file
@@ -329,8 +327,8 @@ int WlanConnect(int maxTry) {
 #if _WIFIMANAGER==1
 #		if _MONITOR>=1
 		if (debug>=1) {
-			mPrint("Starting Access Point Mode"));
-			mPrint("Connect Wifi to accesspoint: "+mPrint(AP_NAME)+" and connect to IP: 192.168.4.1");
+			mPrint("Starting Access Point Mode");
+			mPrint("Connect Wifi to accesspoint: "+String(AP_NAME)+" and connect to IP: 192.168.4.1");
 		}
 #		endif //_MONITOR
 		wifiManager.autoConnect(AP_NAME, AP_PASSWD );

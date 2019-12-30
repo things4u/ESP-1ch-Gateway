@@ -39,30 +39,8 @@
 #define _GPS 1
 #define _BATTERY 1
 
-#endif
+#endif //GATEWAYNODE
 
-// Wifi definitions
-// WPA is an array with SSID and password records. Set WPA size to number of entries in array
-// When using the WiFiManager, we will overwrite the first entry with the 
-// accesspoint we last connected to with WifiManager
-// NOTE: Structure needs at least one (empty) entry.
-//		So WPASIZE must be >= 1
-struct wpas {
-	char login[32];							// Maximum Buffer Size (and allocated memory)
-	char passw[64];
-};
-
-
-// Please fill in at least ONE SSID and password from your own WiFI network
-// below. This is needed to get the gateway working
-// Note: DO NOT use the first and the last line of the stucture, these should be empty strings and
-//	the first line in te struct is reserved for WifiManager.
-//
-wpas wpa[] = {
-	{ "" , "" },							// Reserved for WiFi Manager
-	{ "yourSSID", "yourPassword" },
-	{ "Your2SSID", "your2Password" }
-};
 
 #if _TRUSTED_NODES >= 1
 struct nodex {
@@ -125,6 +103,37 @@ codex decodes[] = {
 // Default for testing: Switched off
 // #define _THINGSERVER "your.extra.server"		// Server URL of the LoRa-udp.js handler
 // #define _THINGPORT 1700						// Port 1700 is old compatibility
+
+
+// Wifi definitions
+// WPA is an array with SSID and password records. Set WPA size to number of entries in array
+// When using the WiFiManager, we will overwrite the first entry with the 
+// accesspoint we last connected to with WifiManager
+// NOTE: Structure needs at least one (empty) entry.
+//		So WPASIZE must be >= 1
+struct wpas {
+	char login[32];							// Maximum Buffer Size (and allocated memory)
+	char passw[64];
+};
+
+
+// Please fill in at least ONE SSID and password from your own WiFI network
+// below. This is needed to get the gateway working
+// Note: DO NOT use the first and the last line of the stucture, these should be empty strings and
+//	the first line in te struct is reserved for WifiManager.
+//
+wpas wpa[] = {
+	{ "" , "" },							// Reserved for WiFi Manager
+	{ "yourSSID", "yourPassword" },
+	{ "Your2SSID", "your2Password" }
+};
+
+
+// Define the name of the accesspoint if the gateway is in accesspoint mode (is
+// getting WiFi SSID and password using WiFiManager)
+#define AP_NAME "ESP8266-Gway-Things4U"
+#define AP_PASSWD "ttnAutoPw"
+
 
 
 // For asserting and testing the following defines are used.
