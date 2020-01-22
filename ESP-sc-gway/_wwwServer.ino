@@ -33,19 +33,6 @@
 //
 
 
-// --------------------------------------------------------------------------------
-// PRINT IP
-// Output the 4-byte IP address for easy printing.
-// As this function is also used by _otaServer.ino do not put in #define
-// --------------------------------------------------------------------------------
-static void printIP(IPAddress ipa, const char sep, String& response)
-{
-	response+=(String)ipa[0]; response+=sep;
-	response+=(String)ipa[1]; response+=sep;
-	response+=(String)ipa[2]; response+=sep;
-	response+=(String)ipa[3];
-}
-
 //
 // The remainder of the file ONLY works is A_SERVER=1 is set.
 //
@@ -70,10 +57,12 @@ static void printIP(IPAddress ipa, const char sep, String& response)
 // Usage: Call this function ONCE during startup to declare and init
 // the ynDialog JavaScript function, and call the function
 // from the program when needed.
-// Paramters of the JavaScript function:
+// Paramters:
 //	s: Th strig contining the question to be answered
 //	o: The OK tab for the webpage where to go to
 //	c: The Cancel string (optional)
+// Return:
+//	Boolean when success
 // --------------------------------------------------------------------------------
 boolean YesNo()
 {
@@ -112,6 +101,7 @@ boolean YesNo()
 //	display the contents of a file in that window
 // Output is sent to server.sendContent()
 //	Note: The output is not in a variable, its size would be too large
+// NOTE: Only for _STAT_LOG at the moment
 // Parameters:
 //		fn; String with filename
 // Returns:
@@ -119,12 +109,15 @@ boolean YesNo()
 // --------------------------------------------------------------------------------
 void wwwFile(String fn) {
 
+#if _STAT_LOG == 1
+
 	if (!SPIFFS.exists(fn)) {
 #		if _MONITOR>=1
 			mPrint("wwwFile:: ERROR: SPIFFS file not found=");
-#		endif
+#		endif //_MONITOR
 		return;
-	} // _MONITOR
+	} 
+	
 #	if _MONITOR>=1
 	else if (debug>=2) {
 		mPrint("wwwFile:: SPIFFS Filesystem existist= " + String(fn));
@@ -133,9 +126,11 @@ void wwwFile(String fn) {
 
 #	if _MONITOR>=1
 	File f = SPIFFS.open(fn, "r");					// Open the file for reading
-		
+	
+	// MMM Change LOGFILEREC to file available
 	int j;
-	for (j=0; j<LOGFILEREC; j++) {
+	while (f.available()) {
+//	for (j=0; j<LOGFILEREC; j++) {
 			
 		String s=f.readStringUntil('\n');
 		if (s.length() == 0) {
@@ -150,7 +145,7 @@ void wwwFile(String fn) {
 	f.close();
 
 #	endif //_MONITOR
-	
+#endif //_STAT_LOG
 }
 
 // --------------------------------------------------------------------------------
@@ -189,18 +184,18 @@ void buttonDocu()
 // --------------------------------------------------------------------------------
 void buttonLog() 
 {
-	
+#if _STAT_LOG == 1	
 //	String response = "";
 	String fn = "";
 	int i = 0;
 	
-	while (i< LOGFILEMAX ) {
+	for (int i=0; i< LOGFILEMAX; i++ ) {
 		fn = "/log-" + String(gwayConfig.logFileNo - i);
 		wwwFile(fn);									// Display the file contents in the browser
-		i++;
 	}
 	
 //	server.sendContent(response);
+#endif //_STAT_LOG
 }
 
 
@@ -214,19 +209,20 @@ static void wwwButtons()
 	String response = "";
 	String mode = (gwayConfig.expert ? "Basic Mode" : "Expert Mode");
 	String moni = (gwayConfig.monitor ? "Hide Monitor" : "Monitor ON");
-	String seen = (gwayConfig.seen ? "Seen OFF" : "Node last seen");
+	String seen = (gwayConfig.seen ? "Hide Seen" : "Last seen ON");
 
 	YesNo();												// Init the Yes/No function
 	buttonDocu();
 
 	response += "<input type=\"button\" value=\"Documentation\" onclick=\"showDocu()\" >";
+#	if _STAT_LOG == 1
 	response += "<a href=\"LOG\" download><button type=\"button\">Log Files</button></a>";
-	
+#	endif //__STAT_LOG
 	response += "<a href=\"EXPERT\" download><button type=\"button\">" + mode + "</button></a>";
 #	if _MONITOR>=1
 	response += "<a href=\"MONITOR\" download><button type=\"button\">" +moni+ "</button></a>";
 #	endif
-#	if _SEENMAX>=1
+#	if _MAXSEEN>=1
 	response += "<a href=\"SEEN\" download><button type=\"button\">" +seen+ "</button></a>";
 #	endif
 	server.sendContent(response);							// Send to the screen
@@ -258,36 +254,35 @@ static void setVariables(const char *cmd, const char *arg) {
 		else if (atoi(arg) == -1) {
 			debug = (debug+3)%4;
 		}
-		writeGwayCfg(CONFIGFILE);									// Save configuration to file
+		writeGwayCfg(CONFIGFILE, &gwayConfig );						// Save configuration to file
 	}
 	
 	if (strcmp(cmd, "CAD")==0) {									// Set -cad on=1 or off=0
-		_cad=(bool)atoi(arg);
-		writeGwayCfg(CONFIGFILE);									// Save configuration to file
+		gwayConfig.cad=(bool)atoi(arg);
+		writeGwayCfg(CONFIGFILE, &gwayConfig );						// Save configuration to file
 	}
 	
 	if (strcmp(cmd, "HOP")==0) {									// Set -hop on=1 or off=0
-		_hop=(bool)atoi(arg);
-		if (! _hop) { 
-			ifreq=0; 
-			setFreq(freqs[ifreq].upFreq);			
+		gwayConfig.hop=(bool)atoi(arg);
+		if (! gwayConfig.hop) { 
+			setFreq(freqs[gwayConfig.ch].upFreq);			
 			rxLoraModem();
 			sf = SF7;
 			cadScanner();
 		}
-		writeGwayCfg(CONFIGFILE);									// Save configuration to file
+		writeGwayCfg(CONFIGFILE, &gwayConfig );						// Save configuration to file
 	}
 	
 	// DELAY, write txDelay for transmissions
 	//
 	if (strcmp(cmd, "DELAY")==0) {									// Set delay usecs
 		gwayConfig.txDelay+=atoi(arg)*1000;
-		writeGwayCfg(CONFIGFILE);									// Save configuration to file
+		writeGwayCfg(CONFIGFILE, &gwayConfig );						// Save configuration to file
 	}
 
 	// TRUSTED, write node trusted value 
 	//
-	if (strcmp(cmd, "TRUSTED")==0) {									// Set delay usecs
+	if (strcmp(cmd, "TRUSTED")==0) {								// Set delay usecs
 		gwayConfig.trusted=atoi(arg);
 		if (atoi(arg) == 1) {
 			gwayConfig.trusted = (gwayConfig.trusted +1)%4;
@@ -295,7 +290,7 @@ static void setVariables(const char *cmd, const char *arg) {
 		else if (atoi(arg) == -1) {
 			gwayConfig.trusted = (gwayConfig.trusted -1)%4;
 		}
-		writeGwayCfg(CONFIGFILE);									// Save configuration to file
+		writeGwayCfg(CONFIGFILE, &gwayConfig );						// Save configuration to file
 	}
 	
 	// SF; Handle Spreading Factor Settings
@@ -309,7 +304,7 @@ static void setVariables(const char *cmd, const char *arg) {
 			if (sf<=SF7) sf=SF12; else sf= (sf_t)((int)sf-1);
 		}
 		rxLoraModem();												// Reset the radio with the new spreading factor
-		writeGwayCfg(CONFIGFILE);									// Save configuration to file
+		writeGwayCfg(CONFIGFILE, &gwayConfig );						// Save configuration to file
 	}
 	
 	// FREQ; Handle Frequency  Settings
@@ -319,40 +314,38 @@ static void setVariables(const char *cmd, const char *arg) {
 		
 		// Compute frequency index
 		if (atoi(arg) == 1) {
-			if (ifreq==(nf-1)) ifreq=0; else ifreq++;
+			if (gwayConfig.ch==(nf-1)) gwayConfig.ch=0; else gwayConfig.ch++;
 		}
 		else if (atoi(arg) == -1) {
 			Serial.println("down");
-			if (ifreq==0) ifreq=(nf-1); else ifreq--;
+			if (gwayConfig.ch==0) gwayConfig.ch=(nf-1); else gwayConfig.ch--;
 		}
-		setFreq(freqs[ifreq].upFreq);
+		setFreq(freqs[gwayConfig.ch].upFreq);
 		rxLoraModem();												// Reset the radio with the new frequency
-		writeGwayCfg(CONFIGFILE);									// Save configuration to file
+		writeGwayCfg(CONFIGFILE, &gwayConfig );						// Save configuration to file
 	}
 
-	//if (strcmp(cmd, "GETTIME")==0) { Serial.println(F("gettime tbd")); }	// Get the local time
-	//
+	if (strcmp(cmd, "GETTIME")==0) { 								// Get the local time
+		Serial.println(F("gettime tbd")); 
+	}	
 	
 	//if (strcmp(cmd, "SETTIME")==0) { Serial.println(F("settime tbd")); }	// Set the local time
-	//
 	
 	// Help
-	//
 	if (strcmp(cmd, "HELP")==0)    { Serial.println(F("Display Help Topics")); }
 	
 	// Node
-	//
-#if GATEWAYNODE==1
+#if _GATEWAYNODE==1
 	if (strcmp(cmd, "NODE")==0) {									// Set node on=1 or off=0
 		gwayConfig.isNode =(bool)atoi(arg);
-		writeGwayCfg(CONFIGFILE);									// Save configuration to file
+		writeGwayCfg(CONFIGFILE, &gwayConfig );						// Save configuration to file
 	}
 	
 	// File Counter//
 	if (strcmp(cmd, "FCNT")==0)   { 
 		frameCount=0; 
 		rxLoraModem();												// Reset the radio with the new frequency
-		writeGwayCfg(CONFIGFILE);
+		writeGwayCfg(CONFIGFILE, &gwayConfig );
 	}
 #endif
 	
@@ -360,20 +353,27 @@ static void setVariables(const char *cmd, const char *arg) {
 	//
 #if _WIFIMANAGER==1
 	if (strcmp(cmd, "NEWSSID")==0) { 
-		WiFiManager wifiManager;
-		strcpy(wpa[0].login,""); 
-		strcpy(wpa[0].passw,"");
+		ESP_WiFiManager ESP_wifiManager;
 		WiFi.disconnect();
-		wifiManager.autoConnect(AP_NAME, AP_PASSWD );
+		
+		// Add the ID to the SSID of the WiFiManager
+		String ssid = String(AP_NAME) + "-" + String(ESP_getChipId(), HEX);
+		
+#		if _MONITOR>=1
+		if ((debug>=1) && ( pdebug & P_GUI )) {
+			mPrint("Set Variables:: ssid="+ ssid );
+		}
+#		endif //_MONITOR
+		ESP_wifiManager.startConfigPortal( ssid.c_str(), AP_PASSWD );
 	}
-#endif
+#endif //_WIFIMANAGER
 
 	// Update the software (from User Interface)
 #if A_OTA==1
 	if (strcmp(cmd, "UPDATE")==0) {
 		if (atoi(arg) == 1) {
 			updateOtaa();
-			writeGwayCfg(CONFIGFILE);
+			writeGwayCfg(CONFIGFILE, &gwayConfig );
 		}
 	}
 #endif
@@ -381,7 +381,7 @@ static void setVariables(const char *cmd, const char *arg) {
 #if A_REFRESH==1
 	if (strcmp(cmd, "REFR")==0) {									// Set refresh on=1 or off=0
 		gwayConfig.refresh =(bool)atoi(arg);
-		writeGwayCfg(CONFIGFILE);									// Save configuration to file
+		writeGwayCfg(CONFIGFILE, &gwayConfig );						// Save configuration to file
 	}
 #endif
 
@@ -481,25 +481,25 @@ static void gatewaySettings()
 	response +="</tr>";
 	
 	bg = " background-color: ";
-	bg += ( _cad ? "LightGreen" : "orange" );
+	bg += ( gwayConfig.cad ? "LightGreen" : "orange" );
 	response +="<tr><td class=\"cell\">CAD</td>";
 	response +="<td colspan=\"2\" style=\"border: 1px solid black;"; response += bg; response += "\">";
-	response += ( _cad ? "ON" : "OFF" );
+	response += ( gwayConfig.cad ? "ON" : "OFF" );
 	response +="<td style=\"border: 1px solid black; width:40px;\"><a href=\"CAD=1\"><button>ON</button></a></td>";
 	response +="<td style=\"border: 1px solid black; width:40px;\"><a href=\"CAD=0\"><button>OFF</button></a></td>";
 	response +="</tr>";
 	
 	bg = " background-color: ";
-	bg += ( _hop ? "LightGreen" : "orange" );
+	bg += ( gwayConfig.hop ? "LightGreen" : "orange" );
 	response +="<tr><td class=\"cell\">HOP</td>";
 	response +="<td colspan=\"2\" style=\"border: 1px solid black;"; response += bg; response += "\">";
-	response += ( _hop ? "ON" : "OFF" );
+	response += ( gwayConfig.hop ? "ON" : "OFF" );
 	response +="<td style=\"border: 1px solid black; width:40px;\"><a href=\"HOP=1\"><button>ON</button></a></td>";
 	response +="<td style=\"border: 1px solid black; width:40px;\"><a href=\"HOP=0\"><button>OFF</button></a></td>";
 	response +="</tr>";
 	
 	response +="<tr><td class=\"cell\">SF Setting</td><td class=\"cell\" colspan=\"2\">";
-	if (_cad) {
+	if (gwayConfig.cad) {
 		response += "AUTO</td>";
 	}
 	else {
@@ -512,11 +512,11 @@ static void gatewaySettings()
 	// Channel
 	response +="<tr><td class=\"cell\">Channel</td>";
 	response +="<td class=\"cell\" colspan=\"2\">"; 
-	if (_hop) {
+	if (gwayConfig.hop) {
 		response += "AUTO</td>";
 	}
 	else {
-		response += String(ifreq); 
+		response += String(gwayConfig.ch); 
 		response +="</td>";
 		response +="<td class=\"cell\"><a href=\"FREQ=-1\"><button>-</button></a></td>";
 		response +="<td class=\"cell\"><a href=\"FREQ=1\"><button>+</button></a></td>";
@@ -533,7 +533,7 @@ static void gatewaySettings()
 	response +="</tr>";
 #endif
 
-	// Debugging options, only when _DUSB of _MONITOR is set, otherwise no
+	// Debugging options, only when _DUSB or _MONITOR is set, otherwise no
 	// serial or minotoring activity
 #if _DUSB>=1 || _MONITOR>=1
 	response +="<tr><td class=\"cell\">Debug Level</td><td class=\"cell\" colspan=\"2\">"; 
@@ -606,7 +606,7 @@ static void gatewaySettings()
 	//response +="<td class=\"cell\"> </td>";
 	response +="</tr>";
 	
-#if GATEWAYNODE==1
+#if _GATEWAYNODE==1
 	response +="<tr><td class=\"cell\">Framecounter Internal Sensor</td>";
 	response +="<td class=\"cell\" colspan=\"2\">";
 	response +=frameCount;
@@ -651,7 +651,7 @@ static void gatewaySettings()
 	response +="<tr><td><tr><td>";
 	response +="Click <a href=\"/NEWSSID\">here</a> to reset accesspoint<br>";
 	response +="</td><td></td></tr>";
-#endif
+#endif //_WIFIMANAGER
 
 	// Update Firmware all statistics
 	response +="<tr><td class=\"cell\">Update Firmware</td><td colspan=\"2\"></td>";
@@ -668,11 +668,11 @@ static void gatewaySettings()
 	response +=String() + "<td class=\"cell\" colspan=\"2\" >"+statc.resets+"</td>";
 	response +="<td colspan=\"2\" class=\"cell\"><input type=\"button\" value=\"RESET\" onclick=\"ynDialog(\'Do you really want to reset statistics?\',\'RESET\')\" /></td></tr>";
 
-	// Reset
+	// Reset Node
 	response +="<tr><td class=\"cell\">Boots and Resets</td>";
 	response +=String() + "<td class=\"cell\" colspan=\"2\" >"+gwayConfig.boots+"</td>";
-	response +="<td colspan=\"2\" class=\"cell\"><input type=\"button\" value=\"RESET\" onclick=\"ynDialog(\'Do you want to reset boots?\',\'BOOT\')\" /></td></tr>";
-#endif
+	response +="<td colspan=\"2\" class=\"cell\"><input type=\"button\" value=\"BOOT\" onclick=\"ynDialog(\'Do you want to reset boots?\',\'BOOT\')\" /></td></tr>";
+#endif //_STATISTICS
 	
 	response +="</table>";
 	
@@ -871,7 +871,7 @@ static void messageHistory()
 	server.sendContent(response);
 
 	// PRINT NODE CONTENT
-	for (int i=0; i<MAX_STAT; i++) {										// For every Node in the list
+	for (int i=0; i< _MAXSTAT; i++) {										// For every Node in the list
 		if (statr[i].sf == 0) break;
 		
 		response = "";
@@ -884,26 +884,29 @@ static void messageHistory()
 		
 #ifdef  _TRUSTED_NODES														// DO nothing with TRUSTED NODES
 		switch (gwayConfig.trusted) {
-			case 0: printHEX((char *)(& (statr[i].node)),' ',response); 
+			case 0: 
+				printHex(statr[i].node,' ',response); 
 				break;
-			case 1: if (SerialName((char *)(& (statr[i].node)), response) < 0) {
-						printHEX((char *)(& (statr[i].node)),' ',response);
-					};
+			case 1: 
+				if (SerialName(statr[i].node, response) < 0) {
+					printHex(statr[i].node,' ',response);
+				};
 				break;
-			case 2: if (SerialName((char *)(& (statr[i].node)), response) < 0) {
-						continue;
-					};
+			case 2: 
+				if (SerialName(statr[i].node, response) < 0) {
+					continue;
+				};
 				break;
 			case 3: // Value and we do not print unless also defined for LOCAL_SERVER
 			default:
 #				if _MONITOR>=1
 					mPrint("Unknow value for gwayConfig.trusted");
-#				endif	 //_MONITOR		
+#				endif //_MONITOR		
 				break;
 		}
 		
 #else // _TRUSTED_NODES
-		printHEX((char *)(& (statr[i].node)),' ',response);
+		printHex(statr[i].node,' ',response);
 #endif // _TRUSTED_NODES
 
 		response += "</td>";
@@ -950,10 +953,10 @@ static void messageHistory()
 // --------------------------------------------------------------------------------
 static void nodeHistory() 
 {
-#if _SEENMAX >= 1
+#if _MAXSEEN >= 1
 	if (gwayConfig.seen) {
 		// First draw the headers
-		String response="";
+		String response= "";
 	
 		response += "<h2>Node Last Seen History</h2>";
 		response += "<table class=\"config_table\">";
@@ -961,9 +964,6 @@ static void nodeHistory()
 		response += "<th class=\"thead\" style=\"width: 220px;\">Time</th>";
 		response += "<th class=\"thead\">Node</th>";
 		response += "<th class=\"thead\">Pkgs</th>";
-//#if _LOCALSERVER==1
-//		response += "<th class=\"thead\">Data</th>";
-//#endif
 		response += "<th class=\"thead\" style=\"width: 20px;\">C</th>";
 		response += "<th class=\"thead\" style=\"width: 40px;\">SF</th>";
 
@@ -972,38 +972,53 @@ static void nodeHistory()
 		
 		// Now start the contents
 		
-		int i;
-		for (i=0; i<_SEENMAX; i++) {
-			if (listSeen[i].idSeen == 0) break;
+		for (int i=0; i<_MAXSEEN; i++) {
+			if (listSeen[i].idSeen == 0)
+			{
+#				if _MONITOR>=1
+				if ((debug>=2) && (pdebug & P_MAIN)) {
+					mPrint("nodeHistory:: idSeen==0 for i="+String(i));
+				}
+#				endif //_MONITOR
+				break;															// Continue loop
+			}
 			response = "";
 		
-			response += String() + "<tr><td class=\"cell\">";					// Tmst
+			response += String("<tr><td class=\"cell\">");						// Tmst
 			stringTime((listSeen[i].timSeen), response);
 			response += "</td>";
 		
 			response += String() + "<td class=\"cell\">"; 						// Node
-#ifdef  _TRUSTED_NODES														// DO nothing with TRUSTED NODES
-			switch (gwayConfig.trusted) {
-				case 0: printHEX((char *)(& (listSeen[i].idSeen)),' ',response); 
-					break;
-				case 1: if (SerialName((char *)(& (listSeen[i].idSeen)), response) < 0) {
-							printHEX((char *)(& (listSeen[i].idSeen)),' ',response);
+#			ifdef  _TRUSTED_NODES												// DO nothing with TRUSTED NODES
+				switch (gwayConfig.trusted) {
+					case 0: 	
+						printHex(listSeen[i].idSeen,' ',response);
+							// Only print the HEX address, no names
+						break;
+					case 1: 
+						if (SerialName(listSeen[i].idSeen, response) < 0) {
+							// if no name found print HEX, else print name
+							printHex(listSeen[i].idSeen,' ',response);
 						};
-					break;
-				case 2: if (SerialName((char *)(& (listSeen[i].idSeen)), response) < 0) {
+						break;
+					case 2: 
+						if (SerialName(listSeen[i].idSeen, response) < 0) {
+							// If name not found print nothing, else print name
 							continue;
+							//break;
 						};
+						break;
+					case 3: 
+						// Value 3 and we do not print unless also defined for LOCAL_SERVER
+					default:
+#						if _MONITOR>=1
+							mPrint("Unknow value for gwayConfig.trusted");
+#						endif //_MONITOR
 					break;
-				case 3: // Value 3 and we do not print unless also defined for LOCAL_SERVER
-				default:
-#					if _MONITOR>=1
-						mPrint("Unknow value for gwayConfig.trusted");
-#					endif //_MONITOR
-					break;
-			}	
-#else
-			printHEX((char *)(& (listSeen[i].idSeen)),' ',response);
-#endif // _TRUSTED_NODES
+				}	
+#			else
+				printHex(listSeen[i].idSeen,' ',response);
+#			endif // _TRUSTED_NODES
 			
 			response += "</td>";
 			
@@ -1012,10 +1027,11 @@ static void nodeHistory()
 			response += String() + "<td class=\"cell\">" + listSeen[i].sfSeen + "</td>";			// SF
 			
 			server.sendContent(response);
+			//yield();
 		}
 		server.sendContent("</table>");
 	}
-#endif //_SEENMAX
+#endif //_MAXSEEN
 } // nodeHistory()
 
 
@@ -1041,7 +1057,7 @@ int monitorData()
 		response +="</tr>";
 		
 
-		for (int i=0; i<_MONITOR; i++) {
+		for (int i=0; i<_MAXMONITOR; i++) {
 			if (monitor[i].txt == "") {
 				break;
 			}
@@ -1073,7 +1089,7 @@ static void wifiConfig()
 		response +="<tr><th class=\"thead\">Parameter</th><th class=\"thead\">Value</th></tr>";
 	
 		response +="<tr><td class=\"cell\">WiFi host</td><td class=\"cell\">"; 
-#if ESP32_ARCH==1
+#if defined(ESP32_ARCH)
 		response +=WiFi.getHostname(); response+="</tr>";
 #else
 		response +=wifi_station_get_hostname(); response+="</tr>";
@@ -1271,13 +1287,13 @@ void setupWWW()
 	server.on("/FORMAT", []() {
 		Serial.print(F("FORMAT ..."));
 		
-		SPIFFS.format();							// Normally disabled. Enable only when SPIFFS corrupt
-		initConfig(&gwayConfig);
+		SPIFFS.format();							// Normally not used. Use only when SPIFFS corrupt
+		initConfig(&gwayConfig);					// Well known values
 		writeConfig( CONFIGFILE, &gwayConfig);
-		writeSeen( _SEENFILE, listSeen);			// Write the last time record  is seen
+		writeSeen( _SEENFILE, listSeen);			// Write the last time record  is Seen
 #		if _MONITOR>=1
 		if ((debug>=1) && (pdebug & P_GUI )) {
-			mPrint("Format DONE");
+			mPrint("www:: manual Format DONE");
 		}
 #		endif //_MONITOR
 		server.sendHeader("Location", String("/"), true);
@@ -1287,10 +1303,10 @@ void setupWWW()
 	
 	// Reset the statistics
 	server.on("/RESET", []() {
-		Serial.println(F("RESET"));
-		startTime= now() - 1;					// Reset all timers too	
+		mPrint("RESET");
+		startTime= now() - 1;					// Reset all timers too (-1 to avoid division by 0)
 		
-		statc.msg_ttl = 0;						// Reset package statistics
+		statc.msg_ttl = 0;						// Reset ALL package statistics
 		statc.msg_ok = 0;
 		statc.msg_down = 0;
 		
@@ -1306,34 +1322,39 @@ void setupWWW()
 		statc.msg_down_2 = 0;	
 #endif
 
-#if _STATISTICS >= 1
-		for (int i=0; i<MAX_STAT; i++) { statr[i].sf = 0; }
-#if _STATISTICS >= 2
-		statc.sf7 = 0;
-		statc.sf8 = 0;
-		statc.sf9 = 0;
-		statc.sf10= 0;
-		statc.sf11= 0;
-		statc.sf12= 0;
+#	if _STATISTICS >= 1
+		for (int i=0; i< _MAXSTAT; i++) { statr[i].sf = 0; }
+#		if _STATISTICS >= 2
+			statc.sf7 = 0;
+			statc.sf8 = 0;
+			statc.sf9 = 0;
+			statc.sf10= 0;
+			statc.sf11= 0;
+			statc.sf12= 0;
 		
-		statc.resets= 0;
-		writeGwayCfg(CONFIGFILE);
-#if _STATISTICS >= 3
-		statc.sf7_0 = 0; statc.sf7_1 = 0; statc.sf7_2 = 0;
-		statc.sf8_0 = 0; statc.sf8_1 = 0; statc.sf8_2 = 0;
-		statc.sf9_0 = 0; statc.sf9_1 = 0; statc.sf9_2 = 0;
-		statc.sf10_0= 0; statc.sf10_1= 0; statc.sf10_2= 0;
-		statc.sf11_0= 0; statc.sf11_1= 0; statc.sf11_2= 0;
-		statc.sf12_0= 0; statc.sf12_1= 0; statc.sf12_2= 0;
-#endif
-#endif
-#endif
+			statc.resets= 0;
+			writeGwayCfg(CONFIGFILE, &gwayConfig );
+			
+#			if _STATISTICS >= 3
+				statc.sf7_0 = 0; statc.sf7_1 = 0; statc.sf7_2 = 0;
+				statc.sf8_0 = 0; statc.sf8_1 = 0; statc.sf8_2 = 0;
+				statc.sf9_0 = 0; statc.sf9_1 = 0; statc.sf9_2 = 0;
+				statc.sf10_0= 0; statc.sf10_1= 0; statc.sf10_2= 0;
+				statc.sf11_0= 0; statc.sf11_1= 0; statc.sf11_2= 0;
+				statc.sf12_0= 0; statc.sf12_1= 0; statc.sf12_2= 0;
+#			endif //_STATISTICS==3
+#		endif //_STATISTICS==2
+#	endif //_STATISTICS==1
+
+		initSeen(listSeen);						// Clear all Seen records as well.
+		
 		server.sendHeader("Location", String("/"), true);
 		server.send ( 302, "text/plain", "");
 	});
 
 	// Reset the boot counter
 	server.on("/BOOT", []() {
+		mPrint("BOOT");
 #if _STATISTICS >= 2
 		gwayConfig.boots = 0;
 		gwayConfig.wifis = 0;
@@ -1343,10 +1364,10 @@ void setupWWW()
 		gwayConfig.ntps = 0;					// Number of NTP calls
 #endif
 		gwayConfig.reents = 0;					// Re-entrance
-		writeGwayCfg(CONFIGFILE);
+		writeGwayCfg(CONFIGFILE, &gwayConfig );
 #if _MONITOR>=1
-		if ((debug>=2) && (pdebug & P_MAIN)) {
-			mPrint("BOOT, config written");
+		if ((debug>=2) && (pdebug & P_GUI)) {
+			mPrint("wwwServer:: BOOT: config written");
 		}
 #endif
 		server.sendHeader("Location", String("/"), true);
@@ -1371,23 +1392,24 @@ void setupWWW()
 	// Set debug parameter
 	server.on("/DEBUG=-1", []() {				// Set debug level 0-2. Note: +3 is same as -1					
 		debug = (debug+3)%4;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+		writeGwayCfg(CONFIGFILE, &gwayConfig );	// Save configuration to file
 #		if _DUSB>=1 || _MONITOR>=1
-		if ((debug>=1) && (pdebug & P_MAIN)) {
+		if ((debug>=1) && (pdebug & P_GUI)) {
 			mPrint("DEBUG -1: config written");
 		}
 #		endif // _DUSB _MONITOR
 		server.sendHeader("Location", String("/"), true);
 		server.send ( 302, "text/plain", "");
 	});
+	
 	server.on("/DEBUG=1", []() {
 		debug = (debug+1)%4;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+		writeGwayCfg(CONFIGFILE, &gwayConfig );	// Save configuration to file
 #		if _DUSB>=1 || _MONITOR>=1
-		if ((debug>=1) && (pdebug & P_MAIN)) {
+		if ((debug>=1) && (pdebug & P_GUI)) {
 			mPrint("DEBUG +1: config written");
 		}
-#		endif // _DUSB _MONITOR
+#		endif //_DUSB _MONITOR
 		server.sendHeader("Location", String("/"), true);
 		server.send ( 302, "text/plain", "");
 	});
@@ -1396,49 +1418,49 @@ void setupWWW()
 	//
 	server.on("/PDEBUG=SCAN", []() {			// Set debug level 0x01						
 		pdebug ^= P_SCAN;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+		writeGwayCfg(CONFIGFILE, &gwayConfig );	// Save configuration to file
 		server.sendHeader("Location", String("/"), true);
 		server.send ( 302, "text/plain", "");
 	});
 	server.on("/PDEBUG=CAD", []() {				// Set debug level 0x02						
 		pdebug ^= P_CAD;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+		writeGwayCfg(CONFIGFILE, &gwayConfig );	// Save configuration to file
 		server.sendHeader("Location", String("/"), true);
 		server.send ( 302, "text/plain", "");
 	});
 	server.on("/PDEBUG=RX", []() {				// Set debug level 0x04						
 		pdebug ^= P_RX;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+		writeGwayCfg(CONFIGFILE, &gwayConfig );	// Save configuration to file
 		server.sendHeader("Location", String("/"), true);
 		server.send ( 302, "text/plain", "");
 	});
 	server.on("/PDEBUG=TX", []() {				// Set debug level 0x08						
 		pdebug ^= P_TX;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+		writeGwayCfg(CONFIGFILE, &gwayConfig );	// Save configuration to file
 		server.sendHeader("Location", String("/"), true);
 		server.send ( 302, "text/plain", "");
 	});
 	server.on("/PDEBUG=PRE", []() {				// Set debug level 0-2						
 		pdebug ^= P_PRE;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+		writeGwayCfg(CONFIGFILE, &gwayConfig );	// Save configuration to file
 		server.sendHeader("Location", String("/"), true);
 		server.send ( 302, "text/plain", "");
 	});
 	server.on("/PDEBUG=MAIN", []() {				// Set debug level 0-2						
 		pdebug ^= P_MAIN;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+		writeGwayCfg(CONFIGFILE, &gwayConfig );	// Save configuration to file
 		server.sendHeader("Location", String("/"), true);
 		server.send ( 302, "text/plain", "");
 	});
 	server.on("/PDEBUG=GUI", []() {				// Set debug level 0-2						
 		pdebug ^= P_GUI;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+		writeGwayCfg(CONFIGFILE, &gwayConfig );	// Save configuration to file
 		server.sendHeader("Location", String("/"), true);
 		server.send ( 302, "text/plain", "");
 	});
-	server.on("/PDEBUG=RADIO", []() {				// Set debug level 0-2						
+	server.on("/PDEBUG=RADIO", []() {			// Set debug level 0-2						
 		pdebug ^= P_RADIO;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+		writeGwayCfg(CONFIGFILE, &gwayConfig );	// Save configuration to file
 		server.sendHeader("Location", String("/"), true);
 		server.send ( 302, "text/plain", "");
 	});
@@ -1447,23 +1469,23 @@ void setupWWW()
 	// Set delay in microseconds
 	server.on("/DELAY=1", []() {
 		gwayConfig.txDelay+=5000;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+		writeGwayCfg(CONFIGFILE, &gwayConfig );	// Save configuration to file
 #		if _MONITOR>=1
-		if ((debug>=1) && (pdebug & P_MAIN)) {
+		if ((debug>=1) && (pdebug & P_GUI)) {
 			mPrint("DELAY +, config written");
 		}
-#		endif
+#		endif //_MONITOR
 		server.sendHeader("Location", String("/"), true);
 		server.send ( 302, "text/plain", "");
 	});
 	server.on("/DELAY=-1", []() {
 		gwayConfig.txDelay-=5000;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+		writeGwayCfg(CONFIGFILE, &gwayConfig );	// Save configuration to file
 #		if _MONITOR>=1
-		if ((debug>=1) && (pdebug & P_MAIN)) {
+		if ((debug>=1) && (pdebug & P_GUI)) {
 			mPrint("DELAY -, config written");
 		}
-#		endif
+#		endif //_MONITOR
 		server.sendHeader("Location", String("/"), true);
 		server.send ( 302, "text/plain", "");
 	});
@@ -1471,7 +1493,7 @@ void setupWWW()
 	// Set Trusted Node Parameter
 	server.on("/TRUSTED=1", []() {
 	gwayConfig.trusted = (gwayConfig.trusted +1)%4;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+		writeGwayCfg(CONFIGFILE, &gwayConfig );	// Save configuration to file
 #		if _MONITOR>=2
 			mPrint("TRUSTED +, config written");
 #		endif //_MONITOR
@@ -1480,7 +1502,7 @@ void setupWWW()
 	});
 	server.on("/TRUSTED=-1", []() {
 		gwayConfig.trusted = (gwayConfig.trusted -1)%4;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+		writeGwayCfg(CONFIGFILE, &gwayConfig );	// Save configuration to file
 #if _DUSB>=2
 		Serial.println(F("TRUSTED +, config written"));
 #endif
@@ -1508,56 +1530,56 @@ void setupWWW()
 		Serial.print(sizeof(freqs[0]));
 		Serial.println();
 #endif
-		if (ifreq==(nf-1)) ifreq=0; else ifreq++;
+		if (gwayConfig.ch==(nf-1)) gwayConfig.ch=0; else gwayConfig.ch++;
 		server.sendHeader("Location", String("/"), true);
 		server.send ( 302, "text/plain", "");
 	});
 	server.on("/FREQ=-1", []() {
 		uint8_t nf = sizeof(freqs)/sizeof(freqs[0]);	// Number of elements in array
-		if (ifreq==0) ifreq=(nf-1); else ifreq--;
+		if (gwayConfig.ch==0) gwayConfig.ch=(nf-1); else gwayConfig.ch--;
 		server.sendHeader("Location", String("/"), true);
 		server.send ( 302, "text/plain", "");
 	});
 
 	// Set CAD function off/on
 	server.on("/CAD=1", []() {
-		_cad=(bool)1;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+		gwayConfig.cad=(bool)1;
+		writeGwayCfg(CONFIGFILE, &gwayConfig );	// Save configuration to file
 		server.sendHeader("Location", String("/"), true);
 		server.send ( 302, "text/plain", "");
 	});
 	server.on("/CAD=0", []() {
-		_cad=(bool)0;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+		gwayConfig.cad=(bool)0;
+		writeGwayCfg(CONFIGFILE, &gwayConfig );	// Save configuration to file
 		server.sendHeader("Location", String("/"), true);
 		server.send ( 302, "text/plain", "");
 	});
 
 	// GatewayNode
 	server.on("/NODE=1", []() {
-#if GATEWAYNODE==1
+#if _GATEWAYNODE==1
 		gwayConfig.isNode =(bool)1;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+		writeGwayCfg(CONFIGFILE, &gwayConfig );	// Save configuration to file
 #endif
 		server.sendHeader("Location", String("/"), true);
 		server.send ( 302, "text/plain", "");
 	});
 	server.on("/NODE=0", []() {
-#if GATEWAYNODE==1
+#if _GATEWAYNODE==1
 		gwayConfig.isNode =(bool)0;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+		writeGwayCfg(CONFIGFILE, &gwayConfig );	// Save configuration to file
 #endif
 		server.sendHeader("Location", String("/"), true);
 		server.send ( 302, "text/plain", "");
 	});
 
-#if GATEWAYNODE==1	
+#if _GATEWAYNODE==1	
 	// Framecounter of the Gateway node
 	server.on("/FCNT", []() {
 
 		frameCount=0; 
 		rxLoraModem();							// Reset the radio with the new frequency
-		writeGwayCfg(CONFIGFILE);
+		writeGwayCfg(CONFIGFILE, &gwayConfig );
 
 		//sendWebPage("","");						// Send the webPage string
 		server.sendHeader("Location", String("/"), true);
@@ -1568,7 +1590,7 @@ void setupWWW()
 	server.on("/REFR=1", []() {					// WWW page auto refresh ON
 #if A_REFRESH==1
 		gwayConfig.refresh =1;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+		writeGwayCfg(CONFIGFILE, &gwayConfig );	// Save configuration to file
 #endif		
 		server.sendHeader("Location", String("/"), true);
 		server.send ( 302, "text/plain", "");
@@ -1576,7 +1598,7 @@ void setupWWW()
 	server.on("/REFR=0", []() {					// WWW page auto refresh OFF
 #if A_REFRESH==1
 		gwayConfig.refresh =0;
-		writeGwayCfg(CONFIGFILE);				// Save configuration to file
+		writeGwayCfg(CONFIGFILE, &gwayConfig );	// Save configuration to file
 #endif
 		server.sendHeader("Location", String("/"), true);
 		server.send ( 302, "text/plain", "");
@@ -1585,14 +1607,13 @@ void setupWWW()
 	
 	// Switch off/on the HOP functions
 	server.on("/HOP=1", []() {
-		_hop=true;
+		gwayConfig.hop=true;
 		server.sendHeader("Location", String("/"), true);
 		server.send ( 302, "text/plain", "");
 	});
 	server.on("/HOP=0", []() {
-		_hop=false;
-		ifreq=0; 
-		setFreq(freqs[ifreq].upFreq);
+		gwayConfig.hop=false;
+		setFreq(freqs[gwayConfig.ch].upFreq);
 		rxLoraModem();
 		server.sendHeader("Location", String("/"), true);
 		server.send ( 302, "text/plain", "");
@@ -1622,9 +1643,9 @@ void setupWWW()
 	// Display LOGging information
 	server.on("/LOG", []() {
 		server.sendHeader("Location", String("/"), true);
-#if _DUSB>=2
-		Serial.println(F("LOG button"));
-#endif
+#if _MONITOR>=2
+		mPrint("LOG button");
+#endif //_MONITOR
 		buttonLog();
 		server.send ( 302, "text/plain", "");
 	});
@@ -1643,7 +1664,7 @@ void setupWWW()
 		gwayConfig.monitor = bool(1 - (int) gwayConfig.monitor) ;
 		server.send ( 302, "text/plain", "");
 	});
-#endif
+#endif //_MONITOR
 	
 	// Display the SEEN statistics
 	server.on("/SEEN", []() {

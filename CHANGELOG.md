@@ -1,6 +1,6 @@
 # Single Channel LoRaWAN Gateway
 
-Version 6.1.8, December 28, 2019	  
+Version 6.1.8, January 15, 2020 
 Author: M. Westenberg (mw12554@hotmail.com)  
 Copyright: M. Westenberg (mw12554@hotmail.com)  
 
@@ -16,9 +16,18 @@ Maintained by Maarten Westenberg (mw12554@hotmail.com)
 
 # Release Notes
 
-Features release 6.1.8 (December 28, 2019)
-- Repair wifimanager from ESP8266
-
+Features release 6.1.8 (January 21, 2020)
+- Repair wifimanager compile for ESP8266, and make it work for ESP8266
+- Substitues _DUSB by _MONITOR in a lot of cases
+- Repair c_str() bugs
+- Make getNtpTime more predictable
+- Several syntax error optimizations
+- InLine documentation updated and errors corrected
+- Repair Format code
+- Repair WLAN Connect code, remove code to make connecting lean.
+- Add a lot of output to MONITOR screen
+- Repair STAT_LOG so enable running without log output
+- Add '_' to front of defined names
 
 Features release 6.1.7 (December 27, 2019)
 - Repair bugs for DNS
@@ -31,7 +40,7 @@ Features release 6.1.5 (December 20, 2019)
 - Fix LastSeen issues.
 - Added 3 Indian frequencies as published by TTN
 - Changes configGway.h to contain better info
-- Added a message console on the GUI page (_define _MONITOR 1)
+- Added a message console on the GUI page (_define _MAXMONITOR 1)
 - Changed the DNS code to allow .local domains with MDNS
 - Added buttons for Expert mode, Monitor and Last Seen.
 - Added code for "REBOOT" to be used from the API only *http://your_IP/REBOOT '
@@ -112,7 +121,7 @@ New features in version 5.3.2 (July 07, 2018)
 - Several in-line documentaton enhancements and typos were fixed
 
 New features in version 5.3.1 (June 30, 2018)
-- Included support for T-Beam board including on board GPS sensor (_sensor.ino). #define GATEWAYNODE 1 will
+- Included support for T-Beam board including on board GPS sensor (_sensor.ino). #define _GATEWAYNODE 1 will
 	turn the gateway into a node as well. Remember to set the address etc in configGway.h.
 - First version to explore possibilities of 433 MHz LoRa frequencies. 
 	Included frequency setting in the configGway.h file

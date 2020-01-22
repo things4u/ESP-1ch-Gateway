@@ -19,7 +19,7 @@
 //	- The battery sensor works by connecting the VCC pin to A0 analog port
 // ============================================================================
 	
-#if GATEWAYNODE==1
+#if _GATEWAYNODE==1
 
 #include "LoRaCode.h"
 
@@ -32,14 +32,16 @@ unsigned char DevAddr[4]  = _DEVADDR ;				// see configGway.h
 // Smartdelay is a function to delay processing but in the loop get info 
 // from the GPS device
 // ----------------------------------------------------------------------------
-static void smartDelay(unsigned long ms)                
+static void smartDelay(uint32_t ms)                
 {
-  unsigned long start = millis();
-  do
-  {
-    while (sGps.available())
-      gps.encode(sGps.read());
-  } while (millis() - start < ms);
+	uint32_t start = millis();
+	do
+	{
+		while (sGps.available()) {
+			gps.encode(sGps.read());
+		}
+		yield();									// MMM Maybe avoid crashes
+	} while (millis() - start < ms);
 }
 #endif //_GPS
 
@@ -105,10 +107,10 @@ static int LoRaSensors(uint8_t *buf) {
 
 		// GPS sensor is the second server we check for
 #		if _GPS==1
-			smartDelay(1000);\
+			smartDelay(1000);
 			if (millis() > 5000 && gps.charsProcessed() < 10) {
 #				if _MONITOR>=1
-					mPrint("No GPS data received: check wiring");
+					mPrint("ERROR: No GPS data received: check wiring");
 #				endif //_MONITOR
 				return(0);
 			}
@@ -129,7 +131,7 @@ static int LoRaSensors(uint8_t *buf) {
 
 
 // Second encoding option is RAW format. 
-// We do not use the lcode format but write all teh values to the output
+// We do not use the lcode format but write all the values to the output
 // buffer and we need to get them in sequence out off the buffer.
 #	elif defined(_RAW)
 		uint8_t tchars = 0;
@@ -158,7 +160,7 @@ static int LoRaSensors(uint8_t *buf) {
 			smartDelay(1000);
 			if (millis() > 5000 && gps.charsProcessed() < 10) {
 #				if _MONITOR>=1
-					mPrint("No GPS data received: check wiring");
+					mPrint("ERROR: No GPS data received: check wiring");
 #				endif //_MONITOR
 				return(0);
 			}
@@ -263,7 +265,8 @@ static void generate_subkey(uint8_t *key, uint8_t *k1, uint8_t *k2) {
 	}
 	
 	// Step 3: Generate k2
-	for (uint8_t i=0; i<16; i++) k2[i]=k1[i];
+	for (int i=0; i<16; i++) k2[i]=k1[i];
+	
 	if (k1[0] & 0x80) {								// use k1(==k2) according rfc 
 		shift_left(k2,16);
 		k2[15] ^= 0x87;
@@ -405,6 +408,9 @@ uint8_t micPacket(uint8_t *data, uint8_t len, uint16_t FrameCount, uint8_t * Nwk
 	data[len+1]=Y[1];
 	data[len+2]=Y[2];
 	data[len+3]=Y[3];
+	
+	yield();										// MMM to avoid crashes
+	
 	return 4;
 }
 
@@ -422,28 +428,34 @@ uint8_t micPacket(uint8_t *data, uint8_t len, uint16_t FrameCount, uint8_t * Nwk
 static void checkMic(uint8_t *buf, uint8_t len, uint8_t *key) {
 	uint8_t cBuf[len+1];
 	uint8_t NwkSKey[16] = _NWKSKEY;
-	
+
+#	if _MONITOR>=1
 	if (debug>=2) {
-		Serial.print(F("old="));
-		for (uint8_t i=0; i<len; i++) { 
-			printHexDigit(buf[i]); 
-			Serial.print(' '); 
+		String response = "";
+		for (int i=0; i<len; i++) { 
+			printHexDigit(buf[i], response); 
+			response += ' '; 
 		}
-		Serial.println();
+		mPrint("old="+response);
 	}	
-	for (uint8_t i=0; i<len-4; i++) cBuf[i] = buf[i];
+#	endif //_MONITOR
+
+	for (int i=0; i<len-4; i++) {
+		cBuf[i] = buf[i];
+	}
 	len -=4;
 	
 	uint16_t FrameCount = ( cBuf[7] * 256 ) + cBuf[6];
 	len += micPacket(cBuf, len, FrameCount, NwkSKey, 0);
 	
 	if (debug>=2) {
-		Serial.print(F("new="));
-		for (uint8_t i=0; i<len; i++) { 
-			printHexDigit(cBuf[i]); 
-			Serial.print(' '); 
+		String response = "";
+
+		for (int i=0; i<len; i++) { 
+			printHexDigit(cBuf[i],response); 
+			response += " "; 
 		}
-		Serial.println();
+		mPrint("new="+response);
 	}
 	// Mic is only checked, but len is not corrected
 }
@@ -530,6 +542,7 @@ int sensorPacket() {
 
 #if _DUSB>=1
 	if ((debug>=2) && (pdebug & P_RADIO )) {
+		String response="";
 		Serial.print(F("old: "));
 		for (int i=0; i<PayLength; i++) {
 			Serial.print(LUP.payLoad[i],HEX);
@@ -583,7 +596,7 @@ int sensorPacket() {
 	
 	frameCount++;
     statc.msg_ttl++;				// XXX Should we count sensor messages as well?
-	switch(ifreq) {
+	switch(gwayConfig.ch) {
 		case 0: statc.msg_ttl_0++; break;
 		case 1: statc.msg_ttl_1++; break;
 		case 2: statc.msg_ttl_2++; break;
@@ -594,10 +607,11 @@ int sensorPacket() {
 	// 10 value when restarting the gateway.
 	// NOTE: This means that preferences are NOT saved unless >=10 messages have been received.
 	//
-	if (( frameCount % 10)==0) writeGwayCfg(CONFIGFILE);
+	if ((frameCount % 10)==0) writeGwayCfg(CONFIGFILE, &gwayConfig );
 	
 	if (buff_index > 512) {
-		if (debug>0) Serial.println(F("sensorPacket:: ERROR buffer size too large"));
+		if (debug>0) 
+			mPrint("sensorPacket:: ERROR buffer size too large");
 		return(-1);
 	}
 
@@ -632,7 +646,7 @@ int sensorPacket() {
 	}
 #endif // _DUSB
 
-	if (_cad) {
+	if (gwayConfig.cad) {
 		// Set the state to CAD scanning after sending a packet
 		_state = S_SCAN;						// Inititialise scanner
 		sf = SF7;
@@ -647,10 +661,10 @@ int sensorPacket() {
 	return(buff_index);
 }
 
-#endif //GATEWAYNODE==1
+#endif //_GATEWAYNODE==1
 
 
-#if (GATEWAYNODE==1) || (_LOCALSERVER==1)
+#if (_GATEWAYNODE==1) || (_LOCALSERVER==1)
 // ----------------------------------------------------------------------------
 // ENCODEPACKET
 // In Sensor mode, we have to encode the user payload before sending.
@@ -735,4 +749,4 @@ uint8_t encodePacket(uint8_t *Data, uint8_t DataLength, uint16_t FrameCount, uin
 	return(DataLength);				// or only 16*(numBlocks-1)+bLen;
 }
 
-#endif // GATEWAYNODE || _LOCALSERVER
+#endif // _GATEWAYNODE || _LOCALSERVER

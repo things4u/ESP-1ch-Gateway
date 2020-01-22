@@ -152,7 +152,7 @@ int sendPacket(uint8_t *buf, uint8_t length)
 		LoraDown.sfTx= _RX2_SF;								// Use the RX2 downstream SF (may be dedicated to TTN)
 	}
 	LoraDown.powe	= 14;									// On all freqs except 869.5MHz power is limited
-	LoraDown.fff	= freqs[ifreq].dwnFreq;					// Use the corresponding Down frequency
+	LoraDown.fff	= freqs[gwayConfig.ch].dwnFreq;			// Use the corresponding Down frequency
 
 #else
 // Elif _STRICT_1CH == 0, we will receive messags from the TTN gateway presumably on SF9/869.5MHz
@@ -179,8 +179,7 @@ int sendPacket(uint8_t *buf, uint8_t length)
 		
 			Serial.print(F(" strict="));	Serial.print(_STRICT_1CH);
 			Serial.print(F(" datr="));		Serial.println(datr);
-			Serial.print(F(" Rfreq=")); 	Serial.print(freqs[ifreq].dwnFreq); 
-			//Serial.print(F(", Request=")); 	Serial.print(freqs[ifreq].dwnFreq); 
+			Serial.print(F(" Rfreq=")); 	Serial.print(freqs[gwayConfig.ch].dwnFreq); 
 			Serial.print(F(" ->")); 		Serial.println(LoraDown.fff);
 			Serial.print(F(" sf  =")); 		Serial.print(atoi(datr+2)); Serial.print(F(" ->")); Serial.println(LoraDown.sfTx);
 		
@@ -260,9 +259,9 @@ int sendPacket(uint8_t *buf, uint8_t length)
 // ----------------------------------------------------------------------------
 int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool internal) 
 {
-	long SNR;
-    int rssicorr;
-	int prssi;											// packet rssi
+	int32_t SNR;
+    int16_t rssicorr;
+	int16_t prssi;										// packet rssi
 	
 	char cfreq[12] = {0};								// Character array to hold freq in MHz
 	//lastTmst = tmst;									// Following/according to spec
@@ -295,7 +294,7 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 	// and fill the new top line with the latest received sensor values.
 	// This works fine for the sensor, EXCEPT when we decode data for _LOCALSERVER
 	//
-	for (int m=( MAX_STAT -1); m>0; m--) statr[m]=statr[m-1];
+	for (int m=( _MAXSTAT -1); m>0; m--) statr[m]=statr[m-1];
 	
 	// From now on we can fill statr[0] with sensor data
 #if _LOCALSERVER==1
@@ -326,10 +325,11 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 								0);
 	}
 #endif //_LOCALSERVER
+
 	statr[0].tmst = now();
-	statr[0].ch= ifreq;
+	statr[0].ch =	gwayConfig.ch;
 	statr[0].prssi = prssi - rssicorr;
-	statr[0].sf = LoraUp.sf;
+	statr[0].sf =	LoraUp.sf;
 	
 #	if RSSI==1
 		statr[0].rssi = _rssi - rssicorr;
@@ -405,7 +405,7 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 
 #endif //_STATISTICS >= 2
 
-#if _DUSB>=1	
+#if _MONITOR>=1	
 	if (( debug>=2 ) && ( pdebug & P_RADIO )){
 		Serial.print(F("R buildPacket:: pRSSI="));
 		Serial.print(prssi-rssicorr);
@@ -424,7 +424,7 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 		Serial.println();
 		yield();
 	}
-#endif // _DUSB
+#endif // _MONITOR
 
 // Show received message status on OLED display
 #if OLED>=1
@@ -513,7 +513,7 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 #	endif //_MONITOR
 
 	buff_index += j;
-	ftoa((double)freqs[ifreq].upFreq / 1000000, cfreq, 6);					// XXX This can be done better
+	ftoa((double)freqs[gwayConfig.ch].upFreq / 1000000, cfreq, 6);				// XXX This can be done better
 	
 	j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"chan\":%1u,\"rfch\":%1u,\"freq\":%s", 0, 0, cfreq);
 	buff_index += j;
@@ -586,18 +586,19 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 	++buff_index;
 	buff_up[buff_index] = 0; 							// add string terminator, for safety
 
-#if STAT_LOG == 1	
-	// Do statistics logging. In first version we might only
-	// write part of the record to files, later more
-
-	addLog( (unsigned char *)(buff_up), buff_index );
-#endif	
-
-// When we have the node address and the SF, fill the array
-// listSeen with the required data. SEENMAX must be >0 for this to happen.
-#if  _SEENMAX >= 1
+// When we have the node address and the SF, fill the listSeen array
+// with the required data. _MAXSEEN must be >0 for this to happen.
+// statr[0] contains the statistics of the node last seen.
+#if  _MAXSEEN >= 1
+	yield();											// MMM May not be necessary
 	addSeen(listSeen, statr[0] );
 #endif
+
+#if _STAT_LOG == 1	
+	// Do statistics logging. In first version we might only
+	// write part of the record to files, later more
+	addLog( (unsigned char *)(buff_up), buff_index );
+#endif //_STAT_LOG
 	
 #	if _MONITOR>=1
 	if (( debug>=2 ) && ( pdebug & P_RX )) {			// debug: display JSON payload
@@ -734,7 +735,7 @@ int receivePacket()
 			else if (( debug>=2 ) && ( pdebug & P_RX )) {
 					mPrint("receivePacket:: No Index");
 			}
-#			endif //DUSB
+#			endif //_MONITOR
 #endif // _LOCALSERVER
 
 			// Reset the message area

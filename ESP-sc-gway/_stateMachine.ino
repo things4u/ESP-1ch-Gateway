@@ -48,11 +48,11 @@
 //	- Upon CDDONE (int0) goto S_SCAN, start with SF7 recognition again
 //
 // S-RX, 		Received CDDECT so message detected, RX cycle started. 
-//	- Upon RXDONE (int0) package read. If read ok continue to read message
+//	- Upon RXDONE (int0) package read. If read finished continue to read message, then goto S_SCAN
 //	- upon RXTOUT (int1) error, goto S_SCAN
 //
 // S-TX			Transmitting a message
-//	- Upon TXDONE goto S_SCAN
+//	- When transmission done, goto TXDONE
 //
 // S-TXDONE		Transmission complete by loop() now again in interrupt
 //	- Set the Mask
@@ -80,19 +80,19 @@ void stateMachine()
 	
 #	if _MONITOR>=1
 	if (intr != flags) {
-		Serial.print(F("FLAG  ::"));
-		SerialStat(intr);
+		String response = "";
+		mStat(intr, response);
+		mPrint("FLAG  ::"+response);
 	}
-	String response = "";
 #	endif //_MONITOR
 
 	// If Hopping is selected AND if there is NO event interrupt detected 
 	// and the state machine is called anyway
 	// then we know its a soft interrupt and we do nothing and return to main loop.
 	//
-	if ((_hop) && (intr == 0x00) )
+	if ((gwayConfig.hop) && (intr == 0x00))
 	{
-		// eventWait is the time since we have had a CDDETD event (preamble detected)
+		// eventWait is the time since we have had a CDDETD event (preamble detected).
 		// If we are not in scanning state, and there will be an interrupt coming,
 		// In state S_RX it could be RXDONE in which case allow kernel time
 		//
@@ -113,7 +113,7 @@ void stateMachine()
 				default:
 					eventWait=0;
 #					if _MONITOR>=1
-						response = "DEFAULT :: ";
+						String response = "StateMachine:: Default: ";
 						mStat(intr, response);
 						mPrint(response);
 #					endif //_MONITOR
@@ -135,8 +135,8 @@ void stateMachine()
 				default:
 					doneWait *= 1;
 #					if _MONITOR>=1
-					if (( debug>=0 ) && ( pdebug & P_PRE )) {
-						mPrint("PRE:: DEF set");
+					if ((debug>=0) && (pdebug & P_PRE)) {
+						mPrint("StateMachine:: PRE: DEF set");
 					}
 #					endif //_MONITOR
 					break;
@@ -148,15 +148,15 @@ void stateMachine()
 			if (eventTime > micros())	eventTime=micros();
 			if (doneTime > micros())	doneTime=micros();
 
-			if (((micros() - doneTime) > doneWait ) &&
-				(( _state == S_SCAN ) || ( _state == S_CAD )))
+			if (((micros() - doneTime) > doneWait) &&
+				((_state == S_SCAN) || (_state == S_CAD)))
 			{
 				_state = S_SCAN;
-				hop();											// increment ifreq = (ifreq + 1) % NUM_HOPS ;
-				cadScanner();									// Reset to initial SF, leave frequency "freqs[ifreq]"
+				hop();											// increment gwayConfig.ch = (gwayConfig.ch + 1) % NUM_HOPS ;
+				cadScanner();									// Reset to initial SF, leave frequency "freqs[gwayConfig.ch]"
 #				if _MONITOR>=1
-				if (( debug >= 1 ) && ( pdebug & P_PRE )) {
-					response = "DONE  :: ";
+				if ((debug >= 1) && (pdebug & P_PRE)) {
+					String response = "DONE  :: ";
 					mStat(intr, response);
 					mPrint(response);							// Can move down for timing reasons
 				}
@@ -171,16 +171,16 @@ void stateMachine()
 			if ((micros() - eventTime) > eventWait ) 
 			{
 				_state = S_SCAN;
-				hop();											// increment ifreq = (ifreq + 1) % NUM_HOPS ;
-				cadScanner();									// Reset to initial SF, leave frequency "freqs[ifreq]"
+				hop();											// gwayConfig.ch= (gwayConfig.ch+1)%NUM_HOPS ;
+				cadScanner();									// Reset to initial SF, leave "freqs[gwayConfig.ch]"
 #				if _MONITOR>=1
-				if (( debug >= 2 ) && ( pdebug & P_PRE )) {
-					response = "HOP ::  ";
+				if ((debug >= 2) && (pdebug & P_PRE)) {
+					String response = "HOP ::  ";
 					mStat(intr, response);
 					mPrint(response);
 				}
 #				endif //_MONITOR
-				eventTime=micros();								// reset the timer on timeout
+				eventTime=micros();								// reset the eventtimer on timeout
 				doneTime=micros();								// reset the timer on timeout
 				return;
 			}
@@ -190,8 +190,8 @@ void stateMachine()
 			// So we need to return to the main State Machine
 			// as there was NO interrupt
 #			if _MONITOR>=1
-			if (( debug>=3 ) && ( pdebug & P_PRE )) {
-				response  = "PRE:: eventTime=";
+			if ((debug>=3) && (pdebug & P_PRE)) {
+				String response  = "PRE:: eventTime=";
 				response += String(eventTime);
 				response += ", micros=";
 				response += String(micros());
@@ -209,7 +209,7 @@ void stateMachine()
 		
 		yield();
 		
-	}// intr==0 && _hop
+	}// intr==0 && gwayConfig.hop
 
 	
 
@@ -227,7 +227,7 @@ void stateMachine()
 	  //
 	  case S_INIT:
 #		if _MONITOR>=1
-		if (( debug>=1 ) && ( pdebug & P_PRE )) { 
+		if ((debug>=1) && (pdebug & P_PRE)) { 
 			mPrint("S_INIT"); 
 		}
 #		endif //_MONITOR
@@ -271,7 +271,7 @@ void stateMachine()
 			// Starting with version 5.0.1 the waittime is dependent on the SF
 			// So for SF12 we wait longer (2^7 == 128 uSec) and for SF7 4 uSec.
 			//delayMicroseconds( (0x01 << ((uint8_t)sf - 5 )) );
-			//if (_cad) 											// XXX 180520 make sure we start reading asap in hop
+			//if (gwayConfig.cad) 									// XXX 180520 make sure we start reading asap in hop
 			//	delayMicroseconds( RSSI_WAIT );						// Wait some microseconds less
 			
 			rssi = readRegister(REG_RSSI);							// Read the RSSI
@@ -281,13 +281,13 @@ void stateMachine()
 			detTime = micros();										// mark time that preamble detected
 			
 #			if _MONITOR>=1
-			if (( debug>=1 ) && ( pdebug & P_SCAN )) {
-				response = "SCAN:: ";
+			if ((debug>=1) && (pdebug & P_PRE)) {
+				String response = "SCAN:: ";
 				mStat(intr, response);
 				mPrint(response);
 			}
 #			endif //_MONITOR
-			writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF );			// reset all interrupt flags
+			writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);			// reset all interrupt flags
 			opmode(OPMODE_RX_SINGLE);								// set reg 0x01 to 0x06 for receiving
 			
 		}//if
@@ -304,8 +304,8 @@ void stateMachine()
 			rssi = readRegister(REG_RSSI);							// Read the RSSI
 
 #			if _MONITOR>=1
-			if (( debug>=2 ) && ( pdebug & P_SCAN )) {
-				response = "SCAN:: CDDONE: ";
+			if ((debug>=2) && (pdebug & P_SCAN)) {
+				String response = "SCAN:: CDDONE: ";
 				mStat(intr, response);
 				mPrint(response);
 			}
@@ -314,13 +314,13 @@ void stateMachine()
 			// The pRSSI (package RSSI) is calculated upon successful reception of message
 			// So we expect that this value makes little sense for the moment with CDDONE.
 			// Set the rssi as low as the noise floor. Lower values are not recognized then.
-			// Every cycle starts with ifreq==0 and sf=SF7 (or the set init SF)
+			// Every cycle starts with gwayConfig.ch==0 and sf=SF7 (or the set init SF)
 			//
-			if ( rssi > (RSSI_LIMIT - (_hop * 7)))					// Is set to 35, or 29 for HOP
+			if (rssi > (RSSI_LIMIT - (gwayConfig.hop * 7)))		// Is set to 35, or 29 for HOP
 			{
 #				if _MONITOR>=1
 				if (( debug>=2 ) && ( pdebug & P_SCAN )) {
-					response = "SCAN:: -> CAD: ";
+					String response = "SCAN:: -> CAD: ";
 					mStat(intr, response);
 					mPrint(response);
 				}
@@ -334,7 +334,7 @@ void stateMachine()
 			else {
 #				if _MONITOR>=1
 				if (( debug>=2 ) && ( pdebug & P_SCAN )) {
-					response = "SCAN:: rssi=";
+					String response = "SCAN:: rssi=";
 					response += String(rssi);
 					response += ": ";
 					mStat(intr, response);
@@ -353,17 +353,17 @@ void stateMachine()
 		
 		// So if we are here then we are in S_SCAN and the interrupt is not
 		// CDDECT or CDDONE. it is probably soft interrupt _event==1
-		// So if _hop we change the frequency and restart the
+		// So if gwayConfig.hop we change the frequency and restart the
 		// interrupt in order to check for CDONE on other frequencies
-		// if _hop we start at the next frequency, hop () sets the sf to SF7.
+		// if gwayConfig.hop we start at the next frequency, hop () sets the sf to SF7.
 		// If we are at the end of all frequencies, reset frequencies and sf
 		// and go to S_SCAN state.
 		//
 		// Note:: We should make sure that all frequencies are scanned in a row
-		// and when we switch to ifreq==0 we should stop for a while
+		// and when we switch to gwayConfig.ch==0 we should stop for a while
 		// to allow system processing.
 		// We should make sure that we enable webserver etc every once in a while.
-		// We do this by changing _event to 1 in loop() only for _hop and
+		// We do this by changing _event to 1 in loop() only for gwayConfig.hop and
 		// use _event=0 for non hop.
 		//
 		else if (intr == 0x00) 
@@ -376,7 +376,7 @@ void stateMachine()
 		else {
 #			if _MONITOR>=1
 			if (( debug>=0 ) && ( pdebug & P_SCAN )) {
-				response = "SCAN unknown:: ";
+				String response = "SCAN unknown:: ";
 				mStat(intr, response);
 				mPrint(response);
 			}
@@ -444,7 +444,7 @@ void stateMachine()
 			detTime = micros();
 #			if _MONITOR>=1
 			if (( debug>=1 ) && ( pdebug & P_CAD )) {
-				response = "CAD:: ";
+				String response = "CAD:: ";
 				mStat(intr, response);
 				mPrint(response);
 			}
@@ -461,7 +461,7 @@ void stateMachine()
 			// Depending on the frequency scheme this is for example SF8, SF10 or SF12
 			// We expect on other SF get CDDETD
 			//
-			if (((uint8_t)sf) < freqs[ifreq].upHi) {
+			if (((uint8_t)sf) < freqs[gwayConfig.ch].upHi) {
 			
 				sf = (sf_t)((uint8_t)sf+1);							// Increment sf
 				setRate(sf, 0x04);									// Set SF with CRC==on
@@ -481,7 +481,7 @@ void stateMachine()
 				if (( debug>=3 ) && ( pdebug & P_CAD )) {
 					mPrint("S_CAD:: CDONE, SF=" + String(sf) );
 				}
-#				endif //_MONIYOT
+#				endif //_MONITOR
 			}
 
 			// If we reach the highest SF for the frequency plan,
@@ -495,7 +495,7 @@ void stateMachine()
 				writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF );		// or IRQ_LORA_CDDONE_MASK
 				
 				_state = S_SCAN;									// As soon as we reach SF12 do something
-				sf = (sf_t) freqs[ifreq].upLo;
+				sf = (sf_t) freqs[gwayConfig.ch].upLo;
 				cadScanner();										// Which will reset SF to lowest SF
 
 #				if _MONITOR>=1		
@@ -524,7 +524,7 @@ void stateMachine()
 		}
 		
 		// else we do not recognize the interrupt. We print an error
-		// and restart scanning. If hop we even start at ifreq==1
+		// and restart scanning. If hop we start at gwayConfig.ch==1
 		//
 		else {
 #			if _MONITOR>=1
@@ -533,8 +533,8 @@ void stateMachine()
 			}
 #			endif //_MONITOR
 			_state = S_SCAN;
-				sf = SF7;
-				cadScanner();										// Scan and set SF7
+			sf = SF7;
+			cadScanner();											// Scan and set SF7
 			
 			// Reset Interrupts
 			_event=1;												// If unknown interrupt, restarts
@@ -565,12 +565,13 @@ void stateMachine()
 			if (intr & IRQ_LORA_CRCERR_MASK) {
 #				if _MONITOR>=1
 				if (( debug>=0 ) && ( pdebug & P_RX )) {
+					String response = "";
+					mStat(intr, response);
 					Serial.print(F("Rx CRC err: "));
-					SerialStat(intr);
 				}
 #				endif //_MONITOR
 
-				if ((_cad) || (_hop)) {
+				if ((gwayConfig.cad) || (gwayConfig.hop)) {
 					sf = SF7;
 					_state = S_SCAN;
 					cadScanner();
@@ -596,7 +597,7 @@ void stateMachine()
 			
 			// If we are here, no CRC error occurred, start timer
 #			if _DUSB>=1 || _MONITOR>=1
-				unsigned long ffTime = micros();	
+				uint32_t ffTime = micros();	
 #			endif			
 			// There should not be an error in the message
 			LoraUp.payLoad[0]= 0x00;								// Empty the message
@@ -612,7 +613,7 @@ void stateMachine()
 			if((LoraUp.payLength = receivePkt(LoraUp.payLoad)) <= 0) {
 #				if _MONITOR>=1
 				if (( debug>=1 ) && ( pdebug & P_RX )) {
-					response += "sMachine:: Error S-RX: payLenth=";
+					String response = "sMachine:: Error S-RX: payLenth=";
 					response += String(LoraUp.payLength);
 					mPrint(response);
 				}
@@ -627,7 +628,7 @@ void stateMachine()
 			
 #			if _MONITOR>=1
 			if ((pdebug & P_RX) && (debug >= 2)) {
-				response  = "RXDONE:: dT=";
+				String response  = "RXDONE:: dT=";
 				response += String(ffTime - detTime);
 				mStat(intr, response);
 				mPrint(response);
@@ -670,7 +671,7 @@ void stateMachine()
 			
 			// Set the modem to receiving BEFORE going back to user space.
 			// 
-			if ((_cad) || (_hop)) {
+			if ((gwayConfig.cad) || (gwayConfig.hop)) {
 				_state = S_SCAN;
 				sf = SF7;
 				cadScanner();
@@ -704,11 +705,11 @@ void stateMachine()
 			// If RXTOUT we put the modem in cad state and reset to SF7
 			// If a timeout occurs here we reset the cadscanner
 			//
-			if ((_cad) || (_hop)) {
+			if ((gwayConfig.cad) || (gwayConfig.hop)) {
 				// Set the state to CAD scanning
 #				if _MONITOR>=1
 				if (( debug>=2 ) && ( pdebug & P_RX )) {
-					response = "RXTOUT:: ";
+					String response = "RXTOUT:: ";
 					mStat(intr, response);
 					mPrint(response);
 				}
@@ -839,22 +840,22 @@ void stateMachine()
 
 #			if _MONITOR>=1
 			if (( debug>=0 ) && ( pdebug & P_TX )) {
-				response =  "T TXDONE:: rcvd=" + String(micros());
+				String response =  "T TXDONE:: rcvd=" + String(micros());
 				response += ", diff=" + String(micros()-LoraDown.tmst);
 				mPrint(response);
 			}
-#			endif
+#			endif //_MONITOR
 
 #			if _MONITOR>=2
 			if (pdebug & P_TX) {
-				response  = "T TXDONE:: rcvd=" + micros();
+				String response  = "T TXDONE:: rcvd=" + micros();
 				response += ", diff=" + String(micros()-LoraDown.tmst);
 				mPrint(response);
 			}
-#			endif
+#			endif //_MONITOR
 
 			// After transmission reset to receiver
-			if ((_cad) || (_hop)) {									// XXX 26/02
+			if ((gwayConfig.cad) || (gwayConfig.hop)) {									// XXX 26/02
 				// Set the state to CAD scanning
 				_state = S_SCAN;
 				sf = SF7;
@@ -879,7 +880,7 @@ void stateMachine()
 		else if ( intr != 0 ) {
 #			if _MONITOR>=1
 			if (( debug>=0 ) && ( pdebug & P_TX )) {
-				response =  "TXDONE:: unknown int:";
+				String response =  "TXDONE:: unknown int:";
 				mStat(intr, response);
 				mPrint(response);
 			} //_MONITOR
@@ -927,10 +928,10 @@ void stateMachine()
 		}
 #		endif //_MONITOR
 
-		if ((_cad) || (_hop)) {
+		if ((gwayConfig.cad) || (gwayConfig.hop)) {
 #			if _MONITOR>=1
 			if (debug>=0) {
-				response = "default:: Unknown _state ";
+				String response = "default:: Unknown _state ";
 				mStat(intr, response);
 				mPrint(response);
 			}

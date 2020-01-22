@@ -26,7 +26,7 @@
 //
 // XXX But, if necessary we can always add this later.
 
-#if GATEWAYMGT==1
+#if _GATEWAYMGT==1
 
 #if !defined _THINGPORT
 #error "The management functions needs _THINGPORT defined (and not over _TTNPORT)"
@@ -79,4 +79,4 @@ void gateway_mgt(uint8_t size, uint8_t *buff) {
 	}
 }
 
-#endif //GATEWAYMGT==1
+#endif //_GATEWAYMGT==1

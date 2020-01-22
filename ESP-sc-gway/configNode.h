@@ -1,5 +1,5 @@
 // sensor.h; 1-channel LoRa Gateway for ESP8266
-// Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
+// Copyright (c) 2016-2020 Maarten Westenberg version for ESP8266
 //
 // based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 // and many other contributors.
@@ -21,7 +21,7 @@
 
 // It is possible to use the gateway as a normal sensor node also. In this case,
 // substitute the node info below.
-#if GATEWAYNODE==1
+#if _GATEWAYNODE==1
 
 // Valid coding for internal sensors are LCODE and RAW.
 // Make sure to only select one.
@@ -39,7 +39,7 @@
 #define _GPS 1
 #define _BATTERY 1
 
-#endif //GATEWAYNODE
+#endif //_GATEWAYNODE
 
 
 #if _TRUSTED_NODES >= 1
@@ -68,7 +68,7 @@ nodex nodes[] = {
 #if _LOCALSERVER==1
 struct codex  {
 	uint32_t id;				// This is the device ID (coded in 4 bytes uint32_t
-	char nm[32];				// A name string which is free to choose
+	unsigned char nm[32];			// A name string which is free to choose
 	uint8_t nwkKey[16];			// The Network Session Key of 16 bytes
 	uint8_t appKey[16];			// The Application Session Key of 16 bytes
 };
@@ -117,13 +117,10 @@ struct wpas {
 };
 
 
-// Please fill in at least ONE SSID and password from your own WiFI network
+// Please fill in at least ONE valid SSID and password from your own WiFI network
 // below. This is needed to get the gateway working
-// Note: DO NOT use the first and the last line of the stucture, these should be empty strings and
-//	the first line in te struct is reserved for WifiManager.
 //
 wpas wpa[] = {
-	{ "" , "" },							// Reserved for WiFi Manager
 	{ "yourSSID", "yourPassword" },
 	{ "Your2SSID", "your2Password" }
 };

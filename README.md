@@ -110,8 +110,7 @@ Through Library Manager:
 - WiFiClientSecure (Version 1.0.0)
 - WifiEsp (Version 2.2.2)
 - Wire (Version 1.0.1)
-
-- WifiManager (Version 0.12.0 by Tzapu) for ESP8266 
+- ESP_WifiManager (Version 1.0.2 by Khoi Hoang)
 
 8. Compile the code and download the executable over USB to the gateway. If all is right, you should
 see the gateway starting up on the Serial Monitor.

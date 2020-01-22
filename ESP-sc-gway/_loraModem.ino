@@ -48,13 +48,14 @@
 // Mutex definitions
 //
 // ----------------------------------------------------------------------------------------
-#if MUTEX==1
+#if _MUTEX==1
 	void CreateMutux(int *mutex) {
 		*mutex=1;
 	}
 
-#define LIB_MUTEX 1
-#if LIB_MUTEX==1
+#define LIB__MUTEX 1
+
+#if LIB__MUTEX==1
 	bool GetMutex(int *mutex) {
 		//noInterrupts();
 		if (*mutex==1) { 
@@ -90,7 +91,7 @@
 		*mutex=1;
 	}
 	
-#endif //MUTEX==1
+#endif //_MUTEX==1
 
 // ----------------------------------------------------------------------------------------
 // Read one byte value, par addr is address
@@ -213,7 +214,7 @@ void setRate(uint8_t sf, uint8_t crc)
 	
 	// For sx1276 chips is the CRC ON is 
 	else {
-		uint8_t bw = 0;				// bw setting is in freqs[ifreq].dwnBw
+		uint8_t bw = 0;				// bw setting is in freqs[gwayConfig.ch].dwnBw
 		uint8_t cr = 0;				// cr settings dependent on SF setting
 		//switch (
 		
@@ -303,7 +304,7 @@ void  opmode(uint8_t mode)
 // ----------------------------------------------------------------------------------------
 // Hop to next frequency as defined by NUM_HOPS
 // This function should only be used for receiver operation. The current
-// receiver frequency is determined by ifreq index like so: freqs[ifreq] 
+// receiver frequency is determined by gwayConfig.ch index like so: freqs[gwayConfig.ch] 
 // ----------------------------------------------------------------------------------------
 void hop() {
 
@@ -311,8 +312,8 @@ void hop() {
 	opmode(OPMODE_STANDBY);
 		
 	// 3. Set frequency based on value in freq		
-	ifreq = (ifreq + 1) % NUM_HOPS ;							// Increment the freq round robin
-	setFreq(freqs[ifreq].upFreq);
+	gwayConfig.ch = (gwayConfig.ch + 1) % NUM_HOPS ;			// Increment the freq round robin
+	setFreq(freqs[gwayConfig.ch].upFreq);
 	
 	// 4. Set spreading Factor
 	sf = SF7;													// Starting the new frequency 
@@ -402,23 +403,23 @@ uint8_t receivePkt(uint8_t *payload)
     uint8_t irqflags = readRegister(REG_IRQ_FLAGS);						// 0x12; read back flags											
 	uint8_t crcUsed = readRegister(REG_HOP_CHANNEL);					// Is CRC used? (Register 0x1C)
 	if (crcUsed & 0x40) {
-#	if _DUSB>=1
+#		if _DUSB>=1
 		if (( debug>=2) && (pdebug & P_RX )) {
-			Serial.println(F("R rxPkt:: CRC used"));
+			mPrint("R rxPkt:: CRC used");
 		}
-#	endif //_DUSB
+#		endif //_DUSB
 	}
 	
     //  Check for payload IRQ_LORA_CRCERR_MASK=0x20 set
     if (irqflags & IRQ_LORA_CRCERR_MASK)								// Is CRC error?
     {
-#		if _DUSB>=1
+#		if _MONITOR>=1
         if (( debug>=0) && ( pdebug & P_RADIO )) {
-			Serial.print(F("rxPkt:: Err CRC, t="));
-			SerialTime();
-			Serial.println();
+			String response=("rxPkt:: Err CRC, t=");
+			stringTime(now(), response);
+			mPrint(response);
 		}
-#		endif //_DUSB
+#		endif //_MONITOR
 		return 0;
     }
 	
@@ -427,11 +428,11 @@ uint8_t receivePkt(uint8_t *payload)
 	// that we would here conclude that there is no HEADER
 	else if ((irqflags & IRQ_LORA_HEADER_MASK) == false)				// Header not ok?
     {
-#		if _DUSB>=1
+#		if _MONITOR>=1
 			if (( debug>=0) && ( pdebug & P_RADIO )) {
-				Serial.println(F("rxPkt:: Err HEADER"));
+				mPrint("rxPkt:: Err HEADER");
 			}
-#		endif //_DUSB
+#		endif //_MONITOR
 		// Reset VALID-HEADER flag 0x10
         writeRegister(REG_IRQ_FLAGS, (uint8_t)(IRQ_LORA_HEADER_MASK  | IRQ_LORA_RXDONE_MASK));	// 0x12; clear HEADER (== 0x10) flag
         return 0;
@@ -463,21 +464,19 @@ uint8_t receivePkt(uint8_t *payload)
         //uint8_t currentAddr = readRegister(REG_FIFO_RX_CURRENT_ADDR);	// 0x10
 		uint8_t currentAddr = readRegister(REG_FIFO_RX_BASE_AD);		// 0x0F
         uint8_t receivedCount = readRegister(REG_RX_NB_BYTES);			// 0x13; How many bytes were read
-#		if _DUSB>=1
+#		if _MONITOR>=1
 			if ((debug>=1) && (currentAddr > 64)) {						// More than 64 read?
-				Serial.print(F("rxPkt:: Rx addr>64"));
-				Serial.println(currentAddr);
+				mPrint("rxPkt:: ERROR Rx addr>64"+String(currentAddr));
 			}
-#		endif //_DUSB
+#		endif //_MONITOR
         writeRegister(REG_FIFO_ADDR_PTR, (uint8_t) currentAddr);		// 0x0D 
 
 		if (receivedCount > PAYLOAD_LENGTH) {
-#			if _DUSB>=1
-				if (( debug>=1 ) & ( pdebug & P_RADIO )) {
-					Serial.print(F("rxPkt:: receivedCount="));
-					Serial.println(receivedCount);
+#			if _MONITOR>=1
+				if (( debug>=0 ) & ( pdebug & P_RADIO )) {
+					mPrint("rxPkt:: ERROR Payliad receivedCount="+String(receivedCount));
 				}
-#			endif //_DUSB
+#			endif //_MONITOR
 			receivedCount=PAYLOAD_LENGTH;
 		}
 
@@ -488,23 +487,25 @@ uint8_t receivePkt(uint8_t *payload)
 
 		writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);					// Reset ALL interrupts
 		
-		// A long as _DUSB is enabled, and P_RX debug messages are selected,
+		// As long as _MONITOR is enabled, and P_RX debug messages are selected,
 		// the received packet is displayed on the output.
-#		if _DUSB>=1
+#		if _MONITOR>=1
 		if (( debug>=1 ) && ( pdebug & P_RX )){
 		
-			Serial.print(F("rxPkt:: t="));
-			SerialTime();
+			String response = "rxPkt:: t=";
+			stringTime(now(), response);
 			
 			Serial.print(F(", f="));
-			Serial.print(ifreq);
+			Serial.print(gwayConfig.ch);
 			Serial.print(F(", sf="));
 			Serial.print(sf);
+			
 			Serial.print(F(", a="));
 			if (payload[4]<0x10) Serial.print('0'); Serial.print(payload[4], HEX);
 			if (payload[3]<0x10) Serial.print('0'); Serial.print(payload[3], HEX);
 			if (payload[2]<0x10) Serial.print('0'); Serial.print(payload[2], HEX);
 			if (payload[1]<0x10) Serial.print('0'); Serial.print(payload[1], HEX);
+			
 			Serial.print(F(", flags="));
 			Serial.print(irqflags,HEX);
 			Serial.print(F(", addr="));
@@ -530,13 +531,10 @@ uint8_t receivePkt(uint8_t *payload)
 					DevAddr[3] = payload[1];
 			
 				if ((index = inDecodes((char *)(payload+1))) >=0 ) {	
-					Serial.print(F(", Ind="));
-					Serial.print(index);
-					//Serial.println();
+					mPrint(", Ind="+String(index));
 				}
 				else if (debug>=1) {	
-					Serial.print(F(", No Index"));
-					Serial.println();
+					mPrint(", ERRRO No Index");
 					return(receivedCount);
 				}	
 
@@ -578,11 +576,11 @@ uint8_t receivePkt(uint8_t *payload)
 			|
 #			endif // _TRUSTED_DECODE
 			
-			Serial.println();
+			mPrint(response);							// Print response for Serial or mPrint
 			
 			if (debug>=2) Serial.flush();
 		}
-#		endif //DUSB
+#		endif //MONITOR
 		return(receivedCount);
     }
 
@@ -849,7 +847,7 @@ void rxLoraModem()
 	opmode(OPMODE_STANDBY);										// CAD set 0x01 to 0x00
 	
 	// 3. Set frequency based on value in freq
-	setFreq(freqs[ifreq].upFreq);										// set to the right frequency
+	setFreq(freqs[gwayConfig.ch].upFreq);						// set to the right frequency
 
 	// 4. Set spreading Factor and CRC
     setRate(sf, 0x04);
@@ -869,7 +867,7 @@ void rxLoraModem()
 	writeRegister(REG_FIFO_ADDR_PTR, (uint8_t) readRegister(REG_FIFO_RX_BASE_AD));	// set 0x0D to 0x0F (contains 0x00);
 	
 	// Low Noise Amplifier used in receiver
-	writeRegister(REG_LNA, (uint8_t) LNA_MAX_GAIN);  						// 0x0C, 0x23
+	writeRegister(REG_LNA, (uint8_t) LNA_MAX_GAIN);  			// 0x0C, 0x23
 	
 	// 5. Accept no interrupts except RXDONE, RXTOUT en RXCRC
 	writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) ~(
@@ -879,7 +877,7 @@ void rxLoraModem()
 		IRQ_LORA_CRCERR_MASK));
 
 	// set frequency hopping
-	if (_hop) {
+	if (gwayConfig.hop) {
 		//writeRegister(REG_HOP_PERIOD, 0x01);					// 0x24, 0x01 was 0xFF
 		writeRegister(REG_HOP_PERIOD,0x00);						// 0x24, 0x00 was 0xFF
 	}
@@ -895,7 +893,7 @@ void rxLoraModem()
 
 	// 7+8.  Set the opmode to either single or continuous receive. The first is used when
 	// every message can come on a different SF, the second when we have fixed SF
-	if (_cad) {
+	if (gwayConfig.cad) {
 		// cad Scanner setup, set _state to S_RX
 		// Set Single Receive Mode, and go in STANDBY mode after receipt
 		_state= S_RX;											// 8.
@@ -905,7 +903,7 @@ void rxLoraModem()
 		// Set Continous Receive Mode, useful if we stay on one SF
 		_state= S_RX;											// 8.
 #		if _DUSB>=1
-		if (_hop) {
+		if (gwayConfig.hop) {
 			Serial.println(F("rxLoraModem:: ERROR continuous receive in hop mode"));
 		}
 #		endif
@@ -937,8 +935,8 @@ void cadScanner()
 	// 2. Put the radio in sleep mode
 	opmode(OPMODE_STANDBY);										// Was old value
 	
-	// 3. Set frequency based on value in ifreq					// XXX New, might be needed when receiving down 
-	setFreq(freqs[ifreq].upFreq);								// set to the right frequency
+	// 3. Set frequency based on value in gwayConfig.ch			// might be needed when receiving down 
+	setFreq(freqs[gwayConfig.ch].upFreq);						// set to the right frequency
 
 	// For every time we start the scanner, we set the SF to the begin value
 	//sf = SF7;													// XXX 180501 Not by default
@@ -994,7 +992,7 @@ void initLoraModem(
 				)
 {
 	_state = S_INIT;
-#if ESP32_ARCH==1
+#if defined(ESP32_ARCH)
 	digitalWrite(pins.rst, LOW);
 	delayMicroseconds(10000);
     digitalWrite(pins.rst, HIGH);
@@ -1014,8 +1012,8 @@ void initLoraModem(
 	// 2 Set LoRa Mode
 	opmode(OPMODE_LORA);										// set register 0x01 to 0x80
 	
-	// 3. Set frequency based on value in freq
-	setFreq(freqs[ifreq].upFreq);												// set to 868.1MHz or the last saved frequency
+	// 3. Set frequency based on value in gwayConfig.ch
+	setFreq(freqs[gwayConfig.ch].upFreq);						// set to 868.1MHz or the last saved frequency
 	
 	// 4. Set spreading Factor
     setRate(sf, 0x04);
@@ -1102,7 +1100,7 @@ void initLoraModem(
 // ----------------------------------------------------------------------------------------
 void startReceiver() {
 	initLoraModem();								// XXX 180326, after adapting this function 
-	if (_cad) {
+	if (gwayConfig.cad) {
 #		if _DUSB>=1
 		if (( debug>=1 ) && ( pdebug & P_SCAN )) {
 			Serial.println(F("S PULL:: _state set to S_SCAN"));

@@ -158,7 +158,7 @@ vector freqs [] = {
 };
 
 #else
-int freqs [] = {
+vector freqs [] = {
 	// Print an Error, Not supported
 #	error "Sorry, but your frequency plan is not supported"
 };
@@ -180,13 +180,10 @@ volatile uint8_t _event=0;
 // so we need to store the current value we like to work with
 uint8_t _rssi;	
 
-bool _cad= (bool) _CAD;	// Set to true for Channel Activity Detection, only when dio 1 connected
-bool _hop= (bool) false;// experimental; frequency hopping. Only use when dio2 connected
-
-unsigned long nowTime=0;
-unsigned long msgTime=0;
-unsigned long hopTime=0;
-unsigned long detTime=0;
+uint32_t nowTime=0;
+uint32_t msgTime=0;
+uint32_t hopTime=0;
+uint32_t detTime=0;
 
 #if _PIN_OUT==1
 // ----------------------------------------------------------------------------
@@ -270,12 +267,12 @@ struct pins {
 #error "Pin Definitions _PIN_OUT must be defined in loraModem.h"
 #endif
 
-// stat_t contains the statistics that are kept by message. 
+// stat_t contains the statistics that are kept for a message. 
 // Each time a message is received or sent the statistics are updated.
-// In case _STATISTICS==1 we define the last MAX_STAT messages as statistics
+// In case _STATISTICS==1 we define the last _MAXSTAT messages as statistics
 struct stat_t {
-	unsigned long tmst;						// Time since 1970 in seconds		
-	unsigned long node;						// 4-byte DEVaddr (the only one known to gateway)
+	time_t tmst;							// Time since 1970 in seconds		
+	uint32_t node;							// 4-byte DEVaddr (the only one known to gateway)
 	uint8_t ch;								// Channel index to freqs array
 	uint8_t sf;
 #if RSSI==1
@@ -297,32 +294,32 @@ struct stat_t {
 
 struct stat_c {
 
-	unsigned long msg_ok;
-	unsigned long msg_ttl;
-	unsigned long msg_down;
+	uint32_t msg_ok;
+	uint32_t msg_ttl;
+	uint32_t msg_down;
 
-#if _STATISTICS >= 2							// Only if we explicitly set it higher	
-	unsigned long sf7;						// Spreading factor 7 statistics/Count
-	unsigned long sf8;						// Spreading factor 8
-	unsigned long sf9;						// Spreading factor 9
-	unsigned long sf10;						// Spreading factor 10
-	unsigned long sf11;						// Spreading factor 11
-	unsigned long sf12;						// Spreading factor 12
+#if _STATISTICS >= 2						// Only if we explicitly set it higher	
+	uint32_t sf7;							// Spreading factor 7 statistics/Count
+	uint32_t sf8;							// Spreading factor 8
+	uint32_t sf9;							// Spreading factor 9
+	uint32_t sf10;							// Spreading factor 10
+	uint32_t sf11;							// Spreading factor 11
+	uint32_t sf12;							// Spreading factor 12
 	
 	// If _STATISTICS is 3, we add statistics about the channel 
 	// When only one channel is used, we normally know the spread of
 	// statistics, but when HOP mode is selected we migth want to add this info
 #if _STATISTICS >=3
-	unsigned long msg_ok_0, msg_ok_1, msg_ok_2;
-	unsigned long msg_ttl_0, msg_ttl_1, msg_ttl_2;
-	unsigned long msg_down_0, msg_down_1, msg_down_2;
+	uint32_t msg_ok_0, msg_ok_1, msg_ok_2;
+	uint32_t msg_ttl_0, msg_ttl_1, msg_ttl_2;
+	uint32_t msg_down_0, msg_down_1, msg_down_2;
 
-	unsigned long sf7_0, sf7_1, sf7_2;
-	unsigned long sf8_0, sf8_1, sf8_2;
-	unsigned long sf9_0, sf9_1, sf9_2;
-	unsigned long sf10_0, sf10_1, sf10_2;
-	unsigned long sf11_0, sf11_1, sf11_2;
-	unsigned long sf12_0, sf12_1, sf12_2;
+	uint32_t sf7_0, sf7_1, sf7_2;
+	uint32_t sf8_0, sf8_1, sf8_2;
+	uint32_t sf9_0, sf9_1, sf9_2;
+	uint32_t sf10_0, sf10_1, sf10_2;
+	uint32_t sf11_0, sf11_1, sf11_2;
+	uint32_t sf12_0, sf12_1, sf12_2;
 #endif //3
 	
 	uint16_t boots;							// Number of boots
@@ -335,7 +332,7 @@ struct stat_c statc;
 
 
 // History of received uplink and downlink messages from nodes
-struct stat_t statr[MAX_STAT];
+struct stat_t statr[_MAXSTAT];
 
 
 
@@ -344,7 +341,7 @@ struct stat_t statr[MAX_STAT];
 struct stat_t	statr[1];					// Always have at least one element to store in
 #endif
 
-// Define the payload structure used to separate interrupt ans SPI
+// Define the payload structure used to separate interrupt and SPI
 // processing from the loop() part
 uint8_t payLoad[128];						// Payload i
 struct LoraBuffer {
@@ -365,7 +362,7 @@ struct LoraUp {
 	uint8_t		payLoad[128];
 	uint8_t		payLength;
 	int			prssi; 
-	long		snr;
+	int32_t		snr;
 	int			rssicorr;
 	uint8_t		sf;
 } LoraUp;

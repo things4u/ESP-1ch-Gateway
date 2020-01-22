@@ -1,5 +1,5 @@
 // 1-channel LoRa Gateway for ESP8266
-// Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg
+// Copyright (c) 2016-2020 Maarten Westenberg
 // Author: Maarten Westenberg (mw12554@hotmail.com)
 //
 // Based on work done by Thomas Telkamp for Raspberry PI 1-ch gateway and many others.
@@ -26,12 +26,8 @@
 
 // The followion file contains most of the definitions
 // used in other files. It should be the first file.
-#include "configGway.h"									// This file contains configuration of GWay
-#include "configNode.h"									// Contains the AVG data of Wifi etc.
-
-#if defined (ARDUINO_ARCH_ESP32) || defined(ESP32)
-#define ESP32_ARCH 1
-#endif
+#include "configGway.h"										// contains the configuration data of GWay
+#include "configNode.h"										// Contains the personal data of Wifi etc.
 
 #include <Esp.h>											// ESP8266 specific IDE functions
 #include <string.h>
@@ -46,7 +42,6 @@
 
 #include <SPI.h>											// For the RFM95 bus
 #include <TimeLib.h>										// http://playground.arduino.cc/code/time
-#include <DNSServer.h>										// Local DNSserver
 #include <ArduinoJson.h>
 #include <FS.h>												// ESP8266 Specific
 #include <WiFiUdp.h>
@@ -59,87 +54,91 @@
 #include "oLED.h"
 
 extern "C" {
-#include "lwip/err.h"
-#include "lwip/dns.h"
+#	include "lwip/err.h"
+#	include "lwip/dns.h"
 }
 
-#if _WIFIMANAGER==1
-#include <WiFiManager.h>									// Library for ESP WiFi config through an AP
+#if (_GATEWAYNODE==1) || (_LOCALSERVER==1)
+#	include "AES-128_V10.h"
 #endif
-
-#if (GATEWAYNODE==1) || (_LOCALSERVER==1)
-#include "AES-128_V10.h"
-#endif
-
 
 // ----------- Specific ESP32 stuff --------------
-#if ESP32_ARCH==1											// IF ESP32
+#if defined (ARDUINO_ARCH_ESP32) || defined(ESP32)
+#	define ESP32_ARCH 1
+#	include <esp_wifi.h>
+#	include <WiFi.h>
+#	include <ESPmDNS.h>
+#	include <SPIFFS.h>
 
-#include "WiFi.h"
-#include <ESPmDNS.h>
-#include <SPIFFS.h>
-#if A_SERVER==1
-#include <ESP32WebServer.h>									// Dedicated Webserver for ESP32
-#include <Streaming.h>          							// http://arduiniana.org/libraries/streaming/
-#endif
-#if A_OTA==1
-#include <ESP32httpUpdate.h>								// Not yet available
-#include <ArduinoOTA.h>
-#endif//OTA
+#	if A_SERVER==1
+#		include <ESP32WebServer.h>							// Dedicated Webserver for ESP32
+#		include <Streaming.h>          						// http://arduiniana.org/libraries/streaming/
+		ESP32WebServer server(A_SERVERPORT);
+#	endif //A_SERVER
+
+#	if A_OTA==1
+#		include <ESP32httpUpdate.h>							// Not yet available
+#		include <ArduinoOTA.h>
+#	endif //A_OTA
+
+#	if _WIFIMANAGER==1
+#		define ESP_getChipId()   ((uint32_t)ESP.getEfuseMac())
+#		include <ESP_WiFiManager.h>							// Library for ESP WiFi config through an AP
+//#		include <WebServer.h>						
+//#		include <HttpClient.h>
+#	endif //_WIFIMANAGER
+
 
 // ----------- Specific ESP8266 stuff --------------
+#elif defined(ARDUINO_ARCH_ESP8266)
+	extern "C" {
+#		include "user_interface.h"
+#		include "c_types.h"
+	}
+#	include <ESP8266WiFi.h>									// Which is specific for ESP8266
+#	include <ESP8266mDNS.h>
+
+#	if A_SERVER==1
+#		include <ESP8266WebServer.h>
+#		include <Streaming.h>          						// http://arduiniana.org/libraries/streaming/
+		ESP8266WebServer server(A_SERVERPORT);
+#	endif //A_SERVER
+
+#	if A_OTA==1
+#		include <ESP8266httpUpdate.h>
+#		include <ArduinoOTA.h>
+#	endif //A_OTA
+
+#	if _WIFIMANAGER==1						
+#		include <ESP_WiFiManager.h>							// Library for ESP WiFi config through an AP
+#		define ESP_getChipId()   (ESP.getChipId())
+#	endif //_WIFIMANAGER
+
 #else
+#	error "Architecture not supported"
 
-#include <ESP8266WiFi.h>									// Which is specific for ESP8266
-#include <ESP8266mDNS.h>
-extern "C" {
-#include "user_interface.h"
-#include "c_types.h"
-}
-#if A_SERVER==1
-#include <ESP8266WebServer.h>
-#include <Streaming.h>          							// http://arduiniana.org/libraries/streaming/
-#endif //A_SERVER
+#endif //ESP_ARCH
 
-#if A_OTA==1
-#include <ESP8266httpUpdate.h>
-#include <ArduinoOTA.h>
-#endif//OTA
+#include <DNSServer.h>										// Local DNSserver
 
-#endif//ESP_ARCH
 
-// ----------- Declaration of vars --------------
+// ----------- Declaration of variables --------------
+
 uint8_t debug=1;											// Debug level! 0 is no msgs, 1 normal, 2 extensive
-uint8_t pdebug=0xFF;										// Allow all patterns for debugging
+uint8_t pdebug= P_MAIN | P_GUI;								// Initially only MAIN and GUI
 
-#if GATEWAYNODE==1
-
-#if _GPS==1
-#include <TinyGPS++.h>
-TinyGPSPlus gps;
-HardwareSerial sGps(1);
-#endif //_GPS
-#endif //GATEWAYNODE
-
-// You can switch webserver off if not necessary but probably better to leave it in.
-#if A_SERVER==1
-#if ESP32_ARCH==1
-	ESP32WebServer server(A_SERVERPORT);
-#else
-	ESP8266WebServer server(A_SERVERPORT);
-#endif
-#endif
+#if _GATEWAYNODE==1
+#	if _GPS==1
+#		include <TinyGPS++.h>
+		TinyGPSPlus gps;
+		HardwareSerial sGps(1);
+#	endif //_GPS
+#endif //_GATEWAYNODE
 
 using namespace std;
-
-byte currentMode = 0x81;
-
-bool sx1272 = true;											// Actually we use sx1276/RFM95
-
-uint8_t	 ifreq = 0;											// Channel Index
-//unsigned long freq = 0;
-
-uint8_t MAC_array[6];
+byte 		currentMode = 0x81;
+bool		sx1272 = true;									// Actually we use sx1276/RFM95
+uint8_t		MAC_array[6];
 
 // ----------------------------------------------------------------------------
 //
@@ -169,35 +168,36 @@ IPAddress thingServer;
 
 WiFiUDP Udp;
 
-time_t startTime = 0;										// The time in seconds since 1970 that the server started
-															// be aware that UTP time has to succeed for meaningful values.
-															// We use this variable since millis() is reset every 50 days...
+time_t startTime = 0;										// The time in seconds since 1970 that the server started. We use this variable since millis() is reset every 50 days...
 uint32_t eventTime = 0;										// Timing of _event to change value (or not).
 uint32_t sendTime = 0;										// Time that the last message transmitted
 uint32_t doneTime = 0;										// Time to expire when CDDONE takes too long
 uint32_t statTime = 0;										// last time we sent a stat message to server
-uint32_t pulltime = 0;										// last time we sent a pull_data request to server
-//uint32_t lastTmst = 0;									// Last activity Timer
-
-#if A_SERVER==1
-uint32_t wwwtime = 0;
-#endif
-#if NTP_INTR==0
-uint32_t ntptimer = 0;
-#endif
+uint32_t pullTime = 0;										// last time we sent a pull_data request to server
 
 #define TX_BUFF_SIZE  1024									// Upstream buffer to send to MQTT
 #define RX_BUFF_SIZE  1024									// Downstream received from MQTT
 #define STATUS_SIZE	  512									// Should(!) be enough based on the static text .. was 1024
 
-#if GATEWAYNODE==1
-uint16_t frameCount=0;										// We write this to SPIFF file
+#if A_SERVER==1
+	uint32_t wwwtime = 0;
 #endif
+#if NTP_INTR==0
+	uint32_t ntptimer = 0;
+#endif
+#if _GATEWAYNODE==1
+	uint16_t frameCount=0;									// We write this to SPIFF file
+#endif
+
+// Init the indexes of the data we display on the webpage
+int16_t iMoni=0;
+int16_t iSeen=0;
+int16_t iSens=0;
 
 // volatile bool inSPI This initial value of mutex is to be free,
 // which means that its value is 1 (!)
 // 
-int mutexSPI = 1;
+int16_t mutexSPI = 1;
 
 // ----------------------------------------------------------------------------
 // FORWARD DECLARATIONS
@@ -211,219 +211,48 @@ int mutexSPI = 1;
 void ICACHE_RAM_ATTR Interrupt_0();
 void ICACHE_RAM_ATTR Interrupt_1();
 
-int sendPacket(uint8_t *buf, uint8_t length);				// _txRx.ino forward
+int sendPacket(uint8_t *buf, uint8_t length);							// _txRx.ino forward
 
-static void printIP(IPAddress ipa, const char sep, String& response);	// _wwwServer.ino
-void setupWWW();											// _wwwServer.ino forward
+void printIP(IPAddress ipa, const char sep, String & response);			// _wwwServer.ino
+void setupWWW();														// _wwwServer.ino forward
 
-void SerialTime();											// _utils.ino forward
-static void mPrint(String txt);								// _utils.ino (static void)
-int mStat(uint8_t intr, String & response);					// _utils.ini
-void SerialStat(uint8_t intr);								// _utils.ino
-void printHexDigit(uint8_t digit);							// _utils.ino
-int inDecodes(char * id);									// _utils.ino
+void mPrint(String txt);												// _utils.ino
+int getNtpTime(time_t *t);												// _utils.ino
+int mStat(uint8_t intr, String & response);								// _utils.ini
+void SerialStat(uint8_t intr);											// _utils.ino
+void printHexDigit(uint8_t digit, String & response);				// _utils.ino
+int inDecodes(char * id);												// _utils.ino
+static void stringTime(time_t t, String & response);					// _urils.ino
 
-int initMonitor(struct moniLine *monitor);					// _loraFiles.ino
+int initMonitor(struct moniLine *monitor);								// _loraFiles.ino
+int initConfig(struct espGwayConfig *c);								// _loraFiles.ino
+int writeSeen(const char *fn, struct nodeSeen *listSeen);				// _loraFiles.ino
+int readGwayCfg(const char *fn, struct espGwayConfig *c);				// _loraFiles.ino
 
-void init_oLED();											// _oLED.ino
-void acti_oLED();											// _oLED.ino
-void addr_oLED();											// _oLED.ino
+void init_oLED();														// _oLED.ino
+void acti_oLED();														// _oLED.ino
+void addr_oLED();														// _oLED.ino
 
-void setupOta(char *hostname);								// _otaServer.ino
+void setupOta(char *hostname);											// _otaServer.ino
 
-void initLoraModem();										// _loraModem.ino
-void rxLoraModem();											// _loraModem.ino
-void writeRegister(uint8_t addr, uint8_t value);			// _loraModem.ino
-void cadScanner();											// _loraModem.ino
+void initLoraModem();													// _loraModem.ino
+void rxLoraModem();														// _loraModem.ino
+void writeRegister(uint8_t addr, uint8_t value);						// _loraModem.ino
+void cadScanner();														// _loraModem.ino
+void startReceiver();													// _loraModem.ino
 
-void stateMachine();										// _stateMachine.ino
+void stateMachine();													// _stateMachine.ino
 
-bool connectUdp();											// _udpSemtech.ino
-int readUdp(int packetSize);								// _udpSemtech.ino
-int sendUdp(IPAddress server, int port, uint8_t *msg, int length);	// _udpSemtech.ino
-void sendstat();											// _udpSemtech.ino
-void pullData();											// _udpSemtech.ino
+bool connectUdp();														// _udpSemtech.ino
+int readUdp(int packetSize);											// _udpSemtech.ino
+int sendUdp(IPAddress server, int port, uint8_t *msg, int length);		// _udpSemtech.ino
+void sendstat();														// _udpSemtech.ino
+void pullData();														// _udpSemtech.ino
 
-#if MUTEX==1
-// Forward declarations
-void ICACHE_FLASH_ATTR CreateMutux(int *mutex);
-bool ICACHE_FLASH_ATTR GetMutex(int *mutex);
-void ICACHE_FLASH_ATTR ReleaseMutex(int *mutex);
-#endif
-
-// ----------------------------------------------------------------------------
-// DIE is not used actively in the source code apart from resolveHost().
-// It is replaced by a Serial.print command so we know that we have a problem
-// somewhere.
-// There are at least 3 other ways to restart the ESP. Pick one if you want.
-// ----------------------------------------------------------------------------
-void die(String s)
-{
-#	if _MONITOR>=1
-	mPrint(s);
-#	endif //_MONITOR
-
-#	if _DUSB>=1
-	Serial.println(s);
-	if (debug>=2) Serial.flush();
-#	endif //_DUSB
-
-	delay(50);
-	// system_restart();									// SDK function
-	// ESP.reset();				
-	abort();												// Within a second
-}
-
-// ----------------------------------------------------------------------------
-// gway_failed is a function called by ASSERT in configGway.h
-//
-// ----------------------------------------------------------------------------
-void gway_failed(const char *file, uint16_t line) {
-#if _DUSB>=1 || _MONITOR>=1
-	String response="";
-	response += "Program failed in file: ";
-	response += String(file);
-	response += ", line: ";
-	response += String(line);
-	mPrint(response);
-#endif //_DUSB||_MONITOR
-}
-
-
-
-// ----------------------------------------------------------------------------
-// Convert a float to string for printing
-// Parameters:
-//	f is float value to convert
-//	p is precision in decimal digits
-//	val is character array for results
-// ----------------------------------------------------------------------------
-void ftoa(float f, char *val, int p) {
-	int j=1;
-	int ival, fval;
-	char b[7] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-	
-	for (int i=0; i< p; i++) { j= j*10; }
-
-	ival = (int) f;											// Make integer part
-	fval = (int) ((f- ival)*j);								// Make fraction. Has same sign as integer part
-	if (fval<0) fval = -fval;								// So if it is negative make fraction positive again.
-															// sprintf does NOT fit in memory
-	if ((f<0) && (ival == 0)) strcat(val, "-");
-	strcat(val,itoa(ival,b,10));							// Copy integer part first, base 10, null terminated
-	strcat(val,".");										// Copy decimal point
-	
-	itoa(fval,b,10);										// Copy fraction part base 10
-	for (int i=0; i<(p-strlen(b)); i++) {
-		strcat(val,"0");									// first number of 0 of faction?
-	}
-	
-	// Fraction can be anything from 0 to 10^p , so can have less digits
-	strcat(val,b);
-}
-
-// ============================================================================
-// NTP TIME functions
-
-// ----------------------------------------------------------------------------
-// Send the request packet to the NTP server.
-//
-// ----------------------------------------------------------------------------
-int sendNtpRequest(IPAddress timeServerIP) {
-	const int NTP_PACKET_SIZE = 48;							// Fixed size of NTP record
-	byte packetBuffer[NTP_PACKET_SIZE];
-
-	memset(packetBuffer, 0, NTP_PACKET_SIZE);				// Zero the buffer.
-	
-	packetBuffer[0]  = 0b11100011;   						// LI, Version, Mode
-	packetBuffer[1]  = 0;									// Stratum, or type of clock
-	packetBuffer[2]  = 6;									// Polling Interval
-	packetBuffer[3]  = 0xEC;								// Peer Clock Precision
-	// 8 bytes of zero for Root Delay & Root Dispersion
-	packetBuffer[12] = 49;
-	packetBuffer[13] = 0x4E;
-	packetBuffer[14] = 49;
-	packetBuffer[15] = 52;	
-
-	
-	if (!sendUdp( (IPAddress) timeServerIP, (int) 123, packetBuffer, NTP_PACKET_SIZE)) {
-		gwayConfig.ntpErr++;
-		gwayConfig.ntpErrTime = now();
-		return(0);	
-	}
-	return(1);
-}
-
-
-// ----------------------------------------------------------------------------
-// Get the NTP time from one of the time servers
-// Note: As this function is called from SyncINterval in the background
-//	make sure we have no blocking calls in this function
-// ----------------------------------------------------------------------------
-time_t getNtpTime()
-{
-	gwayConfig.ntps++;
-	
-    if (!sendNtpRequest(ntpServer))							// Send the request for new time
-	{
-		if (pdebug & P_MAIN) {
-			mPrint("M sendNtpRequest failed");
-		}
-		return(0);
-	}
-	
-	const int NTP_PACKET_SIZE = 48;							// Fixed size of NTP record
-	byte packetBuffer[NTP_PACKET_SIZE];
-	memset(packetBuffer, 0, NTP_PACKET_SIZE);				// Set buffer cntents to zero
-
-    uint32_t beginWait = millis();
-	delay(10);
-    while (millis() - beginWait < 1500) 
-	{
-		int size = Udp.parsePacket();
-		if ( size >= NTP_PACKET_SIZE ) {
-		
-			if (Udp.read(packetBuffer, NTP_PACKET_SIZE) < NTP_PACKET_SIZE) {
-				break;
-			}
-			else {
-				// Extract seconds portion.
-				unsigned long secs;
-				secs  = packetBuffer[40] << 24;
-				secs |= packetBuffer[41] << 16;
-				secs |= packetBuffer[42] <<  8;
-				secs |= packetBuffer[43];
-				// UTC is 1 TimeZone correction when no daylight saving time
-				return(secs - 2208988800UL + NTP_TIMEZONES * SECS_IN_HOUR);
-			}
-			Udp.flush();	
-		}
-		delay(100);											// Wait 100 millisecs, allow kernel to act when necessary
-    }
-
-	Udp.flush();
-	
-	// If we are here, we could not read the time from internet
-	// So increase the counter
-	gwayConfig.ntpErr++;
-	gwayConfig.ntpErrTime = now();
-
-#	if _MONITOR>=1
-	if (pdebug & P_MAIN) {
-		mPrint("getNtpTime:: read failed");
-	}
-#	endif //_MONITOR
-	return(0); 												// return 0 if unable to get the time
-}
-
-// ----------------------------------------------------------------------------
-// Set up regular synchronization of NTP server and the local time.
-// ----------------------------------------------------------------------------
-#if NTP_INTR==1
-void setupTime() {
-  setSyncProvider(getNtpTime);
-  setSyncInterval(_NTP_INTERVAL);
-}
+#if _MUTEX==1
+	void ICACHE_FLASH_ATTR CreateMutux(int *mutex);
+	bool ICACHE_FLASH_ATTR GetMutex(int *mutex);
+	void ICACHE_FLASH_ATTR ReleaseMutex(int *mutex);
 #endif
 
 
@@ -440,69 +269,52 @@ void setup() {
 
 	char MAC_char[19];										// XXX Unbelievable
 	MAC_char[18] = 0;
+	char hostname[12];										// hostname space
 
 #	if _DUSB>=1
 		Serial.begin(_BAUDRATE);							// As fast as possible for bus
-#	endif
-	delay(500);	
-
-#if _MONITOR>=1
-	initMonitor(monitor);
-#endif
-
-
-#if _GPS==1
-	// Pins are define in LoRaModem.h together with other pins
-	sGps.begin(9600, SERIAL_8N1, GPS_TX, GPS_RX);			// PIN 12-TX 15-RX
-#endif //_GPS
-
-#ifdef ESP32
-#	if _MONITOR>=1
-		mPrint("ESP32 defined, freq=" + String(freqs[0].upFreq));
-#	endif //_MONITOR
-#endif //ESP32
-
-#ifdef ARDUINO_ARCH_ESP32
-#	if _MONITOR>=1
-		mPrint("ARDUINO_ARCH_ESP32 defined");
-#	endif //_MONITOR
-#endif //ARDUINO_ARCH_ESP32
-
-#	if _DUSB>=1
+		delay(500);
 		Serial.flush();
 #	endif //_DUSB
+
+#	if _GPS==1
+		// Pins are defined in LoRaModem.h together with other pins
+		sGps.begin(9600, SERIAL_8N1, GPS_TX, GPS_RX);			// PIN 12-TX 15-RX
+#	endif //_GPS
 
 	delay(500);
 
 	if (SPIFFS.begin()) {
 #		if _MONITOR>=1
-			mPrint("SPIFFS init success");
+		if ((debug>=1) && (pdebug & P_MAIN)) {
+			mPrint("SPIFFS begin");
+		}
 #		endif //_MONITOR
 	}
-	else {
+	else {											// SPIFFS not found
 		if (pdebug & P_MAIN) {
-			mPrint("SPIFFS not found");
+			mPrint("SPIFFS.begin: not found, formatting");
 		}
+		SPIFFS.format();
+		delay(500);
+		initConfig(&gwayConfig);
 	}
 	
-#	if _SPIFF_FORMAT>=1
+	// If we set SPIFFS_FORMAT in 
+#	if _SPIFFS_FORMAT>=1
 	SPIFFS.format();										// Normally disabled. Enable only when SPIFFS corrupt
+	delay(500);
+	initConfig(&gwayConfig);
 	if ((debug>=1) && (pdebug & P_MAIN)) {
 		mPrint("Format SPIFFS Filesystem Done");
 	}
-#	endif //_SPIFF_FORMAT>=1
+#	endif //_SPIFFS_FORMAT>=1
 
-	delay(500);
-	
-	// Read the config file for all parameters not set in the setup() or configGway.h file
-	// This file should be read just after SPIFFS is initializen and before
-	// other configuration parameters are used.
-	//
-	readConfig(CONFIGFILE, &gwayConfig);
-	readSeen(_SEENFILE, listSeen);							// read the seenFile records
+#if _MONITOR>=1
+	initMonitor(monitor);
+#endif
 
 #	if _MONITOR>=1
-		mPrint("Assert=");
 #		if defined CFG_noassert
 			mPrint("No Asserts");
 #		else
@@ -510,82 +322,114 @@ void setup() {
 #		endif //CFG_noassert
 #	endif //_MONITOR
 
-#if OLED>=1
-	init_oLED();											// When done display "STARTING" on OLED
-#endif //OLED
+	delay(500);
+	
+	// Read the config file for all parameters not set in the setup() or configGway.h file
+	// This file should be read just after SPIFFS is initializen and before
+	// other configuration parameters are used.
+	//
+	if (readGwayCfg(CONFIGFILE, &gwayConfig) > 0) {			// read the Gateway Config
+#		if _MONITOR>=1
+		if (debug>=0) {
+			mPrint("readGwayCfg:: return OK");
+		}
+#		endif
+	}
+	else {
+#		if _MONITOR>=1
+		if (debug>=0) {
+			mPrint("setup:: readGwayCfg: ERROR readCfgCfg Failed");
+		}
+#		endif	
+	};							
+
+#	if OLED>=1
+		init_oLED();										// When done display "STARTING" on OLED
+#	endif //OLED
 
 	delay(500);
 	yield();
 
-	WiFi.mode(WIFI_STA);
-	WiFi.setAutoConnect(true);
-	//WiFi.begin();
-	
-	WlanReadWpa();											// Read the last Wifi settings from SPIFFS into memory
+#	if _WIFIMANAGER==1
+	wifiMgr();
+#	endif //_WIFIMANAGER
 
+	WiFi.mode(WIFI_STA);									// WiFi settings for connections
+	WiFi.setAutoConnect(true);
 	WiFi.macAddress(MAC_array);
-	
     sprintf(MAC_char,"%02x:%02x:%02x:%02x:%02x:%02x",
 		MAC_array[0],MAC_array[1],MAC_array[2],MAC_array[3],MAC_array[4],MAC_array[5]);
-	Serial.print("MAC: ");
-    Serial.print(MAC_char);
-	Serial.print(F(", len="));
-	Serial.println(strlen(MAC_char));
 
-	// We start by connecting to a WiFi network, set hostname
-	char hostname[12];
+#	if _MONITOR>=1
+		mPrint("MAC: " + String(MAC_char) + ", len=" + String(strlen(MAC_char)) );
+#	endif //_MONITOR
 
-	// Setup WiFi UDP connection. Give it some time and retry x times..
+
+	// Setup WiFi UDP connection. Give it some time and retry x times.. '0' means try forever
 	while (WlanConnect(0) <= 0) {
-		Serial.print(F("Error Wifi network connect "));
-		Serial.println();
+#		if _MONITOR>=1
+		if ((debug>=0) && (pdebug & P_MAIN)) {
+			mPrint("setup:: Error Wifi network connect(0)");
+		}
+#		endif //_MONITOR
 		yield();
-	}	
+	}
+
+#	if _MONITOR>=1
+	if ((debug>=1) & ( pdebug & P_MAIN )) {
+		mPrint("setup:: WlanConnect="+String(WiFi.SSID()) );
+	}
+#	endif
 	
-	// After there is a WiFi router connection, we can also set the hostname.
-#if ESP32_ARCH==1
-	sprintf(hostname, "%s%02x%02x%02x", "esp32-", MAC_array[3], MAC_array[4], MAC_array[5]);
-	WiFi.setHostname( hostname );
-	MDNS.begin(hostname);
-#else
-	sprintf(hostname, "%s%02x%02x%02x", "esp8266-", MAC_array[3], MAC_array[4], MAC_array[5]);
-	wifi_station_set_hostname( hostname );
-#endif	//ESP32_ARCH
+	// After there is a WiFi router connection, we set the hostname with last 3 bytes of MAC address.
+#	if defined(ESP32_ARCH)
+		// ESP32
+		sprintf(hostname, "%s%02x%02x%02x", "esp32-", MAC_array[3], MAC_array[4], MAC_array[5]);
+		WiFi.setHostname( hostname );
+		MDNS.begin(hostname);
+#	else
+		//ESP8266
+		sprintf(hostname, "%s%02x%02x%02x", "esp8266-", MAC_array[3], MAC_array[4], MAC_array[5]);
+		wifi_station_set_hostname( hostname );
+#	endif	//ESP32_ARCH
 
-#	if _DUSB>=1
-		Serial.print(F("Host="));
-#if ESP32_ARCH==1
-		Serial.print(WiFi.getHostname());
-#else
-		Serial.print(wifi_station_get_hostname());
-#endif //ESP32_ARCH
+#	if _MONITOR>=1
+	if (debug>=0) {
+		String response = "Host=";
+#		if defined(ESP32_ARCH)
+			response += String(WiFi.getHostname());
+#		else
+			response += String(wifi_station_get_hostname());
+#		endif //ESP32_ARCH
 
-		Serial.print(F(" WiFi Connected to "));
-		Serial.print(WiFi.SSID());
-		Serial.print(F(" on IP="));
-		Serial.print(WiFi.localIP());
-		Serial.println();
-#	endif //_DUSB	
+		response += " WiFi Connected to " + String(WiFi.SSID());
+		response += " on IP=" + String(WiFi.localIP().toString() );
+		mPrint(response);
+	} 
+#	endif //_MONITOR
 
 	delay(500);
 	// If we are here we are connected to WLAN
 	
-#if defined(_UDPROUTER)
-	// So now test the UDP function
-	if (!connectUdp()) {
-		Serial.println(F("Error connectUdp"));
-	}
-#elif defined(_TTNROUTER)
-	if (!connectTtn()) {
-#	if _DUSB>=1
-		Serial.println(F("Error connectTtn"));
-#	endif //_DUSB
-	}
-#else
-#	if _MONITOR>=1
-		mPrint(F("Setup:: ERROR, No UDP or TCP Connection defined"));
-#	endif //_MONITOR	
-#endif //_UDPROUTER
+#	if defined(_UDPROUTER)
+		// So now test the UDP function
+		if (!connectUdp()) {
+#			if _MONITOR>=1
+				mPrint("Error connectUdp");
+#			endif //_MONITOR
+		}
+#	elif defined(_TTNROUTER)
+		if (!connectTtn()) {
+#			if _MONITOR>=1
+				mPrint("Error connectTtn");
+#			endif //_MONITOR
+		}
+#	else
+#		if _MONITOR>=1
+			mPrint(F("Setup:: ERROR, No UDP or TCP Connection"));
+#		endif //_MONITOR	
+#	endif //_UDPROUTER
+
 	delay(200);
 	
 	// Pins are defined and set in loraModem.h
@@ -593,51 +437,106 @@ void setup() {
 	pinMode(pins.rst, OUTPUT);
     pinMode(pins.dio0, INPUT);								// This pin is interrupt
 	pinMode(pins.dio1, INPUT);								// This pin is interrupt
-	//pinMode(pins.dio2, INPUT);							// XXX
+	//pinMode(pins.dio2, INPUT);							// XXX future expansion
 
 	// Init the SPI pins
-#if ESP32_ARCH==1
+#if defined(ESP32_ARCH)
 	SPI.begin(SCK, MISO, MOSI, SS);
 #else
 	SPI.begin();
-#endif //ESP32_ARCH==1
+#endif //ESP32_ARCH
 
 	delay(500);
 	
 	// We choose the Gateway ID to be the Ethernet Address of our Gateway card
     // display results of getting hardware address
 	//
-#	if _DUSB>=1
-		Serial.print(F("Gateway ID: "));
-		printHexDigit(MAC_array[0]);
-		printHexDigit(MAC_array[1]);
-		printHexDigit(MAC_array[2]);
-		printHexDigit(0xFF);
-		printHexDigit(0xFF);
-		printHexDigit(MAC_array[3]);
-		printHexDigit(MAC_array[4]);
-		printHexDigit(MAC_array[5]);
-
-		Serial.print(F(", Listening at SF"));
-		Serial.print(sf);
-		Serial.print(F(" on "));
-		Serial.print((double)freqs[ifreq].upFreq/1000000);
-		Serial.println(" MHz.");
-#	endif //_DUSB
-
-	ntpServer = resolveHost(NTP_TIMESERVER);
 #	if _MONITOR>=1
-		if (debug>=1) mPrint("NTP Server found and contacted");
-#	endif
-	delay(100);
+		String response= "Gateway ID: ";
+		printHexDigit(MAC_array[0], response);
+		printHexDigit(MAC_array[1], response);
+		printHexDigit(MAC_array[2], response);
+		printHexDigit(0xFF,			response);
+		printHexDigit(0xFF,			response);
+		printHexDigit(MAC_array[3], response);
+		printHexDigit(MAC_array[4], response);
+		printHexDigit(MAC_array[5], response);
+
+		response += ", Listening at SF" + String(sf) + " on ";
+		response += String((double)freqs[gwayConfig.ch].upFreq/1000000) + " MHz.";
+		mPrint(response);
+#	endif //_MONITOR
+
+	// ---------- TIME -------------------------------------
+	ntpServer = resolveHost(NTP_TIMESERVER, 15);
+	if (ntpServer.toString() == "0:0:0:0")	{					// MMM Experimental
+#		if _MONITOR>=1
+			mPrint("setup:: NTP Server not found, found="+ntpServer.toString());
+#		endif
+		delay(10000);											// Delay 10 seconds
+		ntpServer = resolveHost(NTP_TIMESERVER, 10);
+	}
+
+	// Set the NTP Time
+	// As long as the time has not been set we try to set the time.
+#	if NTP_INTR==1
+		setupTime();											// Set NTP time host and interval
+		
+#	else //NTP_INTR
+		// If not using the standard libraries, do manual setting
+		// of the time. This method works more reliable than the 
+		// interrupt driven method.
 	
+		while (timeStatus() == timeNotSet) {					// time still 1/1/1970 and 0:00 hrs
+			time_t newTime;
+			if (getNtpTime(&newTime)<=0) {
+#				if _MONITOR>=1
+				if (debug>=0) {
+					mPrint("setup:: ERROR Time not set (yet). Time="+String(newTime) );
+				}
+#				endif //_MONITOR
+				delay(800);
+				continue;
+			}
+			delay(1000);
+			setTime(newTime);
+		}
+		
+		// When we are here we succeeded in getting the time
+		startTime = now();										// Time in seconds
+#		if _MONITOR>=1
+		if (debug>=0) {
+			String response= "Time set=";
+			stringTime(now(),response);
+			mPrint(response);
+		}
+#		endif //_MONITOR
+
+		writeGwayCfg(CONFIGFILE, &gwayConfig );
+#	endif //NTP_INTR
+
+	delay(100);
+
+
+	// ---------- TTN SERVER -------------------------------	
 #ifdef _TTNSERVER
-	ttnServer = resolveHost(_TTNSERVER);					// Use DNS to get server IP
+	ttnServer = resolveHost(_TTNSERVER, 10);					// Use DNS to get server IP
+	if (ttnServer.toString() == "0:0:0:0") {					// Experimental
+#		if _MONITOR>=1
+		if (debug>=1) {
+			mPrint("setup:: TTN Server not found");
+		}
+#		endif
+		delay(10000);											// Delay 10 seconds
+		ttnServer = resolveHost(_TTNSERVER, 10);
+	}	
 	delay(100);
 #endif //_TTNSERVER
 
+
+
 #ifdef _THINGSERVER
-	thingServer = resolveHost(_THINGSERVER);					// Use DNS to get server IP
+	thingServer = resolveHost(_THINGSERVER, 10);				// Use DNS to get server IP
 	delay(100);
 #endif //_THINGSERVER
 
@@ -647,34 +546,7 @@ void setup() {
 	setupOta(hostname);										// Uses wwwServer 
 #endif //A_OTA
 
-	// Set the NTP Time
-	// As long as the time has not been set we try to set the time.
-#if NTP_INTR==1
-	setupTime();											// Set NTP time host and interval
-#else //NTP_INTR
-	// If not using the standard libraries, do a manual setting
-	// of the time. This method works more reliable than the 
-	// interrupt driven method.
-	
-	//setTime((time_t)getNtpTime());
-	while (timeStatus() == timeNotSet) {
-#		if _DUSB>=1 || _MONITOR>=1
-		if (( debug>=0 ) && ( pdebug & P_MAIN )) 
-			mPrint("setupTime:: Time not set (yet)");
-#		endif //_DUSB
-		delay(500);
-		time_t newTime;
-		newTime = (time_t)getNtpTime();
-		if (newTime != 0) setTime(newTime);
-	}
-	// When we are here we succeeded in getting the time
-	startTime = now();										// Time in seconds
-#	if _DUSB>=1
-		Serial.print("writeGwayCfg: "); printTime();
-		Serial.println();
-	#endif //_DUSB
-	writeGwayCfg(CONFIGFILE );
-#endif //NTP_INTR
+	readSeen(_SEENFILE, listSeen);							// read the seenFile records
 
 #if A_SERVER==1	
 	// Setup the webserver
@@ -687,7 +559,7 @@ void setup() {
 	_state = S_INIT;
 	initLoraModem();
 	
-	if (_cad) {
+	if (gwayConfig.cad) {
 		_state = S_SCAN;
 		sf = SF7;
 		cadScanner();										// Always start at SF7
@@ -702,31 +574,25 @@ void setup() {
 	// init interrupt handlers, which are shared for GPIO15 / D8, 
 	// we switch on HIGH interrupts
 	if (pins.dio0 == pins.dio1) {
-		//SPI.usingInterrupt(digitalPinToInterrupt(pins.dio0));
 		attachInterrupt(pins.dio0, Interrupt_0, RISING);	// Share interrupts
 	}
 	// Or in the traditional Comresult case
 	else {
-		//SPI.usingInterrupt(digitalPinToInterrupt(pins.dio0));
-		//SPI.usingInterrupt(digitalPinToInterrupt(pins.dio1));
 		attachInterrupt(pins.dio0, Interrupt_0, RISING);	// Separate interrupts
 		attachInterrupt(pins.dio1, Interrupt_1, RISING);	// Separate interrupts		
 	}
 	
 	writeConfig(CONFIGFILE, &gwayConfig);					// Write config
-	writeSeen( _SEENFILE, listSeen);						// Write the last time record  is seen
+	writeSeen(_SEENFILE, listSeen);							// Write the last time record  is seen
 
 	// activate OLED display
-#if OLED>=1
-	acti_oLED();
-	addr_oLED();
-#endif //OLED
+#	if OLED>=1
+		acti_oLED();
+		addr_oLED();
+#	endif //OLED
 
-#	if _DUSB>=1
-		Serial.println(F("--------------------------------------"));
-#	endif //_DUSB
+	mPrint(" --- Setup() ended, Starting loop() ---");
 
-	mPrint("Setup() ended, Starting loop()");
 }//setup
 
 
@@ -780,7 +646,7 @@ void loop ()
 
 		yield();											// Allow buffer operations to finish
 
-		if ((_cad) || (_hop)) {
+		if ((gwayConfig.cad) || (gwayConfig.hop)) {
 			_state = S_SCAN;
 			sf = SF7;
 			cadScanner();
@@ -825,14 +691,14 @@ void loop ()
 	// If we are not connected, try to connect.
 	// We will not read Udp in this loop cycle then
 	if (WlanConnect(1) < 0) {
-#		if _DUSB>=1 || _MONITOR>=1
+#		if _MONITOR>=1
 		if (( debug >= 0 ) && ( pdebug & P_MAIN )) {
-			mPrint("M ERROR reconnect WLAN");
+			mPrint("loop:: ERROR reconnect WLAN");
 		}
-#		endif //_DUSB || _MONITOR
+#		endif //_MONITOR
 		yield();
 		return;												// Exit loop if no WLAN connected
-	}
+	} //WlanConnect
 	
 	// So if we are connected 
 	// Receive UDP PUSH_ACK messages from server. (*2, par. 3.3)
@@ -843,21 +709,23 @@ void loop ()
 	else {
 		while( (packetSize = Udp.parsePacket()) > 0) {
 #			if _MONITOR>=1
-				if (debug>=2) {
-					mPrint("loop:: readUdp calling");
-				}
+			if (debug>=2) {
+				mPrint("loop:: readUdp calling");
+			}
 #			endif //_MONITOR
 			// DOWNSTREAM
 			// Packet may be PKT_PUSH_ACK (0x01), PKT_PULL_ACK (0x03) or PKT_PULL_RESP (0x04)
 			// This command is found in byte 4 (buffer[3])
-			if (readUdp(packetSize) <= 0) {
+			if (readUdp(packetSize) < 0) {
 #				if _MONITOR>=1
 				if ( debug>=0 )
-					mPrint("readUdp ERROR, retuning <=0");
+					mPrint("readUdp ERROR,down returning < 0");
 #				endif //_MONITOR
 				break;
 			}
 			// Now we know we succesfully received message from host
+			// If return value is 0, we received a NTP message,
+			// otherwise a UDP message with other TTN content
 			else {
 				//_event=1;									// Could be done double if more messages received
 			}
@@ -872,8 +740,8 @@ void loop ()
     if ((nowSeconds - statTime) >= _STAT_INTERVAL) {		// Wake up every xx seconds
         sendstat();											// Show the status message and send to server
 #		if _MONITOR>=1
-		if (( debug>=1 ) && ( pdebug & P_MAIN )) {
-			mPrint("Send sendstat");
+		if (( debug>=2 ) && ( pdebug & P_MAIN )) {
+			mPrint("Send Pushdata sendstat");
 		}
 #		endif //_MONITOR
 
@@ -882,7 +750,7 @@ void loop ()
 		// The Gateway node emessage has nothing to do with the STAT_INTERVAL
 		// message but we schedule it in the same frequency.
 		//
-#		if GATEWAYNODE==1
+#		if _GATEWAYNODE==1
 		if (gwayConfig.isNode) {
 			// Give way to internal some Admin if necessary
 			yield();
@@ -898,7 +766,7 @@ void loop ()
 #				endif// _MONITOR
 			}
 		}
-#		endif//GATEWAYNODE
+#		endif//_GATEWAYNODE
 		statTime = nowSeconds;
     }
 	
@@ -908,16 +776,16 @@ void loop ()
 	// send PULL_DATA message (*2, par. 4)
 	//
 	nowSeconds = now();
-    if ((nowSeconds - pulltime) >= _PULL_INTERVAL) {		// Wake up every xx seconds
-#		if _DUSB>=1 || _MONITOR>=1
-		if (( debug>=2) && ( pdebug & P_MAIN )) {
-			mPrint("M PULL");
-		}
-#		endif//_DUSB _MONITOR
+    if ((nowSeconds - pullTime) >= _PULL_INTERVAL) {		// Wake up every xx seconds
         pullData();											// Send PULL_DATA message to server
 		startReceiver();
-	
-		pulltime = nowSeconds;
+		pullTime = nowSeconds;
+		
+#		if _MONITOR>=1
+		if (( debug>=2) && ( pdebug & P_MAIN )) {
+			mPrint("ESP-sc-gway:: PULL_DATA message sent");
+		}
+#		endif //_MONITOR
     }
 
 	
@@ -926,15 +794,30 @@ void loop ()
 	// of the loop() itself which is better for SPI
 #	if NTP_INTR==0
 		// Set the time in a manual way. Do not use setSyncProvider
-		// as this function may collide with SPI and other interrupts
-		yield();												// 26/12/2017
+		//  as this function may collide with SPI and other interrupts
+		// Note: It can be that we do not receive a time this loop (no worries)
+		yield();
 		nowSeconds = now();
 		if (nowSeconds - ntptimer >= _NTP_INTERVAL) {
 			yield();
 			time_t newTime;
-			newTime = (time_t)getNtpTime();
-			if (newTime != 0) setTime(newTime);
-			ntptimer = nowSeconds;
+			if (getNtpTime(&newTime)<=0) {
+#				if _MONITOR>=1
+				if (debug>=2) {
+					mPrint("loop:: WARNING Time not set (yet). Time="+String(newTime) );
+				}
+#				endif //_MONITOR
+			}
+			else {
+				setTime(newTime);
+				if (year(now()) != 1970) {
+#					if _MONITOR>=1
+					if ((debug>=1) && (pdebug & P_MAIN)) {
+						ntptimer = nowSeconds;					// Do not when year(now())=="1970" beacause of "FORMAT"
+					}
+#					endif
+				}
+			}
 		}
 #	endif//NTP_INTR
 

@@ -34,6 +34,14 @@
 // Define Pattern debug settings, this allows debugging per
 // module rather than per level. See also pdebug.
 //
+// P_SCAN statemachine
+// P_CAD
+// P_RX received actions only
+// P_TX transmissions
+// P_MAIN for main program setup() and loop()
+// P_GUI for www server GUI related
+// P_PRE for statemachine
+// P_RADIO; For code in _loraModem and _sensor
 #define P_SCAN		0x01
 #define P_CAD		0x02
 #define P_RX		0x04
@@ -62,15 +70,13 @@ struct espGwayConfig {
 	uint16_t ntps;
 	uint16_t logFileRec;		// Logging File Record number
 	uint16_t logFileNo;			// Logging File Number
-	uint16_t logFileNum;		// Number of log files
+	uint16_t logFileNum;		// Number of log files max
 	
-	uint8_t ch;					// index to freqs array, freqs[ifreq]=868100000 default
+	uint8_t ch;					// index to freqs array, freqs[gwayCofnig.ch]=868100000 default
 	uint8_t sf;					// range from SF7 to SF12
 	uint8_t debug;				// range 0 to 4
 	uint8_t pdebug;				// pattern debug, 
 	uint8_t trusted;			// pattern debug, 
-
-
 	
 	bool cad;					// is CAD enabled?
 	bool hop;					// Is HOP enabled (Note: default be disabled)
@@ -80,23 +86,21 @@ struct espGwayConfig {
 	bool expert;
 	bool monitor;
 	
-	String ssid;				// SSID of the last connected WiFi Network
-	String pass;				// Password of WiFi network
 } gwayConfig;
 
 // Define a log record to be written to the log file
 // Keep logfiles SHORT in name! to save memory
-#if STAT_LOG == 1
+#if _STAT_LOG == 1
 
 // We do keep admin of logfiles by number
 // 
-//uint32_t logFileNo = 1;		// Included in struct espGwayConfig LogFile number
+//uint32_t logFileNo = 0;		// Included in struct espGwayConfig LogFile number
 //uint32_t logFileRec = 0;		// Number of records in a single logfile
 //uint32_t logFileNum = 1;		// Number of log files
 #define LOGFILEMAX 10
 #define LOGFILEREC 100
 
-#endif // STAT_LOG
+#endif // _STAT_LOG
 
 // Define the node list structure
 //
@@ -111,16 +115,19 @@ struct espGwayConfig {
 
 // define the Seen functon as when we have seen seen last time nodes last time
 struct nodeSeen {
-	unsigned long timSeen;
+	time_t timSeen;
 	uint32_t idSeen;
 	uint32_t cntSeen;
 	uint8_t chnSeen;
 	uint8_t sfSeen;
 };
-struct nodeSeen listSeen[_SEENMAX];
+struct nodeSeen listSeen[_MAXSEEN];
 
-// define the loggin structure used for printout of error and warning messages
+
+// define the logging structure used for printout of error and warning messages
+// We use a string for these lines (only time) as it is convenient.
 struct moniLine {
 	String txt;
 };
-struct moniLine monitor[_MONITOR];
+struct moniLine monitor[_MAXMONITOR];
+

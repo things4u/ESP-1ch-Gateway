@@ -1,10 +1,9 @@
-// 1-channel LoRa Gateway for ESP8266
-// Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
+// 1-channel LoRa Gateway for ESP32 and ESP8266
+// Copyright (c) Maarten Westenberg 2016-2020 
 
 // Specify the correct version and date of your gateway here.
 // Normally it is provided with the GitHub version
-#define VERSION "V.6.1.8.E.EU868; 191229a"
-
+#define VERSION "V.6.1.8.E.EU868; 200121M"
 //
 // Based on work done by Thomas Telkamp for Raspberry PI 1ch gateway and many others.
 // Contibutions of Dorijan Morelj and Andreas Spies for OLED support.
@@ -28,7 +27,7 @@
 // 
 // For ESP8266 Wemos: compile with "Wemos R1 D1" and choose
 // the right _PIN_OUT below. Selecting OLED while that is not connected does not 
-// really matter.
+// really matter (so you can leave that in).
 //
 // ========================================================================================
 
@@ -37,7 +36,7 @@
 // This is usually a good idea if the webserver is interrupted halfway a writing
 // operation. Also to be used when software is upgraded
 // Normally, value 0 is a good default and should not be changed.
-#define _SPIFF_FORMAT 0
+#define _SPIFFS_FORMAT 0
 
 
 // Define the CLASS mode of the gateway
@@ -57,12 +56,12 @@
 // Define the monitor screen. When it is greater than 0 then logging is displayed in
 // the special screen at the GUI.
 // If _DUSB is also set to 1 then most messages will also be copied to USB devices.
-#define _MONITOR 20
+#define _MONITOR 1
 
 
 // Gather statistics on sensor and Wifi status
 // 0= No statistics
-// 1= Keep track of messages statistics, number determined by MAX_STAT
+// 1= Keep track of messages statistics, number determined by _MAXSTAT
 // 2= Option 1 + Keep track of messages received PER each SF (default)
 // 3= See Option 2, but with extra channel info (Not used when Hopping is not selected)
 #define _STATISTICS 3
@@ -137,8 +136,8 @@
 // If your pin definitions are different, update the loraModem.h file to reflect these settings.
 //	1: HALLARD
 //	2: COMRESULT pin out
-//	3: ESP32 Wemos pin out
-//	4: ESP32 TTGO pin out (should work for Heltec, 433 and OLED too).
+//	3: ESP32, Wemos pin out (Not used)
+//	4: ESP32, Heltec and TTGO pin out (should work for Heltec, 433 and OLED too).
 //	5: Other, define your own in loraModem.h (does not include GPS Code)
 #define _PIN_OUT 4
 
@@ -159,6 +158,7 @@
 // For TTN, thr RX2 timeslot is SF9, and we should use that one for TTN
 #define _RX2_SF 9
 
+
 // Allows configuration through WifiManager AP setup. Must be 0 or 1					
 #define _WIFIMANAGER 0
 
@@ -171,7 +171,7 @@
 
 // Will we use Mutex or not?
 // +SPI is input for SPI, SPO is output for SPI
-#define MUTEX 0
+#define _MUTEX 0
 
 
 // Define if OLED Display is connected to I2C bus. Note that defining an OLED display does not
@@ -192,7 +192,7 @@
 // NOTE: Be aware that these messages are NOT LoRa and NOT LoRa Gateway spec compliant.
 //	However that should not interfere with regular gateway operation but instead offer 
 //	functions to set/reset certain parameters from remote.
-#define GATEWAYMGT 0
+#define _GATEWAYMGT 0
 
 
 // Do extensive logging
@@ -200,7 +200,7 @@
 // We must take care that the filesystem never(!) is full, and for that purpose we
 // rather have new records/line of statistics than very old.
 // Of course we must store enough records to make the filesystem work
-#define STAT_LOG 1
+#define _STAT_LOG 1
 
 
 
@@ -217,7 +217,7 @@
 
 
 // This defines whether or not we would use the gateway as 
-// as sort of backend system for local sensors which decodes
+// as sort of backend decoding system for local sensors which decodes
 // 1: _LOCALSERVER is used
 // 0: Do not use _LOCALSERVER 
 #define _LOCALSERVER 1						// See server definitions for decodes
@@ -246,7 +246,8 @@
 // sent to the backend as a parameter, some (like humidity for example) can only be sent
 // as a regular sensor value.
 // Set its LoRa address and key below in this file, See spec. para 4.3.2
-#define GATEWAYNODE 0
+// NOTE: The node is switched off by default. Switch it on in the GUI
+#define _GATEWAYNODE 0
 
 
 // We can put the gateway in such a mode that it will (only) recognize
@@ -270,8 +271,10 @@
 
 // Maximum number of Message History statistics records gathered. 20 is a good maximum 
 // (memory intensive). For ESP32 maybe 30 could be used as well
-#define MAX_STAT 20
+#define _MAXSTAT 20
 
+// Define the maximum amount of itemas we monitor on the screen
+#define _MAXMONITOR 20
 
 // We will log a list of LoRa nodes that was forwarded using this gateway.
 // For eacht node we record:
@@ -279,8 +282,8 @@
 //	- Last seen 'seconds since 1/1/1970'
 //	- SF seen (8-bit integer with SF per bit)
 // The initial version _NUMMAX stores max this many nodes, please make
-// _SEENMAX==0 when not used
-#define _SEENMAX 20
+// _MAXSEEN==0 when not used
+#define _MAXSEEN 20
 #define _SEENFILE "/gwayNum.txt"
 
 
