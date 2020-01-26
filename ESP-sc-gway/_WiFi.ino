@@ -194,6 +194,13 @@ int wifiMgr()
 //	because WiFi problems would make webserver (which works on WiFi) useless.
 // ----------------------------------------------------------------------------
 int WlanConnect(int maxTry) {
+
+	#if USE_STATIC_IP==1
+		IPAddress local_IP(_STATIC_IP);
+		IPAddress subnet(_SUBNET_MASK);
+		IPAddress gateway(_GATEWAY_IP);
+		IPAddress primaryDNS(_DNS_IP);
+	#endif
   
 	unsigned char agains = 0;
 	unsigned char wpa_index = 0;
@@ -237,6 +244,16 @@ int WlanConnect(int maxTry) {
 
 			WiFi.mode(WIFI_STA);
 			delay(1000);
+
+			#if USE_STATIC_IP==1
+				WiFi.config(local_IP, gateway, subnet, primaryDNS);
+#				if _MONITOR>=1
+					if ( debug>=0 ) {
+						Serial.println(F("Using Static IP"));
+					}
+#				endif
+			#endif
+
 			WiFi.begin(ssid, password);
 			delay(8000);
 			

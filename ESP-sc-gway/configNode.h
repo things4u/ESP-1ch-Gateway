@@ -126,11 +126,23 @@ wpas wpa[] = {
 };
 
 
+// Static IP
+// If you would use static IP instead Dynamic IP (DHCP)
+// flasg this as 1 and set IP, Subnet mask, Gateway IP and DNS
+#define USE_STATIC_IP 1
+
+#if USE_STATIC_IP==1
+#define _STATIC_IP { 192, 168, 100, 254 }
+#define _SUBNET_MASK { 255, 255, 255, 0 }
+#define _GATEWAY_IP { 192, 168, 100, 1 }
+#define _DNS_IP { 8, 8, 8, 8 }
+#endif
+
+
 // Define the name of the accesspoint if the gateway is in accesspoint mode (is
 // getting WiFi SSID and password using WiFiManager)
 #define AP_NAME "ESP8266-Gway-Things4U"
 #define AP_PASSWD "ttnAutoPw"
-
 
 
 // For asserting and testing the following defines are used.
