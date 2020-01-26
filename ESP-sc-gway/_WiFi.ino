@@ -215,6 +215,12 @@ int WlanConnect(int maxTry) {
 
 	while ( (WiFi.status() != WL_CONNECTED) && (( i<= maxTry ) || (maxTry==0)) )
 	{
+#		if USE_STATUS_LED==1
+#			if _STATUS_LED_ON_WL_CONNECTED==1
+				digitalWrite(_STATUS_LED_PIN, 0);
+#			endif
+#		endif
+
 		// We try every SSID in wpa array until success
 		for (int j=wpa_index; (j< (sizeof(wpa)/sizeof(wpa[0]))) && (WiFi.status() != WL_CONNECTED ); j++)
 		{
@@ -263,6 +269,12 @@ int WlanConnect(int maxTry) {
 			// -1	= No SSID or other cause			
 			int stat = WlanStatus();
 			if ( stat == 1) {
+#				if USE_STATUS_LED==1
+#					if _STATUS_LED_ON_WL_CONNECTED==1
+						digitalWrite(_STATUS_LED_PIN, 1);
+#					endif
+#				endif
+
 				writeGwayCfg(CONFIGFILE, &gwayConfig );					// Write configuration to SPIFFS
 				return(1);
 			}

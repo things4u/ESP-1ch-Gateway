@@ -255,6 +255,33 @@ void pullData();														// _udpSemtech.ino
 	void ICACHE_FLASH_ATTR ReleaseMutex(int *mutex);
 #endif
 
+#if USE_STATUS_LED==1
+	void blink_led (uint32_t delay_time, uint8_t times);
+#endif
+
+// ----------------------------------------------------------------------------
+// Blink STATUS led
+// ----------------------------------------------------------------------------
+#if USE_STATUS_LED==1
+	void blink_led (uint32_t delay_time=1000, uint8_t times=1)
+	{
+		for(uint8_t i=0; i<times; i++)
+		{
+			digitalWrite(_STATUS_LED_PIN, HIGH);
+			delay(delay_time);
+			digitalWrite(_STATUS_LED_PIN, LOW);
+			delay(delay_time);
+		}
+
+		#if _STATUS_LED_ON_WL_CONNECTED==1
+			if (WiFi.status() == WL_CONNECTED)
+			{
+				digitalWrite(_STATUS_LED_PIN, HIGH);
+			}
+		#endif
+	}
+#endif
+
 
 
 // ============================================================================
@@ -270,6 +297,10 @@ void setup() {
 	char MAC_char[19];										// XXX Unbelievable
 	MAC_char[18] = 0;
 	char hostname[12];										// hostname space
+
+#	if USE_STATUS_LED==1
+		pinMode(_STATUS_LED_PIN, OUTPUT);
+#	endif
 
 #	if _DUSB>=1
 		Serial.begin(_BAUDRATE);							// As fast as possible for bus
