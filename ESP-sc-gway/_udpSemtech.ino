@@ -456,6 +456,10 @@ void pullData() {
 	sendUdp(thingServer, _THINGPORT, pullDataReq, pullIndex);
 #endif
 
+#if USE_STATUS_LED==1
+	blink_led(500, 4);
+#endif
+
 #if _DUSB>=1
     if (( debug>=2 ) && ( pdebug & P_MAIN )) {
 		yield();
