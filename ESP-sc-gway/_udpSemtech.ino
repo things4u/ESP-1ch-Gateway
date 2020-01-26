@@ -307,7 +307,7 @@ int readUdp(int packetSize)
 #			if _GATEWAYMGT==1
 				// For simplicity, we send the first 4 bytes too
 				gateway_mgt(packetSize, buff_down);
-			else
+#			else
 
 #			endif
 #			if _MONITOR>=1
