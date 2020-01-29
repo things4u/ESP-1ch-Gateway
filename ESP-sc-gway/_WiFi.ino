@@ -194,6 +194,13 @@ int wifiMgr()
 //	because WiFi problems would make webserver (which works on WiFi) useless.
 // ----------------------------------------------------------------------------
 int WlanConnect(int maxTry) {
+
+	#if USE_STATIC_IP==1
+		IPAddress local_IP(_STATIC_IP);
+		IPAddress subnet(_SUBNET_MASK);
+		IPAddress gateway(_GATEWAY_IP);
+		IPAddress primaryDNS(_DNS_IP);
+	#endif
   
 	unsigned char agains = 0;
 	unsigned char wpa_index = 0;
@@ -208,6 +215,12 @@ int WlanConnect(int maxTry) {
 
 	while ( (WiFi.status() != WL_CONNECTED) && (( i<= maxTry ) || (maxTry==0)) )
 	{
+#		if USE_STATUS_LED==1
+#			if _STATUS_LED_ON_WL_CONNECTED==1
+				digitalWrite(_STATUS_LED_PIN, 0);
+#			endif
+#		endif
+
 		// We try every SSID in wpa array until success
 		for (int j=wpa_index; (j< (sizeof(wpa)/sizeof(wpa[0]))) && (WiFi.status() != WL_CONNECTED ); j++)
 		{
@@ -237,6 +250,16 @@ int WlanConnect(int maxTry) {
 
 			WiFi.mode(WIFI_STA);
 			delay(1000);
+
+			#if USE_STATIC_IP==1
+				WiFi.config(local_IP, gateway, subnet, primaryDNS);
+#				if _MONITOR>=1
+					if ( debug>=0 ) {
+						Serial.println(F("Using Static IP"));
+					}
+#				endif
+			#endif
+
 			WiFi.begin(ssid, password);
 			delay(8000);
 			
@@ -246,6 +269,12 @@ int WlanConnect(int maxTry) {
 			// -1	= No SSID or other cause			
 			int stat = WlanStatus();
 			if ( stat == 1) {
+#				if USE_STATUS_LED==1
+#					if _STATUS_LED_ON_WL_CONNECTED==1
+						digitalWrite(_STATUS_LED_PIN, 1);
+#					endif
+#				endif
+
 				writeGwayCfg(CONFIGFILE, &gwayConfig );					// Write configuration to SPIFFS
 				return(1);
 			}

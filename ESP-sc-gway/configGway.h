@@ -308,3 +308,7 @@
 #define _TTNPORT 1700							// Standard port for TTN
 
 
+// Use led for status notification
+#define USE_STATUS_LED 1
+#define _STATUS_LED_PIN BUILTIN_LED
+#define _STATUS_LED_ON_WL_CONNECTED 1
