@@ -1,6 +1,6 @@
 # Single Channel LoRaWAN Gateway
 
-Last Updated: December 29, 2019	  
+Last Updated: January 29, 2020	  
 Author: M. Westenberg (mw12554@hotmail.com)  
 Copyright: M. Westenberg (mw12554@hotmail.com)  
 

@@ -1,7 +1,7 @@
 # Single Channel LoRaWAN Gateway
 
-Version 6.1.8, 
-Data: January 21, 2020  
+Version 6.2.0, 
+Data: January 29, 2020  
 Author: M. Westenberg (mw12554@hotmail.com)  
 Copyright: M. Westenberg (mw12554@hotmail.com)  
 
@@ -258,11 +258,13 @@ to configure the gatewayat run-time and inspects its behaviour. It also provides
 The A_REFRESH parameter defines whether the webserver should renew every X seconds.
 
  \#define A_SERVER 1				// Define local WebServer only if this define is set  
- \#define A_REFRESH 0				// Will the webserver refresh or not?  
+ \#define A_REFRESH 1				// is the webserver enabled to refresh yes/no?  (yes is OK)
  \#define A_SERVERPORT 80			// local webserver port  
  \#define A_MAXBUFSIZE 192			// Must be larger than 128, but small enough to work  
 
- The A_REFRESH parameter determines the refresh frequency of the webserver.  
+ The A_REFRESH parameter defines whether or not we can set the refresh yes/no setting in the webbrowser. 
+ The setting in the webbrowser is normally put on "no" as a default, but we can leave the define on
+ "1" to enabled that setting in the webbrowser.
  
 ### Strict LoRa behaviour
 

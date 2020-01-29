@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg (mw12554@hotmail.com)
+Copyright (c) 2016-2020 Maarten Westenberg (mw12554@hotmail.com)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

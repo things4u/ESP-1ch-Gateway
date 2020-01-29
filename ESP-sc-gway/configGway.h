@@ -3,7 +3,7 @@
 
 // Specify the correct version and date of your gateway here.
 // Normally it is provided with the GitHub version
-#define VERSION "V.6.1.8.E.EU868; 200121M"
+#define VERSION "V.6.2.0.E.EU868; 200129b"
 //
 // Based on work done by Thomas Telkamp for Raspberry PI 1ch gateway and many others.
 // Contibutions of Dorijan Morelj and Andreas Spies for OLED support.
@@ -39,11 +39,8 @@
 #define _SPIFFS_FORMAT 0
 
 
-// Define the CLASS mode of the gateway
-// A: Baseline Class
-// B: Beacon/Battery Class
-// C: Continuous Listen Class
-#define _CLASS "A"
+// Allows configuration through WifiManager AP setup. Must be 0 or 1					
+#define _WIFIMANAGER 0
 
 
 // Debug message will be put on Serial is this one is set.
@@ -80,7 +77,14 @@
 // See https://www.thethingsnetwork.org/docs/lorawan/frequency-plans.html
 #define EU863_870 1
  
- 
+
+// Define the CLASS mode of the gateway
+// A: Baseline Class
+// B: Beacon/Battery Class
+// C: Continuous Listen Class
+#define _CLASS "A"
+
+
 // Define whether to use the old Semtech gateway API, which is still supported by TTN,
 // but is more lightweight than the new TTN tcp based protocol.
 // NOTE: Only one of the two should be defined! TTN Router project has stopped
@@ -157,10 +161,6 @@
 // Also, normally the server will respond with SF12 in the RX2 timeslot.
 // For TTN, thr RX2 timeslot is SF9, and we should use that one for TTN
 #define _RX2_SF 9
-
-
-// Allows configuration through WifiManager AP setup. Must be 0 or 1					
-#define _WIFIMANAGER 0
 
 
 // This section defines whether we use the gateway as a repeater

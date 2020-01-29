@@ -77,37 +77,19 @@ static int LoRaSensors(uint8_t *buf) {
 #		error "Only define ONE encoding in configNode.h, _LOCDE or _RAW"
 #		endif
 
+		String response="";
 		uint8_t tchars = 1;
-		buf[0] = 0x86;				// 134; User code <lCode + len==3 + Parity
+		buf[0] = 0x86;								// 134; User code <lCode + len==3 + Parity
 		
 #		if _MONITOR>=1
 		if (debug>=0) {
-			mPrint("LoRaSensors:: ");
+			response += "LoRaSensors:: ";
 		}
 #		endif //_MONITOR
 
-#		if _BATTERY==1
-#			if defined(ARDUINO_ARCH_ESP8266) || defined(ESP32)
-				// For ESP there is no standard battery library
-				// What we do is to measure GPIO35 pin which has a 100K voltage divider
-				pinMode(35, INPUT);
-				float volts=3.3 * analogRead(35) / 4095 * 2;	// T_Beam connects to GPIO35
-#			else
-				// For ESP8266 no sensor defined
-				float volts=0;
-#			endif // ARDUINO_ARCH_ESP8266 || ESP32
-#			if _MONITOR>=1
-			if ((debug>=1) && ( pdebug & P_MAIN )){
-				mPrint("Battery lcode="+String(volts));
-			}
-#			endif //_MONITOR
-
-			tchars += lcode.eBattery(volts, buf + tchars);
-#		endif //_BATTERY
-
 		// GPS sensor is the second server we check for
 #		if _GPS==1
-			smartDelay(1000);
+			smartDelay(10);							// Use GPS to return fast!
 			if (millis() > 5000 && gps.charsProcessed() < 10) {
 #				if _MONITOR>=1
 					mPrint("ERROR: No GPS data received: check wiring");
@@ -120,21 +102,12 @@ static int LoRaSensors(uint8_t *buf) {
 
 			// Use lcode to code messages to server
 #			if _MONITOR>=1
-			if ((debug>=1) && ( pdebug & P_MAIN )){
-				mPrint("gps lcode:: lat="+String(gps.location.lat())+", lng="+String(gps.location.lng())+", alt="+String(gps.altitude.feet()/3.2808)+", sats="+String(gps.satellites.value()) );
+			if ((debug>=1) && (pdebug & P_MAIN)){
+				response += ", Gps lcode:: lat="+String(gps.location.lat())+", lng="+String(gps.location.lng())+", alt="+String(gps.altitude.feet()/3.2808)+", sats="+String(gps.satellites.value());
 			}
 #			endif //_MONITOR
 			tchars += lcode.eGpsL(gps.location.lat(), gps.location.lng(), gps.altitude.value(), gps.satellites.value(), buf + tchars);
 #		endif //_GPS
-		// If all sensor data is encoded, we encode the buffer
-		lcode.eMsg(buf, tchars);								// Fill byte 0 with bytecount and Parity
-
-
-// Second encoding option is RAW format. 
-// We do not use the lcode format but write all the values to the output
-// buffer and we need to get them in sequence out off the buffer.
-#	elif defined(_RAW)
-		uint8_t tchars = 0;
 
 #		if _BATTERY==1
 #			if defined(ARDUINO_ARCH_ESP8266) || defined(ESP32)
@@ -146,18 +119,33 @@ static int LoRaSensors(uint8_t *buf) {
 				// For ESP8266 no sensor defined
 				float volts=0;
 #			endif // ARDUINO_ARCH_ESP8266 || ESP32
-			memcpy((buf+tchars), &volts, sizeof(float)); tchars += sizeof(float);
-			
 #			if _MONITOR>=1
-			if ((debug>=1) && ( pdebug & P_MAIN )){
-				mPrint("Battery raw="+String(volts));
+			if ((debug>=1) && (pdebug & P_MAIN)){
+				response += "Battery lcode="+String(volts);
 			}
 #			endif //_MONITOR
+
+			tchars += lcode.eBattery(volts, buf + tchars);
 #		endif //_BATTERY
+
+
+		// If all sensor data is encoded, we encode the buffer
+		lcode.eMsg(buf, tchars);								// Fill byte 0 with bytecount and Parity
+		
+#		if _MONITOR>=1
+			mPrint(response);
+#		endif //_MONITOR
+
+// Second encoding option is RAW format. 
+//
+// We do not use the lcode format but write all the values to the output
+// buffer and we need to get them in sequence out off the buffer.
+#	elif defined(_RAW)
+		uint8_t tchars = 0;
 
 		// GPS sensor is the second server we check for
 #		if _GPS==1
-			smartDelay(1000);
+			smartDelay(10);
 			if (millis() > 5000 && gps.charsProcessed() < 10) {
 #				if _MONITOR>=1
 					mPrint("ERROR: No GPS data received: check wiring");
@@ -179,6 +167,25 @@ static int LoRaSensors(uint8_t *buf) {
 			memcpy((buf+tchars), &lng, sizeof(double)); tchars += sizeof(double);
 			memcpy((buf+tchars), &alt, sizeof(double)); tchars += sizeof(double);
 #		endif //_GPS
+
+#		if _BATTERY==1
+#			if defined(ARDUINO_ARCH_ESP8266) || defined(ESP32)
+				// For ESP there is no standard battery library
+				// What we do is to measure GPIO35 pin which has a 100K voltage divider
+				pinMode(35, INPUT);
+				float volts=3.3 * analogRead(35) / 4095 * 2;	// T_Beam connects to GPIO35
+#			else
+				// For ESP8266 no sensor defined
+				float volts=0;
+#			endif // ARDUINO_ARCH_ESP8266 || ESP32
+			memcpy((buf+tchars), &volts, sizeof(float)); tchars += sizeof(float);
+			
+#			if _MONITOR>=1
+			if ((debug>=1) && ( pdebug & P_MAIN )){
+				mPrint("Battery raw="+String(volts));
+			}
+#			endif //_MONITOR
+#		endif //_BATTERY
 
 
 // If neither _LCODE or _RAW is defined this is an error
@@ -595,11 +602,12 @@ int sensorPacket() {
 	int buff_index = buildPacket(tmst, buff_up, LUP, true);
 	
 	frameCount++;
-    statc.msg_ttl++;				// XXX Should we count sensor messages as well?
-	switch(gwayConfig.ch) {
-		case 0: statc.msg_ttl_0++; break;
-		case 1: statc.msg_ttl_1++; break;
-		case 2: statc.msg_ttl_2++; break;
+	statc.msg_ttl++;					// XXX Should we count sensor messages as well?
+	statc.msg_sens++;
+	switch(gwayConfig.ch) {			// MMM remove when possible
+		case 0: statc.msg_sens_0++; break;
+		case 1: statc.msg_sens_1++; break;
+		case 2: statc.msg_sens_2++; break;
 	}
 	
 	// In order to save the memory, we only write the framecounter

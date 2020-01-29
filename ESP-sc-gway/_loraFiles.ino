@@ -25,8 +25,9 @@
 int initMonitor(struct moniLine *monitor) 
 {
 	for (int i=0; i< _MAXMONITOR; i++) {
-		monitor[i].txt="";
+		monitor[i].txt= "-";						// Make all lines empty
 	}
+	iMoni=0;										// Init the index
 	return(1);
 }
 

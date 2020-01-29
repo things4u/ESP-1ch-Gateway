@@ -77,6 +77,7 @@ void printHexDigit(uint8_t digit, String & response)
 // Print to the monitor console.
 // This function is used all over the gateway code as a substite for USB debug code.
 // It allows webserver users to view printed/debugging code.
+// With initMonitor() we init the index iMoni=0;
 //
 // Parameters:
 //	txt: The text to be printed.
@@ -88,31 +89,28 @@ void mPrint(String txt)
 	
 #	if _DUSB>=1
 		Serial.println(txt);
-		//Serial.println(F(txt));
 		if (debug>=2) Serial.flush();
 #	endif //_DUSB
 
 #	if _MONITOR>=1
 	time_t tt = now();
-	
-	// MMM perhaps better make this a circular buffer
-	for (int i=_MAXMONITOR; i>0; i--) {		// Do only for values present....
-		monitor[i]= monitor[i-1];
-	}
-	
-	monitor[0].txt  = String(day(tt))	+ "-";
-	monitor[0].txt += String(month(tt))	+ "-";
-	monitor[0].txt += String(year(tt))	+ " ";
+
+	monitor[iMoni].txt  = String(day(tt))	+ "-";
+	monitor[iMoni].txt += String(month(tt))	+ "-";
+	monitor[iMoni].txt += String(year(tt))	+ " ";
 	
 	uint8_t _hour   = hour(tt);
 	uint8_t _minute = minute(tt);
 	uint8_t _second = second(tt);
 
-	if (_hour   < 10) monitor[0].txt += "0"; monitor[0].txt += String( _hour )+ ":";
-	if (_minute < 10) monitor[0].txt += "0"; monitor[0].txt += String(_minute) + ":";
-	if (_second < 10) monitor[0].txt += "0"; monitor[0].txt += String(_second) + "- ";
+	if (_hour   < 10) monitor[iMoni].txt += "0"; monitor[iMoni].txt += String( _hour )+ ":";
+	if (_minute < 10) monitor[iMoni].txt += "0"; monitor[iMoni].txt += String(_minute) + ":";
+	if (_second < 10) monitor[iMoni].txt += "0"; monitor[iMoni].txt += String(_second) + "- ";
 	
-	monitor[0].txt += String(txt);
+	monitor[iMoni].txt += String(txt);
+	
+	// Use the circular buffer to increment the index
+	iMoni = (iMoni+1) % _MAXMONITOR	;				// And goto 0 when skipping over _MAXMONITOR
 	
 #	endif //_MONITOR
 	return;

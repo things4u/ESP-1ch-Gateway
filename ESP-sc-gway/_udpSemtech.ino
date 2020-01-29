@@ -186,11 +186,6 @@ int readUdp(int packetSize)
 #if _MONITOR>=1
 			if (( debug>=2) && (pdebug & P_MAIN )) {
 				mPrint("M PKT_PUSH_ACK:: size="+String(packetSize)+" From "+String(remoteIpNo.toString())); 
-//				Serial.print(F(", port ")); 
-//				Serial.print(remotePortNo);
-//				Serial.print(F(", token: "));
-//				Serial.println(token, HEX);
-//				Serial.println();
 			}
 #endif //_MONITOR
 		break;
@@ -206,7 +201,7 @@ int readUdp(int packetSize)
 		case PKT_PULL_RESP:	// 0x03 DOWN
 #			if _MONITOR>=1
 			if (( debug>=0 ) && ( pdebug & P_MAIN )) {
-				mPrint("readUdp:: PKT_PULL_RESP received");
+				mPrint("readUdp:: PKT_PULL_RESP received from IP="+String(remoteIpNo.toString()));
 			}
 #			endif //_MONITOR
 //			lastTmst = micros();					// Store the tmst this package was received
@@ -228,7 +223,6 @@ int readUdp(int packetSize)
 			buff[0]=buff_down[0];
 			buff[1]=buff_down[1];
 			buff[2]=buff_down[2];
-			//buff[3]=PKT_PULL_ACK;					// Pull request/Change of Mogyi
 			buff[3]=PKT_TX_ACK;
 			buff[4]=MAC_array[0];
 			buff[5]=MAC_array[1];

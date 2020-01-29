@@ -396,9 +396,6 @@ static void setVariables(const char *cmd, const char *arg) {
 static void openWebPage()
 {
 	++gwayConfig.views;									// increment number of views
-#if A_REFRESH==1
-	//server.client().stop();							// Experimental, stop webserver in case something is still running!
-#endif
 	String response="";	
 
 	server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
@@ -611,7 +608,7 @@ static void gatewaySettings()
 	response +="<td class=\"cell\" colspan=\"2\">";
 	response +=frameCount;
 	response +="</td><td colspan=\"2\" style=\"border: 1px solid black;\">";
-	response +="<button><a href=\"/FCNT\">RESET</a></button></td>";
+	response +="<button><a href=\"/FCNT\">RESET   </a></button></td>";
 	response +="</tr>";
 	
 	bg = " background-color: ";
@@ -653,25 +650,27 @@ static void gatewaySettings()
 	response +="</td><td></td></tr>";
 #endif //_WIFIMANAGER
 
-	// Update Firmware all statistics
+#if _UPDFIRMWARE==1
+	// Update Firmware
 	response +="<tr><td class=\"cell\">Update Firmware</td><td colspan=\"2\"></td>";
 	response +="<td class=\"cell\" colspan=\"2\" class=\"cell\"><a href=\"/UPDATE=1\"><button>UPDATE</button></a></td></tr>";
+#endif //_UPDFIRMWARE
 
 	// Format the Filesystem
 	response +="<tr><td class=\"cell\">Format SPIFFS</td>";
 	response +=String() + "<td class=\"cell\" colspan=\"2\" >"+""+"</td>";
-	response +="<td colspan=\"2\" class=\"cell\"><input type=\"button\" value=\"FORMAT\" onclick=\"ynDialog(\'Do you really want to format?\',\'FORMAT\')\" /></td></tr>";
+	response +="<td style=\"width:30px;\" colspan=\"2\" class=\"cell\"><input type=\"button\" value=\"FORMAT\" onclick=\"ynDialog(\'Do you really want to format?\',\'FORMAT\')\" /></td></tr>";
 
 	// Reset all statistics
 #if _STATISTICS >= 1
 	response +="<tr><td class=\"cell\">Statistics</td>";
 	response +=String() + "<td class=\"cell\" colspan=\"2\" >"+statc.resets+"</td>";
-	response +="<td colspan=\"2\" class=\"cell\"><input type=\"button\" value=\"RESET\" onclick=\"ynDialog(\'Do you really want to reset statistics?\',\'RESET\')\" /></td></tr>";
+	response +="<td style=\"width:30px;\" colspan=\"2\" class=\"cell\"><input type=\"button\" value=\"RESET   \" onclick=\"ynDialog(\'Do you really want to reset statistics?\',\'RESET\')\" /></td></tr>";
 
 	// Reset Node
 	response +="<tr><td class=\"cell\">Boots and Resets</td>";
 	response +=String() + "<td class=\"cell\" colspan=\"2\" >"+gwayConfig.boots+"</td>";
-	response +="<td colspan=\"2\" class=\"cell\"><input type=\"button\" value=\"BOOT\" onclick=\"ynDialog(\'Do you want to reset boots?\',\'BOOT\')\" /></td></tr>";
+	response +="<td style=\"width:30px;\" colspan=\"2\" class=\"cell\" ><input type=\"button\" value=\"BOOT    \" onclick=\"ynDialog(\'Do you want to reset boots?\',\'BOOT\')\" /></td></tr>";
 #endif //_STATISTICS
 	
 	response +="</table>";
@@ -689,8 +688,9 @@ static void gatewaySettings()
 static void statisticsData()
 {
 	String response="";
-
-	// Header
+	//
+	// Header Row
+	//
 	response +="<h2>Package Statistics</h2>";
 	response +="<table class=\"config_table\">";
 	response +="<tr><th class=\"thead\">Counter</th>";
@@ -723,7 +723,18 @@ static void statisticsData()
 #	endif //_STATISTICS==3
 	response +="<td class=\"cell\">" + String(statc.msg_ttl) + "</td>";
 	response +="<td class=\"cell\">" + String((statc.msg_ttl*3600)/(now() - startTime)) + "</td></tr>";
-		
+
+#	if _GATEWAYNODE==1
+		response +="<tr><td class=\"cell\">Packages Internal Sensor</td>";
+#		if	 _STATISTICS == 3
+			response +="<td class=\"cell\">" + String(statc.msg_sens_0) + "</td>";
+			response +="<td class=\"cell\">" + String(statc.msg_sens_1) + "</td>";
+			response +="<td class=\"cell\">" + String(statc.msg_sens_2) + "</td>";
+#		endif //_STATISTICS==3
+		response +="<td class=\"cell\">" + String(statc.msg_sens) + "</td>";
+		response +="<td class=\"cell\">" + String((statc.msg_sens*3600)/(now() - startTime)) + "</td></tr>";
+#	endif //_GATEWAYNODE
+
 	response +="<tr><td class=\"cell\">Packages Uplink OK </td>";
 #if	 _STATISTICS == 3
 		response +="<td class=\"cell\">" + String(statc.msg_ok_0) + "</td>";
@@ -731,7 +742,7 @@ static void statisticsData()
 		response +="<td class=\"cell\">" + String(statc.msg_ok_2) + "</td>";
 #	endif //_STATISTICS==3
 	response +="<td class=\"cell\">" + String(statc.msg_ok) + "</td>";
-	response +="<td class=\"cell\"></td></tr>";
+	response +="<td class=\"cell\">" + String((statc.msg_ok*3600)/(now() - startTime)) + "</td></tr>";
 		
 
 	// Provide a table with all the SF data including percentage of messsages
@@ -1056,20 +1067,20 @@ int monitorData()
 		response +="<th class=\"thead\">Monitor Console</th>";
 		response +="</tr>";
 		
-
-		for (int i=0; i<_MAXMONITOR; i++) {
-			if (monitor[i].txt == "") {
+		for (int i= iMoni-1+_MAXMONITOR; i>=iMoni; i--) {
+			if (monitor[i % _MAXMONITOR].txt == "-") {		// If equal to init value '-'
 				break;
 			}
-			// DISPLAY line
 			response +="<tr><td class=\"cell\">" ;
-			response += String(monitor[i].txt);
+			response += String(monitor[i % _MAXMONITOR].txt);
 			response += "</td></tr>";
+
 		}
+		
 		response +="</table>";
 		server.sendContent(response);
 	}
-#	endif
+#	endif //_MONITOR
 }
 
 
@@ -1286,7 +1297,7 @@ void setupWWW()
 	// Format the filesystem
 	server.on("/FORMAT", []() {
 		Serial.print(F("FORMAT ..."));
-		
+		msg_oLED("FORMAT");		
 		SPIFFS.format();							// Normally not used. Use only when SPIFFS corrupt
 		initConfig(&gwayConfig);					// Well known values
 		writeConfig( CONFIGFILE, &gwayConfig);
@@ -1309,17 +1320,24 @@ void setupWWW()
 		statc.msg_ttl = 0;						// Reset ALL package statistics
 		statc.msg_ok = 0;
 		statc.msg_down = 0;
+		statc.msg_sens = 0;
 		
 #if _STATISTICS >= 3
 		statc.msg_ttl_0 = 0;
 		statc.msg_ttl_1 = 0;
 		statc.msg_ttl_2 = 0;
+		
 		statc.msg_ok_0 = 0;
 		statc.msg_ok_1 = 0;
 		statc.msg_ok_2 = 0;
+		
 		statc.msg_down_0 = 0;
 		statc.msg_down_1 = 0;
-		statc.msg_down_2 = 0;	
+		statc.msg_down_2 = 0;
+
+		statc.msg_sens_0 = 0;
+		statc.msg_sens_1 = 0;
+		statc.msg_sens_2 = 0;
 #endif
 
 #	if _STATISTICS >= 1
@@ -1560,7 +1578,7 @@ void setupWWW()
 #if _GATEWAYNODE==1
 		gwayConfig.isNode =(bool)1;
 		writeGwayCfg(CONFIGFILE, &gwayConfig );	// Save configuration to file
-#endif
+#endif //_GATEWAYNODE
 		server.sendHeader("Location", String("/"), true);
 		server.send ( 302, "text/plain", "");
 	});
@@ -1568,7 +1586,7 @@ void setupWWW()
 #if _GATEWAYNODE==1
 		gwayConfig.isNode =(bool)0;
 		writeGwayCfg(CONFIGFILE, &gwayConfig );	// Save configuration to file
-#endif
+#endif //_GATEWAYNODE
 		server.sendHeader("Location", String("/"), true);
 		server.send ( 302, "text/plain", "");
 	});

@@ -39,7 +39,7 @@ void init_oLED()
 	// Initialising the UI will init the display too.
 	display.init();
 	delay(100);
-	//display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR, FALSE)
+
 	display.flipScreenVertically();
 	display.setFont(ArialMT_Plain_24);
 	display.setTextAlignment(TEXT_ALIGN_LEFT);
@@ -48,11 +48,14 @@ void init_oLED()
 }
 
 // --------------------------------------------------------------------
-// Activate the OLED
+// Activate the OLED. Always print the same info.
+// These are 4 fields:
+// SSID, IP, ID, 
 //
 // --------------------------------------------------------------------
 void acti_oLED() 
 {
+#	if OLED>=1
 	// Initialising the UI will init the display too.
 	display.clear();
 	
@@ -71,7 +74,7 @@ void acti_oLED()
 #endif
 
 	display.display();
-	
+#endif // OLED
 	delay(4000);
 }
 
@@ -80,15 +83,37 @@ void acti_oLED()
 // Note: The whole message must fit in the buffer
 //
 // --------------------------------------------------------------------
-void msg_oLED(String tim, String sf) {
+void msg_oLED(String mesg) 
+{
+#if OLED>=1
     display.clear();
-    display.setFont(ArialMT_Plain_16);
-    display.setTextAlignment(TEXT_ALIGN_LEFT);
-	
-	display.drawString(0, 48, "LEN: " );
-//    display.drawString(40, 48, String((int)messageLength) );
+
+	display.flipScreenVertically();
+	display.setFont(ArialMT_Plain_24);
+	display.setTextAlignment(TEXT_ALIGN_LEFT);
+	display.drawString(0, 24, String(mesg));
+
     display.display();
 	yield();
+#endif //OLED
+}
+
+// Print a smaller OLED message consisting of two strings
+
+void msg_lLED(String mesg, String mesg2) 
+{
+#if OLED>=1
+    display.clear();
+
+	display.flipScreenVertically();
+	display.setFont(ArialMT_Plain_16);
+	display.setTextAlignment(TEXT_ALIGN_LEFT);
+	display.drawString(0, 8, String(mesg));
+	display.drawString(0, 36, String(mesg2));
+	
+    display.display();
+	yield();
+#endif //OLED
 }
 
 // --------------------------------------------------------------------

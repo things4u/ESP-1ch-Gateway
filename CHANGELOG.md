@@ -1,6 +1,6 @@
 # Single Channel LoRaWAN Gateway
 
-Version 6.1.8, January 15, 2020 
+Version 6.2.0, January 24, 2020 
 Author: M. Westenberg (mw12554@hotmail.com)  
 Copyright: M. Westenberg (mw12554@hotmail.com)  
 
@@ -15,6 +15,13 @@ Maintained by Maarten Westenberg (mw12554@hotmail.com)
 
 
 # Release Notes
+
+Features release 6.2.0 (January 29, 2020)
+- Indicate WPA and WIFI mode on OLED display
+- Correct sensor totals in Webserver overview.
+- Change delays for GPS and other internal sensors, and repair internal 
+  sensors to make sure we do not miss sensor messages
+- Changed the MONITOR part to a circular buffer to save time when filling buffer
 
 Features release 6.1.8 (January 21, 2020)
 - Repair wifimanager compile for ESP8266, and make it work for ESP8266

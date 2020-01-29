@@ -65,10 +65,18 @@ extern "C" {
 // ----------- Specific ESP32 stuff --------------
 #if defined (ARDUINO_ARCH_ESP32) || defined(ESP32)
 #	define ESP32_ARCH 1
-#	include <esp_wifi.h>
-#	include <WiFi.h>
+
+//#	include <esp_wifi.h>
+//#	include <WiFi.h>
 #	include <ESPmDNS.h>
 #	include <SPIFFS.h>
+
+#	if _WIFIMANAGER==1
+#		define ESP_getChipId()   ((uint32_t)ESP.getEfuseMac())
+#		include <ESP_WiFiManager.h>							// Library for ESP WiFi config through an AP
+//#		include <WebServer.h>
+//#		include <HttpClient.h>
+#	endif //_WIFIMANAGER
 
 #	if A_SERVER==1
 #		include <ESP32WebServer.h>							// Dedicated Webserver for ESP32
@@ -80,13 +88,6 @@ extern "C" {
 #		include <ESP32httpUpdate.h>							// Not yet available
 #		include <ArduinoOTA.h>
 #	endif //A_OTA
-
-#	if _WIFIMANAGER==1
-#		define ESP_getChipId()   ((uint32_t)ESP.getEfuseMac())
-#		include <ESP_WiFiManager.h>							// Library for ESP WiFi config through an AP
-//#		include <WebServer.h>						
-//#		include <HttpClient.h>
-#	endif //_WIFIMANAGER
 
 
 // ----------- Specific ESP8266 stuff --------------
@@ -164,7 +165,7 @@ char description[64]= _DESCRIPTION;							// used for free form description
 
 IPAddress ntpServer;										// IP address of NTP_TIMESERVER
 IPAddress ttnServer;										// IP Address of thethingsnetwork server
-IPAddress thingServer;
+IPAddress thingServer;										// Only if we use a second (backup) server
 
 WiFiUDP Udp;
 
@@ -190,9 +191,10 @@ uint32_t pullTime = 0;										// last time we sent a pull_data request to serv
 #endif
 
 // Init the indexes of the data we display on the webpage
-int16_t iMoni=0;
-int16_t iSeen=0;
-int16_t iSens=0;
+// We use this for circular buffers
+uint16_t iMoni=0;
+uint16_t iSeen=0;
+uint16_t iSens=0;
 
 // volatile bool inSPI This initial value of mutex is to be free,
 // which means that its value is 1 (!)
@@ -277,6 +279,11 @@ void setup() {
 		Serial.flush();
 #	endif //_DUSB
 
+
+#	if OLED>=1
+		init_oLED();										// When done display "STARTING" on OLED
+#	endif //OLED
+
 #	if _GPS==1
 		// Pins are defined in LoRaModem.h together with other pins
 		sGps.begin(9600, SERIAL_8N1, GPS_TX, GPS_RX);			// PIN 12-TX 15-RX
@@ -295,6 +302,7 @@ void setup() {
 		if (pdebug & P_MAIN) {
 			mPrint("SPIFFS.begin: not found, formatting");
 		}
+		msg_oLED("FORMAT");
 		SPIFFS.format();
 		delay(500);
 		initConfig(&gwayConfig);
@@ -302,6 +310,7 @@ void setup() {
 	
 	// If we set SPIFFS_FORMAT in 
 #	if _SPIFFS_FORMAT>=1
+	msg_oLED("FORMAT");
 	SPIFFS.format();										// Normally disabled. Enable only when SPIFFS corrupt
 	delay(500);
 	initConfig(&gwayConfig);
@@ -310,11 +319,10 @@ void setup() {
 	}
 #	endif //_SPIFFS_FORMAT>=1
 
-#if _MONITOR>=1
-	initMonitor(monitor);
-#endif
-
 #	if _MONITOR>=1
+		msg_oLED("MONITOR");
+		initMonitor(monitor);
+		
 #		if defined CFG_noassert
 			mPrint("No Asserts");
 #		else
@@ -343,17 +351,20 @@ void setup() {
 #		endif	
 	};							
 
-#	if OLED>=1
-		init_oLED();										// When done display "STARTING" on OLED
-#	endif //OLED
-
 	delay(500);
 	yield();
 
 #	if _WIFIMANAGER==1
+	msg_oLED("WIFIMGR");
+#	if MONITOR>=1
+		mPrint("setup:: WiFiManager");
+#	endif
+	delay(500);
+	
 	wifiMgr();
 #	endif //_WIFIMANAGER
 
+	msg_oLED("WIFI STA");
 	WiFi.mode(WIFI_STA);									// WiFi settings for connections
 	WiFi.setAutoConnect(true);
 	WiFi.macAddress(MAC_array);
@@ -365,7 +376,7 @@ void setup() {
 #	endif //_MONITOR
 
 
-	// Setup WiFi UDP connection. Give it some time and retry x times.. '0' means try forever
+	// Setup WiFi UDP connection. Give it some time and retry x times. '0' means try forever
 	while (WlanConnect(0) <= 0) {
 #		if _MONITOR>=1
 		if ((debug>=0) && (pdebug & P_MAIN)) {
@@ -385,12 +396,12 @@ void setup() {
 #	if defined(ESP32_ARCH)
 		// ESP32
 		sprintf(hostname, "%s%02x%02x%02x", "esp32-", MAC_array[3], MAC_array[4], MAC_array[5]);
-		WiFi.setHostname( hostname );
+		WiFi.setHostname(hostname);
 		MDNS.begin(hostname);
 #	else
 		//ESP8266
 		sprintf(hostname, "%s%02x%02x%02x", "esp8266-", MAC_array[3], MAC_array[4], MAC_array[5]);
-		wifi_station_set_hostname( hostname );
+		wifi_station_set_hostname(hostname);
 #	endif	//ESP32_ARCH
 
 #	if _MONITOR>=1
@@ -452,6 +463,7 @@ void setup() {
     // display results of getting hardware address
 	//
 #	if _MONITOR>=1
+	if (debug>=0) {
 		String response= "Gateway ID: ";
 		printHexDigit(MAC_array[0], response);
 		printHexDigit(MAC_array[1], response);
@@ -465,9 +477,11 @@ void setup() {
 		response += ", Listening at SF" + String(sf) + " on ";
 		response += String((double)freqs[gwayConfig.ch].upFreq/1000000) + " MHz.";
 		mPrint(response);
+	}
 #	endif //_MONITOR
 
 	// ---------- TIME -------------------------------------
+	msg_lLED("GET TIME",".");
 	ntpServer = resolveHost(NTP_TIMESERVER, 15);
 	if (ntpServer.toString() == "0:0:0:0")	{					// MMM Experimental
 #		if _MONITOR>=1
@@ -483,11 +497,13 @@ void setup() {
 		setupTime();											// Set NTP time host and interval
 		
 #	else //NTP_INTR
+	{
 		// If not using the standard libraries, do manual setting
 		// of the time. This method works more reliable than the 
 		// interrupt driven method.
-	
+		String response = ".";
 		while (timeStatus() == timeNotSet) {					// time still 1/1/1970 and 0:00 hrs
+
 			time_t newTime;
 			if (getNtpTime(&newTime)<=0) {
 #				if _MONITOR>=1
@@ -495,9 +511,13 @@ void setup() {
 					mPrint("setup:: ERROR Time not set (yet). Time="+String(newTime) );
 				}
 #				endif //_MONITOR
+				response += ".";
+				msg_lLED("GET TIME",response);
 				delay(800);
 				continue;
 			}
+			response += ".";
+			msg_lLED("GET TIME",response);
 			delay(1000);
 			setTime(newTime);
 		}
@@ -513,6 +533,7 @@ void setup() {
 #		endif //_MONITOR
 
 		writeGwayCfg(CONFIGFILE, &gwayConfig );
+	}
 #	endif //NTP_INTR
 
 	delay(100);
@@ -731,8 +752,8 @@ void loop ()
 			}
 		}
 	}
-	
-	yield();					// on 26/12/2017
+
+	yield();												// on 26/12/2017
 
 	// stat PUSH_DATA message (*2, par. 4)
 	//	
@@ -754,10 +775,10 @@ void loop ()
 		if (gwayConfig.isNode) {
 			// Give way to internal some Admin if necessary
 			yield();
-			
+
 			// If the 1ch gateway is a sensor itself, send the sensor values
 			// could be battery but also other status info or sensor info
-		
+
 			if (sensorPacket() < 0) {
 #				if _MONITOR>=1
 				if ((debug>=1) || (pdebug & P_MAIN)) {

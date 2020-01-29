@@ -297,26 +297,24 @@ struct stat_c {
 	uint32_t msg_ok;
 	uint32_t msg_ttl;
 	uint32_t msg_down;
+	uint32_t msg_sens;
 
 #if _STATISTICS >= 2						// Only if we explicitly set it higher	
-	uint32_t sf7;							// Spreading factor 7 statistics/Count
-	uint32_t sf8;							// Spreading factor 8
-	uint32_t sf9;							// Spreading factor 9
-	uint32_t sf10;							// Spreading factor 10
-	uint32_t sf11;							// Spreading factor 11
-	uint32_t sf12;							// Spreading factor 12
+	uint32_t sf7, sf8, sf9;					// Spreading factor 7, 8, 9 statistics/Count
+	uint32_t sf10, sf11, sf12;				// Spreading factor 10, 11, 12
 	
 	// If _STATISTICS is 3, we add statistics about the channel 
 	// When only one channel is used, we normally know the spread of
 	// statistics, but when HOP mode is selected we migth want to add this info
 #if _STATISTICS >=3
-	uint32_t msg_ok_0, msg_ok_1, msg_ok_2;
-	uint32_t msg_ttl_0, msg_ttl_1, msg_ttl_2;
+	uint32_t msg_ok_0,   msg_ok_1,   msg_ok_2;
+	uint32_t msg_ttl_0,  msg_ttl_1,  msg_ttl_2;
 	uint32_t msg_down_0, msg_down_1, msg_down_2;
+	uint32_t msg_sens_0, msg_sens_1, msg_sens_2;
 
-	uint32_t sf7_0, sf7_1, sf7_2;
-	uint32_t sf8_0, sf8_1, sf8_2;
-	uint32_t sf9_0, sf9_1, sf9_2;
+	uint32_t  sf7_0,  sf7_1,  sf7_2;
+	uint32_t  sf8_0,  sf8_1,  sf8_2;
+	uint32_t  sf9_0,  sf9_1,  sf9_2;
 	uint32_t sf10_0, sf10_1, sf10_2;
 	uint32_t sf11_0, sf11_1, sf11_2;
 	uint32_t sf12_0, sf12_1, sf12_2;
