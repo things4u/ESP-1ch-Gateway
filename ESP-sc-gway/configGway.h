@@ -3,7 +3,7 @@
 
 // Specify the correct version and date of your gateway here.
 // Normally it is provided with the GitHub version
-#define VERSION "V.6.2.0.E.EU868; 200129b"
+#define VERSION "V.6.2.0.E.EU868; 200129c"
 //
 // Based on work done by Thomas Telkamp for Raspberry PI 1ch gateway and many others.
 // Contibutions of Dorijan Morelj and Andreas Spies for OLED support.

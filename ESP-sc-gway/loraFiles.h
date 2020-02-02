@@ -113,13 +113,13 @@ struct espGwayConfig {
 #define nSF12	0x40
 #define nFSK	0x80
 
-// define the Seen functon as when we have seen seen last time nodes last time
+// define the Seen functon as when we have seen seen nodes last time
 struct nodeSeen {
 	time_t timSeen;
 	uint32_t idSeen;
 	uint32_t cntSeen;
 	uint8_t chnSeen;
-	uint8_t sfSeen;
+	uint8_t sfSeen;				// Encode the SF seen.This might differ per message!
 };
 struct nodeSeen listSeen[_MAXSEEN];
 

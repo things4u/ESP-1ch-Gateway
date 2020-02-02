@@ -1,5 +1,5 @@
 // 1-channel LoRa Gateway for ESP8266
-// Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
+// Copyright (c) 2016-2020 Maarten Westenberg version for ESP8266
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -93,7 +93,7 @@ int sendPacket(uint8_t *buf, uint8_t length)
 	bool ipol			= root["txpk"]["ipol"];
 	uint8_t powe		= root["txpk"]["powe"];			// power, e.g. 14 or 27
 	LoraDown.tmst		= (uint32_t) root["txpk"]["tmst"].as<unsigned long>();
-	const float ff		= root["txpk"]["freq"];			// eg 869.525
+	//const float ff		= root["txpk"]["freq"];			// eg 869.525
 	
 	// Not used in the protocol of Gateway TTN:
 	const char * datr	= root["txpk"]["datr"];			// eg "SF7BW125"
@@ -434,8 +434,6 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
     display.clear();
     display.setFont(ArialMT_Plain_16);
     display.setTextAlignment(TEXT_ALIGN_LEFT);
-
-//	msg_oLED(timBuff, prssi-rssicorr, SNR, message)
 	
     display.drawString(0, 0, "Time: " );
     display.drawString(40, 0, timBuff);
@@ -556,22 +554,16 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
             memcpy((void *)(buff_up + buff_index), (void *)",\"datr\":\"SF?", 12);
             buff_index += 12;
 	}
-	memcpy((void *)(buff_up + buff_index), (void *)"BW125\"", 6);
-	buff_index += 6;
-	memcpy((void *)(buff_up + buff_index), (void *)",\"codr\":\"4/5\"", 13);
-	buff_index += 13;
-	j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"lsnr\":%li", SNR);
-	buff_index += j;
-	j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"rssi\":%d,\"size\":%u", prssi-rssicorr, messageLength);
-	buff_index += j;
-	memcpy((void *)(buff_up + buff_index), (void *)",\"data\":\"", 9);
-	buff_index += 9;
+	memcpy((void *)(buff_up + buff_index), (void *)"BW125\"", 6); buff_index += 6;
+	memcpy((void *)(buff_up + buff_index), (void *)",\"codr\":\"4/5\"", 13); buff_index += 13;
+	buff_index += snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"lsnr\":%li", (long)SNR);
+	buff_index += snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"rssi\":%d,\"size\":%u", prssi-rssicorr, messageLength);
+	memcpy((void *)(buff_up + buff_index), (void *)",\"data\":\"", 9); buff_index += 9;
 
 	// Use gBase64 library to fill in the data string
 	encodedLen = base64_enc_len(messageLength);			// max 341
-	j = base64_encode((char *)(buff_up + buff_index), (char *) message, messageLength);
+	buff_index += base64_encode((char *)(buff_up + buff_index), (char *) message, messageLength);
 
-	buff_index += j;
 	buff_up[buff_index] = '"';
 	++buff_index;
 
@@ -630,19 +622,15 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 int receivePacket()
 {
 	uint8_t buff_up[TX_BUFF_SIZE]; 						// buffer to compose the upstream packet to backend server
-	long SNR;
-	uint8_t message[128] = { 0x00 };					// MSG size is 128 bytes for rx
-	uint8_t messageLength = 0;
 	
 	// Regular message received, see SX1276 spec table 18
 	// Next statement could also be a "while" to combine several messages received
 	// in one UDP message as the Semtech Gateway spec does allow this.
-	// XXX Not yet supported
+	// XXX Bit ... Not yet supported
 
 		// Take the timestamp as soon as possible, to have accurate reception timestamp
 		// TODO: tmst can jump if micros() overflow.
 		uint32_t tmst = (uint32_t) micros();			// Only microseconds, rollover in 5X minutes
-		//lastTmst = tmst;								// Following/according to spec
 		
 		// Handle the physical data read from LoraUp
 		if (LoraUp.payLength > 0) {
@@ -706,7 +694,7 @@ int receivePacket()
 				DevAddr[1]= LoraUp.payLoad[3];
 				DevAddr[2]= LoraUp.payLoad[2];
 				DevAddr[3]= LoraUp.payLoad[1];
-				uint16_t frameCount=LoraUp.payLoad[7]*256 + LoraUp.payLoad[6];
+				//uint16_t frameCount=LoraUp.payLoad[7]*256 + LoraUp.payLoad[6];
 
 #if _DUSB>=1
 				if (( debug>=1 ) && ( pdebug & P_RX )) {

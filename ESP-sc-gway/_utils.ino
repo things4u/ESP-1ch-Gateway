@@ -1,5 +1,5 @@
 // 1-channel LoRa Gateway for ESP8266
-// Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
+// Copyright (c) 2016-2020 Maarten Westenberg version for ESP8266
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -432,7 +432,7 @@ int SerialName(uint32_t a, String & response)
 
 		if (id == nodes[i].id) {
 #			if _MONITOR>=1
-			if ((debug>=2) && (pdebug & P_MAIN )) {
+			if ((debug>=3) && (pdebug & P_MAIN )) {
 				mPrint("SerialName:: i="+String(i)+", Name="+String(nodes[i].nm)+". for node=0x"+String(nodes[i].id,HEX));
 			}
 #			endif //_MONITOR
@@ -446,8 +446,9 @@ int SerialName(uint32_t a, String & response)
 	return(-1);									// If no success OR is TRUSTED NODES not defined
 } //SerialName
 
-
 #if _LOCALSERVER==1
+
+
 // ----------------------------------------------------------------------------
 // inDecodes(id)
 // Find the id in Decodes array, and return the index of the item

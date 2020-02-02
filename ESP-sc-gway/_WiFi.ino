@@ -1,5 +1,5 @@
 // 1-channel LoRa Gateway for ESP8266
-// Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
+// Copyright (c) 2016-2020 Maarten Westenberg version for ESP8266
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -138,7 +138,7 @@ int wifiMgr()
 	String ssid = String(AP_NAME) + "-" + String(ESP_getChipId(), HEX);
 	char s [ssid.length() + 1];
 	strncpy(s, ssid.c_str(), ssid.length());
-	s[ssid.length()]=0;
+	s[ssid.length()]= 0;
 	ESP_wifiManager.setConfigPortalTimeout(120);
 	ESP_wifiManager.startConfigPortal(s, AP_PASSWD );
 		
@@ -167,6 +167,7 @@ int wifiMgr()
 		wifi_station_get_config(&sta_conf);
 #	endif //ESP32_ARCH
 #endif //_WIFIMANAGER
+	return 1;
 }
 
 

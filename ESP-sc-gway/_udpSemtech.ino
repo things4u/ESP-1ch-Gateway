@@ -91,10 +91,7 @@ bool connectUdp()
 //
 // ----------------------------------------------------------------------------
 int readUdp(int packetSize)
-{
-	uint8_t protocol;
-	uint16_t token;
-	uint8_t ident; 
+{ 
 	uint8_t buff[32]; 						// General buffer to use for UDP, set to 64
 	uint8_t buff_down[RX_BUFF_SIZE];		// Buffer for downstream
 
@@ -147,9 +144,9 @@ int readUdp(int packetSize)
 	// If it is not NTP it must be a LoRa message for gateway or node
 	else {
 		uint8_t *data = (uint8_t *) ((uint8_t *)buff_down + 4);
-		protocol = buff_down[0];
-		token = buff_down[2]*256 + buff_down[1];
-		ident = buff_down[3];
+		//uint8_t protocol= buff_down[0];
+		//uint16_t token= buff_down[2]*256 + buff_down[1];
+		uint8_t ident= buff_down[3];
 
 #		if _MONITOR>=1
 		if ((debug>1) && (pdebug & P_MAIN)) {
@@ -167,15 +164,6 @@ int readUdp(int packetSize)
 #			if _MONITOR>=1
 			if (debug >=1) {
 				mPrint("PKT_PUSH_DATA:: size "+String(packetSize)+" From "+String(remoteIpNo.toString()));
-
-//				Serial.print(F(", port ")); Serial.print(remotePortNo);
-//				Serial.print(F(", data: "));
-//				for (int i=0; i<packetSize; i++) {
-//					Serial.print(buff_down[i],HEX);
-//					Serial.print(':');
-//				}
-//				Serial.println();
-//				if (debug>=2) Serial.flush();
 			}
 #			endif //_MONITOR
 		break;
@@ -478,8 +466,7 @@ void pullData() {
 void sendstat() {
 
     uint8_t status_report[STATUS_SIZE]; 					// status report as a JSON object
-    char stat_timestamp[32];								// XXX was 24
-    time_t t;
+    char stat_timestamp[32];								// 
 	char clat[10]={0};
 	char clon[10]={0};
 
@@ -504,8 +491,6 @@ void sendstat() {
     status_report[11] = MAC_array[5];
 
     stat_index = 12;										// 12-byte header
-	
-    t = now();												// get timestamp for statistics
 	
 	// XXX Using CET as the current timezone. Change to your timezone	
 	sprintf(stat_timestamp, "%04d-%02d-%02d %02d:%02d:%02d CET", year(),month(),day(),hour(),minute(),second());

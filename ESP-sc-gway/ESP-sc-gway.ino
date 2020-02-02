@@ -65,17 +65,12 @@ extern "C" {
 // ----------- Specific ESP32 stuff --------------
 #if defined (ARDUINO_ARCH_ESP32) || defined(ESP32)
 #	define ESP32_ARCH 1
-
-//#	include <esp_wifi.h>
-//#	include <WiFi.h>
 #	include <ESPmDNS.h>
 #	include <SPIFFS.h>
 
 #	if _WIFIMANAGER==1
 #		define ESP_getChipId()   ((uint32_t)ESP.getEfuseMac())
 #		include <ESP_WiFiManager.h>							// Library for ESP WiFi config through an AP
-//#		include <WebServer.h>
-//#		include <HttpClient.h>
 #	endif //_WIFIMANAGER
 
 #	if A_SERVER==1
@@ -222,12 +217,12 @@ void mPrint(String txt);												// _utils.ino
 int getNtpTime(time_t *t);												// _utils.ino
 int mStat(uint8_t intr, String & response);								// _utils.ini
 void SerialStat(uint8_t intr);											// _utils.ino
-void printHexDigit(uint8_t digit, String & response);				// _utils.ino
+void printHexDigit(uint8_t digit, String & response);					// _utils.ino
 int inDecodes(char * id);												// _utils.ino
 static void stringTime(time_t t, String & response);					// _urils.ino
 
 int initMonitor(struct moniLine *monitor);								// _loraFiles.ino
-int initConfig(struct espGwayConfig *c);								// _loraFiles.ino
+void initConfig(struct espGwayConfig *c);								// _loraFiles.ino
 int writeSeen(const char *fn, struct nodeSeen *listSeen);				// _loraFiles.ino
 int readGwayCfg(const char *fn, struct espGwayConfig *c);				// _loraFiles.ino
 
@@ -635,7 +630,6 @@ void setup() {
 // ----------------------------------------------------------------------------
 void loop ()
 {
-	uint32_t uSeconds;										// micro seconds
 	int packetSize;
 	uint32_t nowSeconds = now();
 	

@@ -1,5 +1,5 @@
 // sensor.ino; 1-channel LoRa Gateway for ESP8266
-// Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg
+// Copyright (c) 2016-2020 Maarten Westenberg
 //
 // All rights reserved. This program and the accompanying materials
 // are made available under the terms of the MIT License
@@ -32,7 +32,7 @@ unsigned char DevAddr[4]  = _DEVADDR ;				// see configGway.h
 // Smartdelay is a function to delay processing but in the loop get info 
 // from the GPS device
 // ----------------------------------------------------------------------------
-static void smartDelay(uint32_t ms)                
+void smartDelay(uint32_t ms)                
 {
 	uint32_t start = millis();
 	do
@@ -70,7 +70,7 @@ static void smartDelay(uint32_t ms)
 //	id and a value, and the total message contains its length (less than 64 bytes)
 //	and a parity value in byte[0] bit 7.
 // ----------------------------------------------------------------------------
-static int LoRaSensors(uint8_t *buf) {
+int LoRaSensors(uint8_t *buf) {
 
 #	if defined(_LCODE)
 #		if defined(_RAW) 
@@ -121,7 +121,7 @@ static int LoRaSensors(uint8_t *buf) {
 #			endif // ARDUINO_ARCH_ESP8266 || ESP32
 #			if _MONITOR>=1
 			if ((debug>=1) && (pdebug & P_MAIN)){
-				response += "Battery lcode="+String(volts);
+				response += ", Battery V="+String(volts);
 			}
 #			endif //_MONITOR
 
@@ -228,7 +228,8 @@ static int LoRaSensors(uint8_t *buf) {
 // Since we do this ONLY for keys and X, Y we know that we need to XOR 16 bytes.
 //
 // ----------------------------------------------------------------------------
-static void mXor(uint8_t *buf, uint8_t *key) {
+void mXor(uint8_t *buf, uint8_t *key) 
+{
 	for (uint8_t i = 0; i < 16; ++i) buf[i] ^= key[i];
 }
 
@@ -240,7 +241,8 @@ static void mXor(uint8_t *buf, uint8_t *key) {
 //	- buf: An array of uint8_t bytes
 //	- len: Length of the array in bytes
 // ----------------------------------------------------------------------------
-static void shift_left(uint8_t * buf, uint8_t len) {
+void shift_left(uint8_t * buf, uint8_t len) 
+{
     while (len--) {
         uint8_t next = len ? buf[1] : 0;			// len 0 to 15
 
@@ -254,8 +256,9 @@ static void shift_left(uint8_t * buf, uint8_t len) {
 // ----------------------------------------------------------------------------
 // generate_subkey
 // RFC 4493, para 2.3
-// ----------------------------------------------------------------------------
-static void generate_subkey(uint8_t *key, uint8_t *k1, uint8_t *k2) {
+// -----------------------------------------------------------------------------
+void generate_subkey(uint8_t *key, uint8_t *k1, uint8_t *k2) 
+{
 
 	memset(k1, 0, 16);								// Fill subkey1 with 0x00
 	
@@ -309,7 +312,8 @@ static void generate_subkey(uint8_t *key, uint8_t *k1, uint8_t *k2) {
 // MIC is cmac [0:3] of ( aes128_cmac(NwkSKey, B0 | Data )
 //
 // ----------------------------------------------------------------------------
-uint8_t micPacket(uint8_t *data, uint8_t len, uint16_t FrameCount, uint8_t * NwkSKey, uint8_t dir) {
+uint8_t micPacket(uint8_t *data, uint8_t len, uint16_t FrameCount, uint8_t * NwkSKey, uint8_t dir)
+{
 
 
 	//uint8_t NwkSKey[16] = _NWKSKEY;
@@ -432,7 +436,8 @@ uint8_t micPacket(uint8_t *data, uint8_t len, uint16_t FrameCount, uint8_t * Nwk
 //	- key: Key to use for MIC. Normally this is the NwkSKey
 //
 // ----------------------------------------------------------------------------
-static void checkMic(uint8_t *buf, uint8_t len, uint8_t *key) {
+void checkMic(uint8_t *buf, uint8_t len, uint8_t *key)
+{
 	uint8_t cBuf[len+1];
 	uint8_t NwkSKey[16] = _NWKSKEY;
 
@@ -697,7 +702,8 @@ int sensorPacket() {
 //
 // cmac = aes128_encrypt(K, Block_A[i])
 // ----------------------------------------------------------------------------
-uint8_t encodePacket(uint8_t *Data, uint8_t DataLength, uint16_t FrameCount, uint8_t *DevAddr, uint8_t *AppSKey, uint8_t Direction) {
+uint8_t encodePacket(uint8_t *Data, uint8_t DataLength, uint16_t FrameCount, uint8_t *DevAddr, uint8_t *AppSKey, uint8_t Direction)
+{
 
 #if _DUSB>=1
 	if (( debug>=2 ) && ( pdebug & P_GUI )) {

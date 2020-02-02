@@ -1,5 +1,5 @@
 // 1-channel LoRa Gateway for ESP8266
-// Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
+// Copyright (c) 2016-2020 Maarten Westenberg version for ESP8266
 //
 // 	based on work done by many people and making use of several libraries.
 //
@@ -107,7 +107,8 @@ boolean YesNo()
 // Returns:
 //		<none>
 // --------------------------------------------------------------------------------
-void wwwFile(String fn) {
+void wwwFile(String fn)
+{
 
 #if _STAT_LOG == 1
 
@@ -128,9 +129,8 @@ void wwwFile(String fn) {
 	File f = SPIFFS.open(fn, "r");					// Open the file for reading
 	
 	// MMM Change LOGFILEREC to file available
-	int j;
 	while (f.available()) {
-//	for (j=0; j<LOGFILEREC; j++) {
+//	for (int j=0; j<LOGFILEREC; j++) {
 			
 		String s=f.readStringUntil('\n');
 		if (s.length() == 0) {
@@ -185,16 +185,12 @@ void buttonDocu()
 void buttonLog() 
 {
 #if _STAT_LOG == 1	
-//	String response = "";
-	String fn = "";
-	int i = 0;
 	
 	for (int i=0; i< LOGFILEMAX; i++ ) {
-		fn = "/log-" + String(gwayConfig.logFileNo - i);
+		String fn = "/log-" + String(gwayConfig.logFileNo - i);
 		wwwFile(fn);									// Display the file contents in the browser
 	}
 	
-//	server.sendContent(response);
 #endif //_STAT_LOG
 }
 
@@ -296,7 +292,6 @@ static void setVariables(const char *cmd, const char *arg) {
 	// SF; Handle Spreading Factor Settings
 	//
 	if (strcmp(cmd, "SF")==0) {
-		uint8_t sfi = sf;
 		if (atoi(arg) == 1) {
 			if (sf>=SF12) sf=SF7; else sf= (sf_t)((int)sf+1);
 		}	
@@ -1055,7 +1050,7 @@ static void nodeHistory()
 // If less then nothing will be displayed.
 // XXX We have to make the function such that when printed, the webpage refreshes.
 // --------------------------------------------------------------------------------
-int monitorData() 
+void monitorData() 
 {
 #	if _MONITOR>=1
 	if (gwayConfig.monitor) {

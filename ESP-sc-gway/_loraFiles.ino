@@ -62,7 +62,7 @@ void id_print (String id, String val)
 // which is not very well defined. This function will init some of the settings
 // to well known settings.
 // ----------------------------------------------------------------------------
-int initConfig(struct espGwayConfig *c)
+void initConfig(struct espGwayConfig *c)
 {
 	(*c).ch = 0;
 	(*c).sf = _SPREADING;
@@ -408,8 +408,8 @@ int addLog(const unsigned char * line, int cnt)
 		return(0);								// If file open failed, return
 	}
 	
-	int i;
-#if _MONITOR>=1
+	int i=0;
+#	if _MONITOR>=1
 	if (( debug>=2 ) && ( pdebug & P_GUI )) {
 		Serial.print(F("addLog:: fileno="));
 		Serial.print(gwayConfig.logFileNo);
@@ -428,7 +428,7 @@ int addLog(const unsigned char * line, int cnt)
 		Serial.print((char *) &line[i]);	// The rest if the buffer contains ascii
 		Serial.println();
 	}
-#endif //_MONITOR
+#	endif //_MONITOR
 
 	for (i=0; i< 12; i++) {					// The first 12 bytes contain non printable characters
 	//	f.print(line[i],HEX);
@@ -456,16 +456,15 @@ void printLog()
 #if _STAT_LOG==1
 	char fn[16];
 
-#if _DUSB>=1
+#	if _DUSB>=1
 	for (int i=0; i< LOGFILEMAX; i++ ) {
 		sprintf(fn,"/log-%d", gwayConfig.logFileNo - i);
 		if (!SPIFFS.exists(fn)) break;		// break the loop
 
 		// Open the file for reading
 		File f = SPIFFS.open(fn, "r");
-		
-		int j;
-		for (j=0; j<LOGFILEREC; j++) {
+
+		for (int j=0; j<LOGFILEREC; j++) {
 			
 			String s=f.readStringUntil('\n');
 			if (s.length() == 0) break;
@@ -473,9 +472,8 @@ void printLog()
 			Serial.println(s.substring(12));			// Skip the first 12 Gateway specific binary characters
 			yield();
 		}
-
 	}
-#endif //_DUSB
+#	endif //_DUSB
 #endif //_STAT_LOG
 } //printLog
 
@@ -680,7 +678,7 @@ int addSeen(struct nodeSeen *listSeen, struct stat_t stat)
 			listSeen[i].cntSeen++;					// Not included on function para
 			listSeen[i].idSeen = stat.node;
 			listSeen[i].chnSeen = stat.ch;
-			listSeen[i].sfSeen |= stat.sf;			// Or the argument
+			listSeen[i].sfSeen = stat.sf;			// Or the argument
 	
 			writeSeen(_SEENFILE, listSeen);
 

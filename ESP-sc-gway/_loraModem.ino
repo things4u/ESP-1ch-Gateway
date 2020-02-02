@@ -1,5 +1,5 @@
 // 1-channel LoRa Gateway for ESP8266
-// Copyright (c) 2016, 2017, 2018, 2019 Maarten Westenberg version for ESP8266
+// Copyright (c) 2016-2020 Maarten Westenberg version for ESP8266
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -214,9 +214,6 @@ void setRate(uint8_t sf, uint8_t crc)
 	
 	// For sx1276 chips is the CRC ON is 
 	else {
-		uint8_t bw = 0;				// bw setting is in freqs[gwayConfig.ch].dwnBw
-		uint8_t cr = 0;				// cr settings dependent on SF setting
-		//switch (
 		
 		if (sf==SF8) {
 			mc1= 0x78;				// SX1276_MC1_BW_125==0x70 | SX1276_MC1_CR_4_8==0x08
