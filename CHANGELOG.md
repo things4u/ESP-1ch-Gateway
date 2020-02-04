@@ -16,6 +16,9 @@ Maintained by Maarten Westenberg (mw12554@hotmail.com)
 
 # Release Notes
 
+features release 6.2.1 (February 2, 2020)
+- PlatformIO support
+
 Features release 6.2.0 (January 29, 2020)
 - Indicate WPA and WIFI mode on OLED display
 - Correct sensor totals in Webserver overview.
