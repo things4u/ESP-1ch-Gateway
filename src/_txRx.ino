@@ -93,7 +93,6 @@ int sendPacket(uint8_t *buf, uint8_t length)
 	bool ipol			= root["txpk"]["ipol"];
 	uint8_t powe		= root["txpk"]["powe"];			// power, e.g. 14 or 27
 	LoraDown.tmst		= (uint32_t) root["txpk"]["tmst"].as<unsigned long>();
-	//const float ff		= root["txpk"]["freq"];			// eg 869.525
 	
 	// Not used in the protocol of Gateway TTN:
 	const char * datr	= root["txpk"]["datr"];			// eg "SF7BW125"
@@ -162,6 +161,7 @@ int sendPacket(uint8_t *buf, uint8_t length)
 // than for gateways.
 //
 	LoraDown.powe = powe;
+	const float ff		= root["txpk"]["freq"];			// eg 869.525
 	// convert double frequency (MHz) into uint32_t frequency in Hz.
 	LoraDown.fff = (uint32_t) ((uint32_t)((ff+0.000035)*1000)) * 1000;
 #endif //_STRICT_1CH
