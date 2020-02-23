@@ -1,6 +1,6 @@
 # Single Channel LoRaWAN Gateway
 
-Version 6.2.0, January 24, 2020 
+Version 6.2.0, January 29, 2020 
 Author: M. Westenberg (mw12554@hotmail.com)  
 Copyright: M. Westenberg (mw12554@hotmail.com)  
 
@@ -16,7 +16,12 @@ Maintained by Maarten Westenberg (mw12554@hotmail.com)
 
 # Release Notes
 
-features release 6.2.1 (February 2, 2020)
+Features release 6.2.3 (February 23, 2020)
+- Lots of bugs and documentation fixes
+- Added customizable #define statements through platformio.ini file (Read!!!)
+- Changed the WiFiManager code to better support both architectures: ESP8266 and ESP32\
+
+Features release 6.2.1 (February 2, 2020)
 - PlatformIO support
 
 Features release 6.2.0 (January 29, 2020)
@@ -25,6 +30,9 @@ Features release 6.2.0 (January 29, 2020)
 - Change delays for GPS and other internal sensors, and repair internal 
   sensors to make sure we do not miss sensor messages
 - Changed the MONITOR part to a circular buffer to save time when filling buffer
+- Statistics log redefined
+- Removed variables never used (PackaIO)
+
 
 Features release 6.1.8 (January 21, 2020)
 - Repair wifimanager compile for ESP8266, and make it work for ESP8266

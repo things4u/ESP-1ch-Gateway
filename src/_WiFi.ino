@@ -123,9 +123,9 @@ int WlanStatus() {
 // ----------------------------------------------------------------------------
 int wifiMgr() 
 {
-
 #if _WIFIMANAGER==1
-	ESP_WiFiManager ESP_wifiManager;
+
+	WiFiManager wifiManager;
 	
 #	if _MONITOR>=1
 	if (debug>=1) {
@@ -139,9 +139,20 @@ int wifiMgr()
 	char s [ssid.length() + 1];
 	strncpy(s, ssid.c_str(), ssid.length());
 	s[ssid.length()]= 0;
-	ESP_wifiManager.setConfigPortalTimeout(120);
-	ESP_wifiManager.startConfigPortal(s, AP_PASSWD );
-		
+
+	wifiManager.setDebugOutput(false);
+	wifiManager.setConfigPortalTimeout(120);
+	wifiManager.startConfigPortal(s, AP_PASSWD );
+	wifiManager.setAPCallback(configModeCallback);
+
+	if (!wifiManager.autoConnect()) {
+#		if _MONITOR>=1
+			Serial.println("wifiMgr:: failed to connect and hit timeout");
+#		endif
+		ESP.restart();
+		delay(1000);
+	}
+
 #	if _MONITOR>=1
 	if ((debug>=1) && (pdebug & P_MAIN)) {
 		mPrint("WlanConnect:: Now starting WlanStatus");
@@ -152,24 +163,39 @@ int wifiMgr()
 			case 0: mPrint("WlanConnect:: WlanStatus Disconnected"); break;
 			default: mPrint("WlatConnect:: WlanStatus other");
 		}
-			}
+	}
 #	endif //_MONITOR 
 
 	// At this point, there IS a Wifi Access Point found and connected
 	// We must connect to the local SPIFFS storage to store the access point
 	//String s = WiFi.SSID();
 
-#	if defined(ESP32_ARCH)
-		//
-#	else		
+#	if defined(ARDUINO_ARCH_ESP8266)
 		// Now look for the password
 		struct station_config sta_conf;
 		wifi_station_get_config(&sta_conf);
-#	endif //ESP32_ARCH
+#	else
+		mPrint("wifiMgr:: define arch specific");
+#	endif
+
 #endif //_WIFIMANAGER
 	return 1;
 }
 
+// ----------------------------------------------------------------------------
+// Callback Function for MiFiManager
+// ----------------------------------------------------------------------------
+//gets called when WiFiManager enters configuration mode
+#if _WIFIMANAGER==1
+
+void configModeCallback (WiFiManager *myWiFiManager) 
+{
+  Serial.println("Entered config mode");
+  Serial.println(WiFi.softAPIP());
+  //if you used auto generated SSID, print it
+  Serial.println(myWiFiManager->getConfigPortalSSID());
+}
+#endif //_WIFIMANAGER
 
 // ----------------------------------------------------------------------------
 // Function to join the Wifi Network (as defined in sta array
@@ -254,7 +280,7 @@ int WlanConnect(int maxTry) {
 			// We increase the time for connect but try the same SSID
 			// We try for several times
 			agains=1;
-			while (((WiFi.status()) != WL_CONNECTED) && (agains < 8)) {
+			while ((WiFi.status() != WL_CONNECTED) && (agains < 8)) {
 				agains++;		
 				delay(8000);											//delay(agains*500);
 #				if _MONITOR>=1

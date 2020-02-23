@@ -19,7 +19,7 @@
 #if _MONITOR>=1
 // ----------------------------------------------------------------------------
 // LoRa Monitor logging code.
-// Define one print function and depending on the loggin parameter output
+// Define one print function and depending on the logging parameter output
 // to _USB of to the www screen function
 // ----------------------------------------------------------------------------
 int initMonitor(struct moniLine *monitor) 
@@ -587,7 +587,7 @@ int writeSeen(const char *fn, struct nodeSeen *listSeen)
 	int i;
 	if (!SPIFFS.exists(fn)) {
 #		if _MONITOR>=1
-			mPrint("WARNING:: writeSeen, file not exists, initSeen");
+			mPrint("WARNING:: writeSeen, file not exists="+String(fn));
 #		endif //_MONITOR
 		//initSeen(listSeen);		// XXX make all initial declarations here if config vars need to have a value
 	}
@@ -595,7 +595,7 @@ int writeSeen(const char *fn, struct nodeSeen *listSeen)
 	File f = SPIFFS.open(fn, "w");
 	if (!f) {
 #		if _MONITOR>=1
-			mPrint("writeConfig:: ERROR open file="+String(fn));
+			mPrint("writeSeen:: ERROR open file="+String(fn)+" for writing");
 #		endif //_MONITOR
 		return(-1);
 	}

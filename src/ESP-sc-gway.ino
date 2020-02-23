@@ -24,6 +24,16 @@
 //
 // ----------------------------------------------------------------------------------------
 
+#if defined (ARDUINO_ARCH_ESP32) || defined(ESP32)
+#	define ESP32_ARCH 1
+#	define _PIN_OUT 4										// For ESP32 this pin-out is standard
+#elif defined(ARDUINO_ARCH_ESP8266)
+	//
+#else
+#	error "Architecture unknown and not supported"
+#endif
+
+
 // The followion file contains most of the definitions
 // used in other files. It should be the first file.
 #include "configGway.h"										// contains the configuration data of GWay
@@ -63,27 +73,26 @@ extern "C" {
 #endif
 
 // ----------- Specific ESP32 stuff --------------
-#if defined (ARDUINO_ARCH_ESP32) || defined(ESP32)
-#	define ESP32_ARCH 1
+#if defined(ESP32_ARCH)
+#	include <WiFi.h>										// MMM added 20Feb
 #	include <ESPmDNS.h>
 #	include <SPIFFS.h>
 
-#	if _WIFIMANAGER==1
-#		define ESP_getChipId()   ((uint32_t)ESP.getEfuseMac())
-#		include <ESP_WiFiManager.h>							// Library for ESP WiFi config through an AP
-#	endif //_WIFIMANAGER
-
 #	if A_SERVER==1
-#		include <ESP32WebServer.h>							// Dedicated Webserver for ESP32
+#		include <WebServer.h>								// Standard Webserver for ESP32
 #		include <Streaming.h>          						// http://arduiniana.org/libraries/streaming/
-		ESP32WebServer server(A_SERVERPORT);
+		WebServer server(A_SERVERPORT); // MMM added 20Feb
 #	endif //A_SERVER
 
 #	if A_OTA==1
-#		include <ESP32httpUpdate.h>							// Not yet available
+//#		include <ESP32httpUpdate.h>							// Not yet available
 #		include <ArduinoOTA.h>
 #	endif //A_OTA
 
+#	if _WIFIMANAGER==1
+#		define ESP_getChipId()   ((uint32_t)ESP.getEfuseMac())
+#		include <WiFiManager.h>								// Standard lib for ESP WiFi config through an AP
+#	endif //_WIFIMANAGER
 
 // ----------- Specific ESP8266 stuff --------------
 #elif defined(ARDUINO_ARCH_ESP8266)
@@ -97,7 +106,7 @@ extern "C" {
 #	if A_SERVER==1
 #		include <ESP8266WebServer.h>
 #		include <Streaming.h>          						// http://arduiniana.org/libraries/streaming/
-		ESP8266WebServer server(A_SERVERPORT);
+		ESP8266WebServer server(A_SERVERPORT);				// Standard IDE lib
 #	endif //A_SERVER
 
 #	if A_OTA==1
@@ -106,7 +115,7 @@ extern "C" {
 #	endif //A_OTA
 
 #	if _WIFIMANAGER==1						
-#		include <ESP_WiFiManager.h>							// Library for ESP WiFi config through an AP
+#		include <WiFiManager.h>								// Library for ESP WiFi config through an AP
 #		define ESP_getChipId()   (ESP.getChipId())
 #	endif //_WIFIMANAGER
 
@@ -229,6 +238,7 @@ int readGwayCfg(const char *fn, struct espGwayConfig *c);				// _loraFiles.ino
 void init_oLED();														// _oLED.ino
 void acti_oLED();														// _oLED.ino
 void addr_oLED();														// _oLED.ino
+void msg_oLED(String mesg);												// _oLED.ino
 
 void setupOta(char *hostname);											// _otaServer.ino
 

@@ -1,12 +1,9 @@
 // 1-channel LoRa Gateway for ESP32 and ESP8266
 // Copyright (c) Maarten Westenberg 2016-2020 
 
-// Specify the correct version and date of your gateway here.
-// Normally it is provided with the GitHub version
-#define VERSION "V.6.2.1.E.EU868 PlatformIO; 200129c"
+#define VERSION "V.6.2.3.E.EU868; PlatformIO 200223a"
 //
 // Based on work done by Thomas Telkamp for Raspberry PI 1ch gateway and many others.
-// Contibutions of Dorijan Morelj and Andreas Spies for OLED support.
 //
 // All rights reserved. This program and the accompanying materials
 // are made available under the terms of the MIT License
@@ -29,6 +26,10 @@
 // the right _PIN_OUT below. Selecting OLED while that is not connected does not 
 // really matter (so you can leave that in).
 //
+// The source has been optimized for PlatformIO usage. Than means the some variables
+// can be define in the .platformio.ini file. Pleas look at the example file to see 
+// how to set these #defines
+//
 // ========================================================================================
 
 
@@ -36,18 +37,24 @@
 // This is usually a good idea if the webserver is interrupted halfway a writing
 // operation. Also to be used when software is upgraded
 // Normally, value 0 is a good default and should not be changed.
-#define _SPIFFS_FORMAT 0
+#if !defined _SPIFFS_FORMAT
+#	define _SPIFFS_FORMAT 0
+#endif
 
 
-// Allows configuration through WifiManager AP setup. Must be 0 or 1					
-#define _WIFIMANAGER 0
+// Allows configuration through WifiManager AP setup. Must be 0 or 1	
+#if !defined _WIFIMANAGER				
+#	define _WIFIMANAGER 0
+#endif
 
 
 // Debug message will be put on Serial is this one is set.
 // If set to 0, no printing to USB devices is done.
 // Set to 1 it will print all user level messages (with correct debug set)
 // If set to 2 it will also print interrupt messages (not recommended)
-#define _DUSB 1
+#if !defined _DUSB
+#	define _DUSB 1
+#endif
 
 
 // Define the monitor screen. When it is greater than 0 then logging is displayed in
@@ -143,7 +150,9 @@
 //	3: ESP32, Wemos pin out (Not used)
 //	4: ESP32, Heltec and TTGO pin out (should work for Heltec, 433 and OLED too).
 //	5: Other, define your own in loraModem.h (does not include GPS Code)
-#define _PIN_OUT 4
+#if !defined _PIN_OUT
+#	define _PIN_OUT 1
+#endif
 
 
 // Single channel gateways if they behave strict should only use one frequency 
@@ -157,6 +166,8 @@
 //		in order to receive downlink messages. This is the default mode.
 // NOTE: In all other cases, value 0 works for most gateways with CAD enabled
 #define _STRICT_1CH 1
+
+
 //
 // Also, normally the server will respond with SF12 in the RX2 timeslot.
 // For TTN, thr RX2 timeslot is SF9, and we should use that one for TTN
@@ -175,12 +186,14 @@
 
 
 // Define if OLED Display is connected to I2C bus. Note that defining an OLED display does not
-// impact performance very much, certainly if no OLED is connected. Wrong OLED will not show
-// sensible results on display
+// impact performance negatively, certainly if no OLED is connected. Wrong OLED will not show
+// sensible results on the OLED display
 // OLED==0; No OLED display connected
-// OLED==1; 0.9 Oled Screen based on SSD1306
-// OLED==2;	1"3 Oled screens for Wemos, 128x64 SH1106
-#define OLED 1
+// OLED==1; 0.9" Oled Screen based on SSD1306
+// OLED==2;	1.3" Oled screens for Wemos, 128x64 SH1106
+#if !defined OLED
+#	define OLED 1
+#endif
 
 
 // Define whether we want to manage the gateway over UDP (next to management 
@@ -215,7 +228,6 @@
 #define _WWW_INTERVAL	60					// Number of seconds before we refresh the WWW page
 
 
-
 // This defines whether or not we would use the gateway as 
 // as sort of backend decoding system for local sensors which decodes
 // 1: _LOCALSERVER is used
@@ -230,6 +242,7 @@
 #define _LAT 52.237367
 #define _LON 5.978654
 #define _ALT 14								// Altitude
+
 
 // ntp
 // Please add daylight saving time to NTP_TIMEZONES when desired
@@ -268,13 +281,14 @@
 // configurations on configNode.h are not large enough for example.
 // ========================================================================
 
-
 // Maximum number of Message History statistics records gathered. 20 is a good maximum 
 // (memory intensive). For ESP32 maybe 30 could be used as well
 #define _MAXSTAT 20
 
+
 // Define the maximum amount of itemas we monitor on the screen
 #define _MAXMONITOR 20
+
 
 // We will log a list of LoRa nodes that was forwarded using this gateway.
 // For eacht node we record:

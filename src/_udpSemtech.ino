@@ -180,7 +180,7 @@ int readUdp(int packetSize)
 	
 		case PKT_PULL_DATA:	// 0x02 UP
 #			if _MONITOR>=1
-				mPrint(" Pull Data");
+				mPrint("readUdp:: PKT_PULL_DATA");
 #			endif //_MONITOR
 		break;
 	
@@ -201,7 +201,7 @@ int readUdp(int packetSize)
 			if (sendPacket(data, packetSize-4) < 0) {
 #				if _MONITOR>=1
 				if ( debug>=0 ) {
-					mPrint("A readUdp:: ERROR: PKT_PULL_RESP sendPacket failed");
+					mPrint("readUdp:: ERROR: PKT_PULL_RESP sendPacket failed");
 				}
 #				endif //_MONITOR
 				return(-1);
@@ -222,57 +222,50 @@ int readUdp(int packetSize)
 			buff[11]=MAC_array[5];
 			buff[12]=0;
 #			if _MONITOR>=1
-			if (( debug >= 2 ) && ( pdebug & P_MAIN )) {
-				mPrint("M readUdp:: TX buff filled");
+			if (( debug >= 2 ) && ( pdebug & P_TX )) {
+				mPrint("readUdp:: TX buff filled and ready");
 			}
 #			endif //_MONITOR
+
 			// Only send the PKT_PULL_ACK to the UDP socket that just sent the data!!!
 			Udp.beginPacket(remoteIpNo, remotePortNo);
 			if (Udp.write((unsigned char *)buff, 12) != 12) {
 #				if _MONITOR>=1
-				if ((debug>=0) && (pdebug & P_RADIO)) {
-					mPrint("A readUdp:: ERROR: PKT_PULL_ACK UDP write");
+				if (debug>=0) {
+					mPrint("readUdp:: ERROR: PKT_PULL_ACK UDP write");
 				}
 #				endif //_MONITOR
 			}
 			else {
 #				if _MONITOR>=1
 				if (( debug>=0 ) && ( pdebug & P_TX )) {
-					mPrint("M PKT_TX_ACK:: micros="+String(micros()));
+					mPrint("readUdp:: PKT_TX_ACK:: micros="+String(micros()));
 				}
 #				endif //_MONITOR
 			}
 
 			if (!Udp.endPacket()) {
 #				if _MONITOR>=1
-				if (( debug>=0 ) && ( pdebug & P_RADIO )) {
-					mPrint("M PKT_PULL_DATALL ERROR Udp.endPacket");
+				if (( debug>=0 ) && ( pdebug & P_TX )) {
+					mPrint("readUdp:: PKT_PULL_DATALL ERROR Udp.endPacket");
 				}
 #				endif //_MONITOR
 			}
 			
 			yield();
 #			if _MONITOR>=1
-			if (( debug >=1 ) && (pdebug & P_MAIN )) {
-				Serial.print(F("M PKT_PULL_RESP:: size ")); 
-				Serial.print(packetSize);
-				Serial.print(F(" From ")); 
-				Serial.print(remoteIpNo);
-				Serial.print(F(", port ")); 
-				Serial.print(remotePortNo);	
-				Serial.print(F(", data: "));
+			if (( debug>=1 ) && (pdebug & P_TX )) {
 				data = buff_down + 4;
 				data[packetSize] = 0;
-				Serial.print((char *)data);
-				Serial.println(F("..."));
+				mPrint("readUdp:: PKT_PULL_RESP:: size="+String(packetSize)+" From "+String(remoteIpNo.toString())+":"+String(remotePortNo)+", data="+String((char *)data)); 
 			}
 #			endif //_MONITOR	
 		break;
 	
 		case PKT_PULL_ACK:	// 0x04 DOWN; the server sends a PULL_ACK to confirm PULL_DATA receipt
 #			if _MONITOR>=1
-			if (( debug >= 2 ) && (pdebug & P_MAIN )) {
-				Serial.print(F("M PKT_PULL_ACK:: size ")); Serial.print(packetSize);
+			if (( debug >= 2 ) && (pdebug & P_TX )) {
+				Serial.print(F("readUdp:: PKT_PULL_ACK: size=")); Serial.print(packetSize);
 				Serial.print(F(" From ")); Serial.print(remoteIpNo);
 				Serial.print(F(", port ")); Serial.print(remotePortNo);	
 				Serial.print(F(", data: "));

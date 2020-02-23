@@ -88,9 +88,6 @@ boolean YesNo()
 	response += "</script>";
 	server.sendContent(response);
 	
-// Put something like this in the ESP program
-//	response += "<input type=\"button\" value=\"YesNo\" onclick=\"ynDialog()\" />";
-	
 	return(ret);
 }
 
@@ -347,9 +344,19 @@ static void setVariables(const char *cmd, const char *arg) {
 	// WiFi Manager
 	//
 #if _WIFIMANAGER==1
-	if (strcmp(cmd, "NEWSSID")==0) { 
-		ESP_WiFiManager ESP_wifiManager;
-		WiFi.disconnect();
+	if (strcmp(cmd, "NEWSSID")==0) {
+	
+		//and goes into a blocking loop awaiting configuration
+		WiFiManager wifiManager;
+#		if _MONITOR>=1		
+		if (!wifiManager.autoConnect()) {
+			Serial.println("failed to connect and hit timeout");
+			ESP.restart();
+			delay(1000);
+		}
+#		endif
+		
+		//WiFi.disconnect();
 		
 		// Add the ID to the SSID of the WiFiManager
 		String ssid = String(AP_NAME) + "-" + String(ESP_getChipId(), HEX);
@@ -359,7 +366,8 @@ static void setVariables(const char *cmd, const char *arg) {
 			mPrint("Set Variables:: ssid="+ ssid );
 		}
 #		endif //_MONITOR
-		ESP_wifiManager.startConfigPortal( ssid.c_str(), AP_PASSWD );
+
+		// wifiManager.startConfigPortal( ssid.c_str(), AP_PASSWD );		// MMM added 23Feb
 	}
 #endif //_WIFIMANAGER
 
@@ -1162,7 +1170,7 @@ static void systemStatus()
 	
 
 		response +="<tr><td class=\"cell\">Free heap</td><td class=\"cell\">"; response+=ESP.getFreeHeap(); response+="</tr>";
-// XXX We Shoudl find an ESP32 alternative
+// XXX We Should find an ESP32 alternative
 #if !defined ESP32_ARCH
 		response +="<tr><td class=\"cell\">ESP speed</td><td class=\"cell\">"; response+=ESP.getCpuFreqMHz(); 
 		response +="<td style=\"border: 1px solid black; width:40px;\"><a href=\"SPEED=80\"><button>80</button></a></td>";

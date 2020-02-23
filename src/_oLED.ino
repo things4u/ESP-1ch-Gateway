@@ -18,7 +18,7 @@
 // ========================================================================================
 //
 
-#if OLED>=1
+
 
 
 // --------------------------------------------------------------------	
@@ -28,6 +28,7 @@
 // --------------------------------------------------------------------
 void init_oLED() 
 {
+#if OLED>=1
 #if defined OLED_RST
 	pinMode(OLED_RST,OUTPUT);
 	digitalWrite(OLED_RST, LOW); 	// low to reset OLED
@@ -35,6 +36,7 @@ void init_oLED()
 	digitalWrite(OLED_RST, HIGH); 	// must be high to turn on OLED
 	delay(50);
 #else
+	//
 #endif
 	// Initialising the UI will init the display too.
 	display.init();
@@ -45,6 +47,7 @@ void init_oLED()
 	display.setTextAlignment(TEXT_ALIGN_LEFT);
 	display.drawString(0, 24, "STARTING");
 	display.display();
+#endif
 }
 
 // --------------------------------------------------------------------
@@ -55,25 +58,26 @@ void init_oLED()
 // --------------------------------------------------------------------
 void acti_oLED() 
 {
-#	if OLED>=1
+#if OLED>=1
 	// Initialising the UI will init the display too.
 	display.clear();
 	
-#if OLED==1
+# if OLED==1
 	display.setFont(ArialMT_Plain_16);
 	display.drawString(0, 0, "READY,  SSID=");
 	display.drawString(0, 16, WiFi.SSID());
 	display.drawString(0, 32, "IP=");
 	display.drawString(0, 48, WiFi.localIP().toString().c_str() );
-#elif OLED==2
+# elif OLED==2
 	display.setFont(ArialMT_Plain_16);
 	display.drawString(0, 0, "READY,  SSID=");
 	display.drawString(0, 16, WiFi.SSID());
 	display.drawString(0, 32, "IP=");
 	display.drawString(0, 48, WiFi.localIP().toString().c_str() );
-#endif
+# endif
 
 	display.display();
+	
 #endif // OLED
 	delay(4000);
 }
@@ -122,10 +126,10 @@ void msg_lLED(String mesg, String mesg2)
 // --------------------------------------------------------------------
 void addr_oLED() 
 {
-#if _DUSB>=1
-	Serial.print(F("OLED_ADDR=0x"));
-	Serial.println(OLED_ADDR, HEX);
-#endif //_DUSB
-}
-
+#if OLED>=1
+	#if _DUSB>=1
+		Serial.print(F("OLED_ADDR=0x"));
+		Serial.println(OLED_ADDR, HEX);
+	#endif //_DUSB
 #endif
+}
