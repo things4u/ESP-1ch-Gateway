@@ -163,7 +163,7 @@ void buttonDocu()
 	response += "    txt += \"Click OK to continue viewing documentation,\\n\"; ";
 	response += "    txt += \"or Cancel to return to the home page.\\n\\n\"; ";
 	response += "    if(confirm(txt)) { ";
-	response += "      document.location.href = \"https://things4u.github.io/Projects/SingleChannelGateway/UserGuide/Introduction%206.html\"; ";
+	response += "      document.location.href = \"https://things4u.github.io/Projects/SingleChannelGateway/1ch_GWay.html"; ";
 	response += "    }";
 	response += "  }";
 	response += "}";
