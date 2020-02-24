@@ -354,7 +354,7 @@ static void setVariables(const char *cmd, const char *arg) {
 			ESP.restart();
 			delay(1000);
 		}
-#		endif
+#		endif //_MONITOR
 		
 		//WiFi.disconnect();
 		

@@ -77,6 +77,9 @@ extern "C" {
 #	include <WiFi.h>										// MMM added 20Feb
 #	include <ESPmDNS.h>
 #	include <SPIFFS.h>
+#	include <WiFiManager.h>								// Standard lib for ESP WiFi config through an AP
+
+#	define ESP_getChipId()   ((uint32_t)ESP.getEfuseMac())
 
 #	if A_SERVER==1
 #		include <WebServer.h>								// Standard Webserver for ESP32
@@ -89,10 +92,6 @@ extern "C" {
 #		include <ArduinoOTA.h>
 #	endif //A_OTA
 
-#	if _WIFIMANAGER==1
-#		define ESP_getChipId()   ((uint32_t)ESP.getEfuseMac())
-#		include <WiFiManager.h>								// Standard lib for ESP WiFi config through an AP
-#	endif //_WIFIMANAGER
 
 // ----------- Specific ESP8266 stuff --------------
 #elif defined(ARDUINO_ARCH_ESP8266)
@@ -102,6 +101,9 @@ extern "C" {
 	}
 #	include <ESP8266WiFi.h>									// Which is specific for ESP8266
 #	include <ESP8266mDNS.h>
+#	include <WiFiManager.h>									// Library for ESP WiFi config through an AP
+
+#	define ESP_getChipId()   (ESP.getChipId())
 
 #	if A_SERVER==1
 #		include <ESP8266WebServer.h>
@@ -113,11 +115,7 @@ extern "C" {
 #		include <ESP8266httpUpdate.h>
 #		include <ArduinoOTA.h>
 #	endif //A_OTA
-
-#	if _WIFIMANAGER==1						
-#		include <WiFiManager.h>								// Library for ESP WiFi config through an AP
-#		define ESP_getChipId()   (ESP.getChipId())
-#	endif //_WIFIMANAGER
+					
 
 #else
 #	error "Architecture not supported"
@@ -360,13 +358,13 @@ void setup() {
 	yield();
 
 #	if _WIFIMANAGER==1
-	msg_oLED("WIFIMGR");
-#	if MONITOR>=1
-		mPrint("setup:: WiFiManager");
-#	endif
-	delay(500);
+		msg_oLED("WIFIMGR");
+#		if MONITOR>=1
+			mPrint("setup:: WiFiManager");
+#		endif //_MONITOR
+		delay(500);
 	
-	wifiMgr();
+		wifiMgr();
 #	endif //_WIFIMANAGER
 
 	msg_oLED("WIFI STA");
