@@ -1,4 +1,4 @@
-// 1-channel LoRa Gateway for ESP8266
+// 1-channel LoRa Gateway for ESP8266 and ESP32
 // Copyright (c) 2016-2020 Maarten Westenberg version for ESP8266
 //
 //
@@ -17,7 +17,7 @@
 // over the air.
 // This code uses the ESPhttpServer functions to update the gateway.
 
-#if A_OTA==1
+#if _OTA==1
 
 //extern ArduinoOTAClass ArduinoOTA;
 
@@ -75,7 +75,7 @@ void setupOta(char *hostname) {
 #	endif //_MONITOR
 	
 	// Only if the Webserver is active also
-#if A_SERVER==2										// Displayed for the moment
+#if _SERVER==2										// Displayed for the moment
 	ESPhttpUpdate.rebootOnUpdate(false);
    
 	server.on("/esp", HTTP_POST, [&](){

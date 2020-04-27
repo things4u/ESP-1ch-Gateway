@@ -1,4 +1,4 @@
-// 1-channel LoRa Gateway for ESP8266
+// 1-channel LoRa Gateway for ESP8266 and ESP32
 // Copyright (c) 2016-2020 Maarten Westenberg version for ESP8266
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
@@ -22,18 +22,18 @@
 
 
 // --------------------------------------------------------------------	
-// Initilize the OLED functions.
-// This function will init the OLED screenb. Depending on the 
+// Initilize the Oled functions.
+// This function will init the Oled screen. Depending on the 
 // availability of the reset button it will reset the display first.
 // --------------------------------------------------------------------
 void init_oLED() 
 {
-#if OLED>=1
+#if _OLED>=1
 #if defined OLED_RST
 	pinMode(OLED_RST,OUTPUT);
-	digitalWrite(OLED_RST, LOW); 	// low to reset OLED
+	digitalWrite(OLED_RST, LOW); 	// low to reset Oled
 	delay(100); 
-	digitalWrite(OLED_RST, HIGH); 	// must be high to turn on OLED
+	digitalWrite(OLED_RST, HIGH); 	// must be high to turn on Oled
 	delay(50);
 #else
 	//
@@ -51,24 +51,24 @@ void init_oLED()
 }
 
 // --------------------------------------------------------------------
-// Activate the OLED. Always print the same info.
+// Activate the Oled. Always print the same info.
 // These are 4 fields:
 // SSID, IP, ID, 
 //
 // --------------------------------------------------------------------
 void acti_oLED() 
 {
-#if OLED>=1
+#if _OLED>=1
 	// Initialising the UI will init the display too.
 	display.clear();
 	
-# if OLED==1
+# if _OLED==1
 	display.setFont(ArialMT_Plain_16);
 	display.drawString(0, 0, "READY,  SSID=");
 	display.drawString(0, 16, WiFi.SSID());
 	display.drawString(0, 32, "IP=");
 	display.drawString(0, 48, WiFi.localIP().toString().c_str() );
-# elif OLED==2
+# elif _OLED==2
 	display.setFont(ArialMT_Plain_16);
 	display.drawString(0, 0, "READY,  SSID=");
 	display.drawString(0, 16, WiFi.SSID());
@@ -78,18 +78,18 @@ void acti_oLED()
 
 	display.display();
 	
-#endif // OLED
+#endif // _OLED
 	delay(4000);
 }
 
 // --------------------------------------------------------------------
-// Print a message on the OLED.
+// Print a message on the Oled.
 // Note: The whole message must fit in the buffer
 //
 // --------------------------------------------------------------------
 void msg_oLED(String mesg) 
 {
-#if OLED>=1
+#if _OLED>=1
     display.clear();
 
 	display.flipScreenVertically();
@@ -99,14 +99,14 @@ void msg_oLED(String mesg)
 
     display.display();
 	yield();
-#endif //OLED
+#endif // _OLED
 }
 
-// Print a smaller OLED message consisting of two strings
+// Print a larger Oled message consisting of two strings
 
 void msg_lLED(String mesg, String mesg2) 
 {
-#if OLED>=1
+#if _OLED>=1
     display.clear();
 
 	display.flipScreenVertically();
@@ -117,16 +117,16 @@ void msg_lLED(String mesg, String mesg2)
 	
     display.display();
 	yield();
-#endif //OLED
+#endif // _OLED
 }
 
 // --------------------------------------------------------------------
-// Print the OLED address in use
+// Print the Oled address in use
 //
 // --------------------------------------------------------------------
 void addr_oLED() 
 {
-#if OLED>=1
+#if _OLED>=1
 	#if _DUSB>=1
 		Serial.print(F("OLED_ADDR=0x"));
 		Serial.println(OLED_ADDR, HEX);

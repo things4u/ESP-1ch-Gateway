@@ -1,4 +1,4 @@
-// 1-channel LoRa Gateway for ESP8266
+// 1-channel LoRa Gateway for ESP8266 and ESP32
 // Copyright (c) 2016-2020 Maarten Westenberg
 //
 // All rights reserved. This program and the accompanying materials

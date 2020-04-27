@@ -1,4 +1,4 @@
-// 1-channel LoRa Gateway for ESP8266
+// 1-channel LoRa Gateway for ESP8266 and ESP32
 // Copyright (c) 2016-2020 Maarten Westenberg 
 //
 // Based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
@@ -57,23 +57,30 @@ void gateway_mgt(uint8_t size, uint8_t *buff) {
 	
 	switch (opcode) {
 		case MGT_RESET:
-			Serial.println(F("gateway_mgt:: RESET"));
+#			if _MONITOR>=1
+				mPrint(F("gateway_mgt:: RESET"));
+#			endif // _MONITOR
 			// No further parameters, just reset the GWay
 			setup();								// Call the sketch setup function
 			// Send Ack to server
 			
 		break;
 		case MGT_SET_SF:
-			Serial.println(F("gateway_mgt:: SET SF"));
+#			if _MONITOR>=1
+				mPrint(F("gateway_mgt:: SET SF"));
+#			endif //_MONITOR
 			// byte [4] contains desired SF code (7 for SF7 and 12 for SF12)
 		break;
 		case MGT_SET_FREQ:
-			Serial.println(F("gateway_mgt:: SET FREQ"));
+#			if _MONITOR>=1
+				mPrint(F("gateway_mgt:: SET FREQ"));
+#			endif // _MONITOR
 			// Byte [4] contains index of Frequency
 		break;
 		default:
-			Serial.print(F("gateway_mgt:: Unknown UDP code=")); 
-			Serial.println(opcode);
+#			if _MONITOR>=1
+				mPrint(F("gateway_mgt:: Unknown UDP code=") + String(opcode) ); 
+#			endif
 			return;
 		break;
 	}

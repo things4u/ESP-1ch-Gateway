@@ -1,4 +1,4 @@
-// 1-channel LoRa Gateway for ESP8266
+// 1-channel LoRa Gateway for ESP8266 and ESP32
 // Copyright (c) 2016-2020 Maarten Westenberg
 // Author: Maarten Westenberg (mw12554@hotmail.com)
 //
@@ -81,16 +81,16 @@ extern "C" {
 
 #	define ESP_getChipId()   ((uint32_t)ESP.getEfuseMac())
 
-#	if A_SERVER==1
+#	if _SERVER==1
 #		include <WebServer.h>								// Standard Webserver for ESP32
 #		include <Streaming.h>          						// http://arduiniana.org/libraries/streaming/
-		WebServer server(A_SERVERPORT); // MMM added 20Feb
-#	endif //A_SERVER
+		WebServer server(_SERVERPORT); // MMM added 20Feb
+#	endif //_SERVER
 
-#	if A_OTA==1
+#	if _OTA==1
 //#		include <ESP32httpUpdate.h>							// Not yet available
 #		include <ArduinoOTA.h>
-#	endif //A_OTA
+#	endif //_OTA
 
 
 // ----------- Specific ESP8266 stuff --------------
@@ -105,16 +105,16 @@ extern "C" {
 
 #	define ESP_getChipId()   (ESP.getChipId())
 
-#	if A_SERVER==1
+#	if _SERVER==1
 #		include <ESP8266WebServer.h>
 #		include <Streaming.h>          						// http://arduiniana.org/libraries/streaming/
-		ESP8266WebServer server(A_SERVERPORT);				// Standard IDE lib
-#	endif //A_SERVER
+		ESP8266WebServer server(_SERVERPORT);				// Standard IDE lib
+#	endif //_SERVER
 
-#	if A_OTA==1
+#	if _OTA==1
 #		include <ESP8266httpUpdate.h>
 #		include <ArduinoOTA.h>
-#	endif //A_OTA
+#	endif //_OTA
 					
 
 #else
@@ -163,6 +163,9 @@ char platform[24]	= _PLATFORM; 							// platform definition
 char email[40]		= _EMAIL;    							// used for contact email
 char description[64]= _DESCRIPTION;							// used for free form description 
 
+// JSON definitions
+StaticJsonDocument<312> jsonBuffer;							// Use of arduinoJson version 6!
+	
 // define servers
 
 IPAddress ntpServer;										// IP address of NTP_TIMESERVER
@@ -171,18 +174,20 @@ IPAddress thingServer;										// Only if we use a second (backup) server
 
 WiFiUDP Udp;
 
-time_t startTime = 0;										// The time in seconds since 1970 that the server started. We use this variable since millis() is reset every 50 days...
+time_t startTime = 0;										// The time in seconds since 1970 that the server started. 
 uint32_t eventTime = 0;										// Timing of _event to change value (or not).
 uint32_t sendTime = 0;										// Time that the last message transmitted
 uint32_t doneTime = 0;										// Time to expire when CDDONE takes too long
 uint32_t statTime = 0;										// last time we sent a stat message to server
-uint32_t pullTime = 0;										// last time we sent a pull_data request to server
+uint32_t pullTime = 0;										// last time we sent a pull_data request to server\
+uint32_t rstTime  = 0;										// When to reset the timer
+uint32_t fileTime = 0;										// Wite the configuration to file
 
 #define TX_BUFF_SIZE  1024									// Upstream buffer to send to MQTT
 #define RX_BUFF_SIZE  1024									// Downstream received from MQTT
 #define STATUS_SIZE	  512									// Should(!) be enough based on the static text .. was 1024
 
-#if A_SERVER==1
+#if _SERVER==1
 	uint32_t wwwtime = 0;
 #endif
 #if NTP_INTR==0
@@ -190,6 +195,9 @@ uint32_t pullTime = 0;										// last time we sent a pull_data request to serv
 #endif
 #if _GATEWAYNODE==1
 	uint16_t frameCount=0;									// We write this to SPIFF file
+#endif
+#ifdef _PROFILER
+	uint32_t endTmst=0;
 #endif
 
 // Init the indexes of the data we display on the webpage
@@ -222,11 +230,11 @@ void setupWWW();														// _wwwServer.ino forward
 
 void mPrint(String txt);												// _utils.ino
 int getNtpTime(time_t *t);												// _utils.ino
-int mStat(uint8_t intr, String & response);								// _utils.ini
+int mStat(uint8_t intr, String & response);								// _utils.ino
 void SerialStat(uint8_t intr);											// _utils.ino
 void printHexDigit(uint8_t digit, String & response);					// _utils.ino
 int inDecodes(char * id);												// _utils.ino
-static void stringTime(time_t t, String & response);					// _urils.ino
+static void stringTime(time_t t, String & response);					// _utils.ino
 
 int initMonitor(struct moniLine *monitor);								// _loraFiles.ino
 void initConfig(struct espGwayConfig *c);								// _loraFiles.ino
@@ -250,7 +258,7 @@ void stateMachine();													// _stateMachine.ino
 
 bool connectUdp();														// _udpSemtech.ino
 int readUdp(int packetSize);											// _udpSemtech.ino
-int sendUdp(IPAddress server, int port, uint8_t *msg, int length);		// _udpSemtech.ino
+int sendUdp(IPAddress server, int port, uint8_t *msg, uint16_t length);		// _udpSemtech.ino
 void sendstat();														// _udpSemtech.ino
 void pullData();														// _udpSemtech.ino
 
@@ -283,13 +291,13 @@ void setup() {
 #	endif //_DUSB
 
 
-#	if OLED>=1
-		init_oLED();										// When done display "STARTING" on OLED
-#	endif //OLED
+#	if _OLED>=1
+		init_oLED();										// When done display "STARTING" on Oled
+#	endif //_OLED
 
 #	if _GPS==1
 		// Pins are defined in LoRaModem.h together with other pins
-		sGps.begin(9600, SERIAL_8N1, GPS_TX, GPS_RX);			// PIN 12-TX 15-RX
+		sGps.begin(9600, SERIAL_8N1, GPS_TX, GPS_RX);		// PIN 12-TX 15-RX
 #	endif //_GPS
 
 	delay(500);
@@ -301,7 +309,7 @@ void setup() {
 		}
 #		endif //_MONITOR
 	}
-	else {											// SPIFFS not found
+	else {													// SPIFFS not found
 		if (pdebug & P_MAIN) {
 			mPrint("SPIFFS.begin: not found, formatting");
 		}
@@ -317,6 +325,7 @@ void setup() {
 	SPIFFS.format();										// Normally disabled. Enable only when SPIFFS corrupt
 	delay(500);
 	initConfig(&gwayConfig);
+	gwayConfig.formatCntr++;
 	if ((debug>=1) && (pdebug & P_MAIN)) {
 		mPrint("Format SPIFFS Filesystem Done");
 	}
@@ -349,13 +358,11 @@ void setup() {
 	else {
 #		if _MONITOR>=1
 		if (debug>=0) {
-			mPrint("setup:: readGwayCfg: ERROR readCfgCfg Failed");
+			mPrint("setup:: readGwayCfg: ERROR readGwayCfg Failed");
 		}
 #		endif	
 	};							
-
 	delay(500);
-	yield();
 
 #	if _WIFIMANAGER==1
 		msg_oLED("WIFIMGR");
@@ -386,8 +393,9 @@ void setup() {
 			mPrint("setup:: Error Wifi network connect(0)");
 		}
 #		endif //_MONITOR
-		yield();
 	}
+
+	yield();
 
 #	if _MONITOR>=1
 	if ((debug>=1) & ( pdebug & P_MAIN )) {
@@ -566,16 +574,16 @@ void setup() {
 
 	// The Over the Air updates are supported when we have a WiFi connection.
 	// The NTP time setting does not have to be precise for this function to work.
-#if A_OTA==1
+#if _OTA==1
 	setupOta(hostname);										// Uses wwwServer 
-#endif //A_OTA
+#endif //_OTA
 
 	readSeen(_SEENFILE, listSeen);							// read the seenFile records
 
-#if A_SERVER==1	
+#if _SERVER==1	
 	// Setup the webserver
 	setupWWW();
-#endif //A_SERVER
+#endif //_SERVER
 
 	delay(100);												// Wait after setup
 	
@@ -609,11 +617,11 @@ void setup() {
 	writeConfig(CONFIGFILE, &gwayConfig);					// Write config
 	writeSeen(_SEENFILE, listSeen);							// Write the last time record  is seen
 
-	// activate OLED display
-#	if OLED>=1
+	// activate Oled display
+#	if _OLED>=1
 		acti_oLED();
 		addr_oLED();
-#	endif //OLED
+#	endif // _OLED
 
 	mPrint(" --- Setup() ended, Starting loop() ---");
 
@@ -632,7 +640,7 @@ void setup() {
 // and the backend system cannot do its housekeeping, the watchdog
 // function will be executed which means effectively that the 
 // program crashes.
-// We use yield() a lot to avoid ANY watch dog activity of the program.
+// We use yield() to avoid ANY watch dog activity of the program.
 //
 // NOTE2: For ESP make sure not to do large array declarations in loop();
 // ----------------------------------------------------------------------------
@@ -641,6 +649,55 @@ void loop ()
 	int packetSize;
 	uint32_t nowSeconds = now();
 	
+	// If we are not connected, try to connect.
+	// We will not read Udp in this loop cycle if not connected to Wlan
+	if (WlanConnect(1) < 0) {
+#		if _MONITOR>=1
+		if ((debug >= 0) && (pdebug & P_MAIN)) {
+			mPrint("loop:: ERROR reconnect WLAN");
+		}
+#		endif //_MONITOR
+		yield();
+		return;												// Exit loop if no WLAN connected
+	} //WlanConnect()
+
+	yield();												// MMM 200403 to make sure UDP buf filled
+
+	// So if we are connected 
+	// Receive UDP PUSH_ACK messages from server. (*2, par. 3.3)
+	// This is important since the TTN broker will return confirmation
+	// messages on UDP for every message sent by the gateway. So we have to consume them.
+	// As we do not know when the server will respond, we test in every loop.
+	//
+	while( (packetSize= Udp.parsePacket()) > 0) {
+#		if _MONITOR>=1
+		if ((debug>=2) && (pdebug & P_TX)){
+			mPrint("loop:: readUdp available");
+		}
+#		endif //_MONITOR
+
+		// DOWNSTREAM
+		// Packet may be PKT_PUSH_ACK (0x01), PKT_PULL_ACK (0x03) or PKT_PULL_RESP (0x04)
+		// This command is found in byte 4 (buffer[3])
+
+		if (readUdp(packetSize) < 0) {
+#			if _MONITOR>=1
+			if (debug>=0)
+				mPrint("Dwn readUdp ERROR, returning < 0");
+#			endif //_MONITOR
+			break;
+		}
+		// Now we know we succesfully received message from host
+		// If return value is 0, we received a NTP message,
+		// otherwise a UDP message with other TTN content, all ACKs are 4 bytes long
+		else {
+			//_event=1;									// Could be done double if more messages received
+			//mPrint("Dwn udp received="+String(micros())+", packetSize="+String(packetSize));
+		}
+	}
+
+	yield();
+
 	// check for event value, which means that an interrupt has arrived.
 	// In this case we handle the interrupt ( e.g. message received)
 	// in userspace in loop().
@@ -653,8 +710,8 @@ void loop ()
 	// So it will kick in if there are not many messages for the gateway.
 	// Note: Be careful that it does not happen too often in normal operation.
 	//
-	if ( ((nowSeconds - statr[0].tmst) > _MSG_INTERVAL ) &&
-		(msgTime <= statr[0].tmst) ) 
+	if ( ((nowSeconds - statr[0].time) > _MSG_INTERVAL ) &&
+		(msgTime <= statr[0].time) ) 
 	{
 #		if _MONITOR>=1
 		if (( debug>=2 ) && ( pdebug & P_MAIN )) {
@@ -683,94 +740,47 @@ void loop ()
 		msgTime = nowSeconds;
 	}
 
-#if A_SERVER==1
-	// Handle the Web server part of this sketch. Mainly used for administration 
-	// and monitoring of the node. This function is important so it is called at the
-	// start of the loop() function.
-	yield();
-	server.handleClient();
-#endif //A_SERVER
-
-#if A_OTA==1
+#if _OTA==1
 	// Perform Over the Air (OTA) update if enabled and requested by user.
 	// It is important to put this function early in loop() as it is
 	// not called frequently but it should always run when called.
 	//
 	yield();
 	ArduinoOTA.handle();
-#endif //A_OTA
+#endif //_OTA
 
 	// If event is set, we know that we have a (soft) interrupt.
 	// After all necessary web/OTA services are scanned, we will
 	// reloop here for timing purposes. 
 	// Do as less yield() as possible.
-	// XXX 180326
 	if (_event == 1) {
 		return;
 	}
 	else yield();
 
-	
-	// If we are not connected, try to connect.
-	// We will not read Udp in this loop cycle then
-	if (WlanConnect(1) < 0) {
-#		if _MONITOR>=1
-		if (( debug >= 0 ) && ( pdebug & P_MAIN )) {
-			mPrint("loop:: ERROR reconnect WLAN");
-		}
-#		endif //_MONITOR
-		yield();
-		return;												// Exit loop if no WLAN connected
-	} //WlanConnect
-	
-	// So if we are connected 
-	// Receive UDP PUSH_ACK messages from server. (*2, par. 3.3)
-	// This is important since the TTN broker will return confirmation
-	// messages on UDP for every message sent by the gateway. So we have to consume them.
-	// As we do not know when the server will respond, we test in every loop.
-	//
-	else {
-		while( (packetSize = Udp.parsePacket()) > 0) {
-#			if _MONITOR>=1
-			if (debug>=2) {
-				mPrint("loop:: readUdp calling");
-			}
-#			endif //_MONITOR
-			// DOWNSTREAM
-			// Packet may be PKT_PUSH_ACK (0x01), PKT_PULL_ACK (0x03) or PKT_PULL_RESP (0x04)
-			// This command is found in byte 4 (buffer[3])
-			if (readUdp(packetSize) < 0) {
-#				if _MONITOR>=1
-				if ( debug>=0 )
-					mPrint("readUdp ERROR,down returning < 0");
-#				endif //_MONITOR
-				break;
-			}
-			// Now we know we succesfully received message from host
-			// If return value is 0, we received a NTP message,
-			// otherwise a UDP message with other TTN content
-			else {
-				//_event=1;									// Could be done double if more messages received
-			}
-		}
-	}
+#if _SERVER==1
+	// Handle the Web server part of this sketch. Mainly used for administration 
+	// and monitoring of the node. This function is important so it is called at the
+	// start of the loop() function.
+	server.handleClient();
+#endif //_SERVER
 
-	yield();												// on 26/12/2017
+
 
 	// stat PUSH_DATA message (*2, par. 4)
 	//	
-
     if ((nowSeconds - statTime) >= _STAT_INTERVAL) {		// Wake up every xx seconds
+		yield();											// on 26/12/2017
         sendstat();											// Show the status message and send to server
 #		if _MONITOR>=1
-		if (( debug>=2 ) && ( pdebug & P_MAIN )) {
+		if ((debug>=2) && (pdebug & P_MAIN)) {
 			mPrint("Send Pushdata sendstat");
 		}
 #		endif //_MONITOR
 
 		// If the gateway behaves like a node, we do from time to time
 		// send a node message to the backend server.
-		// The Gateway node emessage has nothing to do with the STAT_INTERVAL
+		// The Gateway node message has nothing to do with the STAT_INTERVAL
 		// message but we schedule it in the same frequency.
 		//
 #		if _GATEWAYNODE==1
@@ -792,21 +802,44 @@ void loop ()
 #		endif//_GATEWAYNODE
 		statTime = nowSeconds;
     }
-	
-	yield();
 
-	
+
 	// send PULL_DATA message (*2, par. 4)
 	//
+	// This message will also restart the server which taken approx. 3 ms.
 	nowSeconds = now();
     if ((nowSeconds - pullTime) >= _PULL_INTERVAL) {		// Wake up every xx seconds
+
+		yield();
         pullData();											// Send PULL_DATA message to server
-		startReceiver();
+		//startReceiver();
 		pullTime = nowSeconds;
 		
 #		if _MONITOR>=1
-		if (( debug>=2) && ( pdebug & P_MAIN )) {
-			mPrint("ESP-sc-gway:: PULL_DATA message sent");
+		if ((debug>=1) && (pdebug & P_RX)) {
+			String response = "UP ESP-sc-gway:: PKT_PULL_DATA message sent: micr=";
+			printInt(micros(), response);
+			mPrint(response);
+		}
+#		endif //_MONITOR
+    }
+
+
+	// send RESET_DATA message (*2, par. 4)
+	//
+	// This message will also restart the server which taken approx. 3 ms.
+	nowSeconds = now();
+    if ((nowSeconds - rstTime) >= _RST_INTERVAL) {			// Wake up every xx seconds
+
+		yield();
+		startReceiver();
+		rstTime = nowSeconds;
+		
+#		if _MONITOR>=1
+		if ((debug>=2) && (pdebug & P_MAIN)) {
+			String response = "UP ESP-sc-gway:: RST_DATA message sent: micr=";
+			printInt(micros(), response);
+			mPrint(response);
 		}
 #		endif //_MONITOR
     }
@@ -820,7 +853,6 @@ void loop ()
 		//  as this function may collide with SPI and other interrupts
 		// Note: It can be that we do not receive a time this loop (no worries)
 		yield();
-		nowSeconds = now();
 		if (nowSeconds - ntptimer >= _NTP_INTERVAL) {
 			yield();
 			time_t newTime;
@@ -843,5 +875,12 @@ void loop ()
 			}
 		}
 #	endif//NTP_INTR
+
+#	if _MAXSEEN >= 1
+		if ((nowSeconds - fileTime) >= _FILE_INTERVAL) {
+			writeSeen(_SEENFILE, listSeen);
+			fileTime = nowSeconds;
+		}
+#	endif // _MAXSEEN
 
 }//loop

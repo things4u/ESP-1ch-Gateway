@@ -1,4 +1,4 @@
-// sensor.ino; 1-channel LoRa Gateway for ESP8266
+// sensor.ino; 1-channel LoRa Gateway for ESP8266 and ESP32
 // Copyright (c) 2016-2020 Maarten Westenberg
 //
 // All rights reserved. This program and the accompanying materials
@@ -40,7 +40,7 @@ void smartDelay(uint32_t ms)
 		while (sGps.available()) {
 			gps.encode(sGps.read());
 		}
-		yield();									// MMM Maybe avoid crashes
+		yield();									// MMM Maybe  enable to fill buffer
 	} while (millis() - start < ms);
 }
 #endif //_GPS
@@ -82,7 +82,7 @@ int LoRaSensors(uint8_t *buf) {
 		buf[0] = 0x86;								// 134; User code <lCode + len==3 + Parity
 		
 #		if _MONITOR>=1
-		if (debug>=0) {
+		if ((debug>=1) && (pdebug & P_MAIN)) {
 			response += "LoRaSensors:: ";
 		}
 #		endif //_MONITOR
@@ -90,7 +90,7 @@ int LoRaSensors(uint8_t *buf) {
 		// GPS sensor is the second server we check for
 #		if _GPS==1
 			smartDelay(10);							// Use GPS to return fast!
-			if (millis() > 5000 && gps.charsProcessed() < 10) {
+			if ((millis() > 5000) && (gps.charsProcessed() < 10)) {
 #				if _MONITOR>=1
 					mPrint("ERROR: No GPS data received: check wiring");
 #				endif //_MONITOR
@@ -102,8 +102,8 @@ int LoRaSensors(uint8_t *buf) {
 
 			// Use lcode to code messages to server
 #			if _MONITOR>=1
-			if ((debug>=1) && (pdebug & P_MAIN)){
-				response += ", Gps lcode:: lat="+String(gps.location.lat())+", lng="+String(gps.location.lng())+", alt="+String(gps.altitude.feet()/3.2808)+", sats="+String(gps.satellites.value());
+			if ((debug>=1) && (pdebug & P_MAIN)) {
+				response += " Gps lcode:: lat="+String(gps.location.lat())+", lng="+String(gps.location.lng())+", alt="+String(gps.altitude.feet()/3.2808)+", sats="+String(gps.satellites.value());
 			}
 #			endif //_MONITOR
 			tchars += lcode.eGpsL(gps.location.lat(), gps.location.lng(), gps.altitude.value(), gps.satellites.value(), buf + tchars);
@@ -504,7 +504,6 @@ int sensorPacket() {
 	uint8_t buff_up[512];								// Declare buffer here to avoid exceptions
 	uint8_t message[64]={ 0 };							// Payload, init to 0
 	uint8_t mlength = 0;
-	uint32_t tmst = micros();
 	struct LoraUp LUP;
 	uint8_t NwkSKey[16] = _NWKSKEY;
 	uint8_t AppSKey[16] = _APPSKEY;
@@ -604,7 +603,7 @@ int sensorPacket() {
 	// be expanded if the server expects JSON messages.
 	// Note2: We fake this sensor message when sending
 	//
-	int buff_index = buildPacket(tmst, buff_up, LUP, true);
+	uint16_t buff_index = buildPacket(buff_up, &LUP, true);
 	
 	frameCount++;
 	statc.msg_ttl++;					// XXX Should we count sensor messages as well?

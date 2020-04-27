@@ -1,7 +1,7 @@
 # Single Channel LoRaWAN Gateway
 
-Version 6.2.0, 
-Data: January 29, 2020  
+Version 6.2.4, 
+Data: April 25, 2020  
 Author: M. Westenberg (mw12554@hotmail.com)  
 Copyright: M. Westenberg (mw12554@hotmail.com)  
 
@@ -16,8 +16,8 @@ Maintained by Maarten Westenberg (mw12554@hotmail.com)
 
 # Description
 
-First of all: PLEASE READ THIS FILE AND [Documentation](https://things4u.github.io/Projects/SingleChannelGateway/UserGuide/Introduction%206.html) it should contain most of the 
-information you need to get going.
+First of all: PLEASE READ THIS FILE AND [Documentation](http://things4u.github.io/Projects/SingleChannelGateway) 
+it should contain most of the information you need to get going.
 Unfortunately I do not have the time to follow up on all emails, and as most information including pin-outs 
 etc etc are contained on these pages I hope you have the time to read them and post any remaining questions.
 
@@ -47,6 +47,24 @@ parameters at runtime.
 Full documentation of the Single Channel Gateway is found at things4u.github.io, please look at the Hardware Guide 
 under the Gateway chapter.
 
+# PlatformIO or ArduinoIDE
+
+The source works on both environments, both the classic Arduino IDE and on PlatformIO. 
+Unfortunately there are small differences between these two envrironments. 
+At this moment the src directory contains the PlatformIO source, and therefore we will decribe how to connect to Arduino IDE.
+The applies to the libraries.
+
+## PlatformIO
+When in PlatformIO, choose <File> and then <Add folder to Workspace...> and select the new LoRa-1ch-ESP-Gateway 
+top directory.
+Then just open the ESP-sc-gway.ino file at src directory and build or upload
+
+## Arduino IDE
+
+Create a place on you filesystem wo work on the files. In thius directory creat the source directory "ESP-sc-gway" 
+and the libraries directory "libraries". When unpacking the source at github: 
+Copy the content of the "src" directory to the Aruino IDE "ESP-sc-gway" directory and copy the contents 
+of the "lib" to the Arduino IDE "libraries" directory;
 
 ## testing
 
@@ -465,7 +483,6 @@ The following things are still on my wish list to make to the single channel gat
 - Display for each node the last time it was seen
 - Use the SPIFFS for storing .css files
 - Look at Class B and C support
-
 
 
 # License

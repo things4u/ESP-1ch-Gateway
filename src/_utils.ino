@@ -1,4 +1,4 @@
-// 1-channel LoRa Gateway for ESP8266
+// 1-channel LoRa Gateway for ESP8266 and ESP32
 // Copyright (c) 2016-2020 Maarten Westenberg version for ESP8266
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
@@ -20,6 +20,57 @@
 
 // ==================== STRING STRING STRING ==============================================
 
+// --------------------------------------------------------------------------------
+// PRINT INT
+// The function printInt prints a number with Thousands seperator
+// Paraneters:
+//	i:			Integer containing Microseconds
+//	response:	String & value containig the converted number
+// Retur:
+//	<none>
+// --------------------------------------------------------------------------------
+void printInt (uint32_t i, String & response)
+{
+	response+=(String(i/1000000) + "." + String(i%1000000));
+}
+
+// --------------------------------------------------------------------------------
+// PRINT Dwn
+// IN a uniform way, this function prints the timstamp, the current time and the 
+// time the function must wait to execute. It will print all Downstream data
+// --------------------------------------------------------------------------------
+void printDwn(struct LoraDown *LoraDown, String & response)
+{
+	uint32_t i= LoraDown->tmst;
+	uint32_t m= micros();
+	
+	response += "micr=";	printInt(m, response);
+	response += ", tmst=";	printInt(i, response);
+
+	response += ", wait=";
+	if (i>m) {
+		response += String(i-m);
+	}
+	else {
+		response += "(";
+		response += String(m-i);
+		response += ")";
+	}
+
+	response += ", SF="		+String(LoraDown->sfTx);
+	response += ", Freq="	+String(LoraDown->freq);
+
+	response += ", a=";
+	uint8_t DevAddr [4];
+		DevAddr[0] = LoraDown->payLoad[4];
+		DevAddr[1] = LoraDown->payLoad[3];
+		DevAddr[2] = LoraDown->payLoad[2];
+		DevAddr[3] = LoraDown->payLoad[1];
+	printHex((IPAddress)DevAddr, ':', response);
+
+	yield();
+	return;
+}
 
 
 // --------------------------------------------------------------------------------
@@ -73,9 +124,14 @@ void printHexDigit(uint8_t digit, String & response)
 
 }
 
+// ========================= MONITOR FUNCTIONS ============================================
+// Monitor functions
+// These functions write to the Monitor and print the monitor.
+
+
 // ----------------------------------------------------------------------------------------
 // Print to the monitor console.
-// This function is used all over the gateway code as a substite for USB debug code.
+// This function is used all over the gateway code as a substitute for USB debug code.
 // It allows webserver users to view printed/debugging code.
 // With initMonitor() we init the index iMoni=0;
 //
@@ -86,39 +142,32 @@ void printHexDigit(uint8_t digit, String & response)
 // ----------------------------------------------------------------------------------------
 void mPrint(String txt) 
 {
-	
-#	if _DUSB>=1
-		Serial.println(txt);
-		if (debug>=2) Serial.flush();
-#	endif //_DUSB
-
 #	if _MONITOR>=1
 	time_t tt = now();
-
-	monitor[iMoni].txt  = String(day(tt))	+ "-";
-	monitor[iMoni].txt += String(month(tt))	+ "-";
-	monitor[iMoni].txt += String(year(tt))	+ " ";
 	
-	uint8_t _hour   = hour(tt);
-	uint8_t _minute = minute(tt);
-	uint8_t _second = second(tt);
-
-	if (_hour   < 10) monitor[iMoni].txt += "0"; monitor[iMoni].txt += String( _hour )+ ":";
-	if (_minute < 10) monitor[iMoni].txt += "0"; monitor[iMoni].txt += String(_minute) + ":";
-	if (_second < 10) monitor[iMoni].txt += "0"; monitor[iMoni].txt += String(_second) + "- ";
+	monitor[iMoni].txt = "";
+	stringTime(tt, monitor[iMoni].txt);
 	
-	monitor[iMoni].txt += String(txt);
+	monitor[iMoni].txt += "- " + String(txt);
 	
 	// Use the circular buffer to increment the index
+
+#	if _DUSB>=1
+	if (gwayConfig.dusbStat>=1) {
+		Serial.println(monitor[iMoni].txt);			// Copy to serial when configured
+	}
+#	endif //_DUSB
+
 	iMoni = (iMoni+1) % _MAXMONITOR	;				// And goto 0 when skipping over _MAXMONITOR
 	
 #	endif //_MONITOR
+
 	return;
 }
 
 
 // ----------------------------------------------------------------------------
-// mStat
+// mStat (Monitor-Statistics)
 // Print the statistics on Serial (USB) port and/or Monitor
 // Depending on setting of _DUSB and _MONITOR.
 // Note: This function does not initialise the response var, will only append.
@@ -137,23 +186,24 @@ int mStat(uint8_t intr, String & response)
 	
 		response += "I=";
 
-		if (intr & IRQ_LORA_RXTOUT_MASK) response += String("RXTOUT ");		// 0x80
-		if (intr & IRQ_LORA_RXDONE_MASK) response += String("RXDONE ");		// 0x40
+		if (intr & IRQ_LORA_RXTOUT_MASK) response += "RXTOUT ";		// 0x80
+		if (intr & IRQ_LORA_RXDONE_MASK) response += "RXDONE ";		// 0x40
 		if (intr & IRQ_LORA_CRCERR_MASK) response += "CRCERR ";		// 0x20
 		if (intr & IRQ_LORA_HEADER_MASK) response += "HEADER ";		// 0x10
 		if (intr & IRQ_LORA_TXDONE_MASK) response += "TXDONE ";		// 0x08
-		if (intr & IRQ_LORA_CDDONE_MASK) response += String("CDDONE ");		// 0x04
+		if (intr & IRQ_LORA_CDDONE_MASK) response += "CDDONE ";		// 0x04
 		if (intr & IRQ_LORA_FHSSCH_MASK) response += "FHSSCH ";		// 0x02
 		if (intr & IRQ_LORA_CDDETD_MASK) response += "CDDETD ";		// 0x01
 
 		if (intr == 0x00) response += "  --  ";
 			
 		response += ", F=" + String(gwayConfig.ch);
+		
 		response += ", SF=" + String(sf);
+		
 		response += ", E=" + String(_event);
 			
 		response += ", S=";
-
 		switch (_state) {
 			case S_INIT:
 				response += "INIT ";
@@ -165,7 +215,7 @@ int mStat(uint8_t intr, String & response)
 				response += "CAD  ";
 			break;
 			case S_RX:
-				response += String("RX   ");
+				response += "RX   ";
 			break;
 			case S_TX:
 				response += "TX   ";
@@ -178,10 +228,9 @@ int mStat(uint8_t intr, String & response)
 		}
 		response += ", eT=";
 		response += String( micros() - eventTime );
+		
 		response += ", dT=";
 		response += String( micros() - doneTime );
-
-		//mPrint(response);							// Do actual printing
 	}
 #endif //_MONITOR
 	return(1);
@@ -217,7 +266,7 @@ void ftoa(float f, char *val, int p)
 	strcat(val,".");										// Copy decimal point
 	
 	itoa(fval,b,10);										// Copy fraction part base 10
-	for (int i=0; i<(p-strlen(b)); i++) {
+	for (unsigned int i=0; i<(p-strlen(b)); i++) {
 		strcat(val,"0");									// first number of 0 of faction?
 	}
 	
@@ -272,18 +321,22 @@ static void stringTime(time_t t, String & response)
 	byte _minute = minute(eTime);
 	byte _second = second(eTime);
 	
+	byte _month = month(eTime);
+	byte _day = day(eTime);
+	
 	switch(weekday(eTime)) {
-		case 1: response += "Sunday "; break;
-		case 2: response += "Monday "; break;
-		case 3: response += "Tuesday "; break;
-		case 4: response += "Wednesday "; break;
-		case 5: response += "Thursday "; break;
-		case 6: response += "Friday "; break;
-		case 7: response += "Saturday "; break;
+		case 1: response += "Sun "; break;
+		case 2: response += "Mon "; break;
+		case 3: response += "Tue "; break;
+		case 4: response += "Wed "; break;
+		case 5: response += "Thu "; break;
+		case 6: response += "Fri "; break;
+		case 7: response += "Sat "; break;
 	}
-	response += String(day(eTime)) + "-";
-	response += String(month(eTime)) + "-";
+	if (_day < 10) response += "0"; response += String(_day) + "-";
+	if (_month < 10) response += "0"; response += String(_month) + "-";
 	response += String(year(eTime)) + " ";	
+	
 	if (_hour < 10) response += "0";   response += String(_hour) + ":";
 	if (_minute < 10) response += "0"; response += String(_minute) + ":";
 	if (_second < 10) response += "0"; response += String(_second);
@@ -317,7 +370,8 @@ int sendNtpRequest(IPAddress timeServerIP)
 		return(0);	
 	}
 	return(1);
-}
+	
+} // sendNtpRequest()
 
 
 // ----------------------------------------------------------------------------
@@ -428,11 +482,11 @@ int SerialName(uint32_t a, String & response)
 	uint8_t * in = (uint8_t *)(& a);
 	uint32_t id = ((in[0]<<24) | (in[1]<<16) | (in[2]<<8) | in[3]);
 
-	for (int i=0; i< (sizeof(nodes)/sizeof(nodex)); i++) {
+	for (unsigned int i=0; i< (sizeof(nodes)/sizeof(nodex)); i++) {
 
 		if (id == nodes[i].id) {
 #			if _MONITOR>=1
-			if ((debug>=2) && (pdebug & P_MAIN )) {
+			if ((debug>=3) && (pdebug & P_MAIN )) {
 				mPrint("SerialName:: i="+String(i)+", Name="+String(nodes[i].nm)+". for node=0x"+String(nodes[i].id,HEX));
 			}
 #			endif //_MONITOR
@@ -460,7 +514,7 @@ int inDecodes(char * id) {
 
 	uint32_t ident = ((id[3]<<24) | (id[2]<<16) | (id[1]<<8) | id[0]);
 
-	for (int i=0; i< (sizeof(decodes)/sizeof(codex)); i++) {
+	for (unsigned int i=0; i< (sizeof(decodes)/sizeof(codex)); i++) {
 		if (ident == decodes[i].id) {
 			return(i);
 		}

@@ -1,4 +1,4 @@
-// 1-channel LoRa Gateway for ESP8266
+// 1-channel LoRa Gateway for ESP8266 and ESP32
 // Copyright (c) 2016-2020 Maarten Westenberg version for ESP8266
 //
 // based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
@@ -13,7 +13,7 @@
 //
 // Author: Maarten Westenberg (mw12554@hotmail.com)
 //
-// This file contains a number of compile-time settings and definitions for OLED support.
+// This file contains a number of compile-time settings and definitions for Oled support.
 //
 // ----------------------------------------------------------------------------------------
 
@@ -27,7 +27,7 @@
 // 2. 1.3" OLED with much better and larger display
 // 4. TTGO board
 
-#if OLED>=1										// If OLED is used
+#if _OLED>=1										// If OLED is used
 
 // ----------------------------------------------------------------------------------------
 // Define the different PIN's used for SCL/SDA for each arch.
@@ -56,17 +56,17 @@
 // ----------------------------------------------------------------------------------------
 // Define the different OLED versions
 //
-#if OLED==1
+#if _OLED==1
 #include "SSD1306.h"
 #define OLED_ADDR 0x3C							// Default 0x3C for 0.9", for 1.3" it is 0x78
 SSD1306  display(OLED_ADDR, OLED_SDA, OLED_SCL);// i2c ADDR & SDA, SCL on wemos
 #endif
 
 // This is an 1.3" OLED display which is running on I2C
-#if OLED==2
+#if _OLED==2
 #include "SH1106.h"
 #define OLED_ADDR 0x3C							// Default 0x3C for 1.3" SH1106
 SH1106  display(OLED_ADDR, OLED_SDA, OLED_SCL);	// i2c ADDR & SDA, SCL on wemos
 #endif
 
-#endif//OLED>=1
+#endif// _OLED>=1

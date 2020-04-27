@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP32 and ESP8266
 // Copyright (c) Maarten Westenberg 2016-2020 
 
-#define VERSION "V.6.2.3.E.EU868; PlatformIO 200223a"
+#define VERSION "V.6.2.4.EU868; PlatformIO 200425m"
 //
 // Based on work done by Thomas Telkamp for Raspberry PI 1ch gateway and many others.
 //
@@ -23,11 +23,11 @@
 // "ESP32 Dev Module" or "Heltec WiFi Lora 32"
 // 
 // For ESP8266 Wemos: compile with "Wemos R1 D1" and choose
-// the right _PIN_OUT below. Selecting OLED while that is not connected does not 
+// the right _PIN_OUT below. Selecting Oled while that is not connected does not 
 // really matter (so you can leave that in).
 //
-// The source has been optimized for PlatformIO usage. Than means the some variables
-// can be define in the .platformio.ini file. Pleas look at the example file to see 
+// The source has been optimized for PlatformIO usage. That means some variables
+// can be defined in the .platformio.ini file. Please look at the example file to see 
 // how to set these #defines
 //
 // ========================================================================================
@@ -60,7 +60,9 @@
 // Define the monitor screen. When it is greater than 0 then logging is displayed in
 // the special screen at the GUI.
 // If _DUSB is also set to 1 then most messages will also be copied to USB devices.
+#if !defined _MONITOR
 #define _MONITOR 1
+#endif
 
 
 // Gather statistics on sensor and Wifi status
@@ -119,6 +121,7 @@
 // device and also connect enable dio1 to detect this state. 
 #define _CAD 1
 
+
 // CRCCHECK
 // Defines whether we should check on the CRC of RXDONE messages (see stateMachine.ino)
 // This should prevent us from getting a lot os stranges messgages of unknown nodes.
@@ -126,12 +129,12 @@
 #define _CRCCHECK 1
 
 // Definitions for the admin webserver.
-// A_SERVER determines whether or not the admin webpage is included in the sketch.
+// _SERVER determines whether or not the admin webpage is included in the sketch.
 // Normally, leave it in!
-#define A_SERVER 1				// Define local WebServer only if this define is set
-#define A_REFRESH 1				// Allow the webserver refresh or not?
-#define A_SERVERPORT 80			// Local webserver port (normally 80)
-#define A_MAXBUFSIZE 192		// Must be larger than 128, but small enough to work
+#define _SERVER 1				// Define local WebServer only if this define is set
+#define _REFRESH 1				// Allow the webserver refresh or not?
+#define _SERVERPORT 80			// Local webserver port (normally 80)
+#define _MAXBUFSIZE 192		// Must be larger than 128, but small enough to work
 
 
 // Definitions for over the air updates. At the moment we support OTA with IDE
@@ -139,16 +142,18 @@
 // Bonjour is included in iTunes (which is free) and OTA is recommended to install 
 // the firmware on your router witout having to be really close to the gateway and 
 // connect with USB.
-#define A_OTA 1
+#define _OTA 1
 
 
-// We support a few pin-out configurations out-of-the-box: HALLARD, COMPRESULT and TTGO ESP32.
-// If you use one of these two, just set the parameter to the right value.
-// If your pin definitions are different, update the loraModem.h file to reflect these settings.
+// We support a few pin-out configurations out-of-the-box: HALLARD, COMPRESULT and 
+// Heltec/TTGO ESP32.
+// If you use one of these, just set the parameter to the right value.
+// If your pin definitions are different, update the loraModem.h file to reflect the
+// hardware settings.
 //	1: HALLARD
 //	2: COMRESULT pin out
 //	3: ESP32, Wemos pin out (Not used)
-//	4: ESP32, Heltec and TTGO pin out (should work for Heltec, 433 and OLED too).
+//	4: ESP32, Heltec and TTGO pin out (should work for Heltec, 433 and Oled too).
 //	5: Other, define your own in loraModem.h (does not include GPS Code)
 #if !defined _PIN_OUT
 #	define _PIN_OUT 1
@@ -165,13 +170,20 @@
 // NOTE: If your node has only one frequency enabled and one SF, you must set this to 1
 //		in order to receive downlink messages. This is the default mode.
 // NOTE: In all other cases, value 0 works for most gateways with CAD enabled
-#define _STRICT_1CH 1
-
+#if !defined _STRICT_1CH
+#	define _STRICT_1CH 1
+#endif //_STRICT_1CH
 
 //
 // Also, normally the server will respond with SF12 in the RX2 timeslot.
-// For TTN, thr RX2 timeslot is SF9, and we should use that one for TTN
-#define _RX2_SF 9
+// For TTN, the RX2 timeslot is SF9, so we should use that one for TTN
+#if !defined _RXDELAY1
+#	define _RXDELAY1 1000
+#endif
+
+#if !defined _RX2_SF
+#	define _RX2_SF 9
+#endif
 
 
 // This section defines whether we use the gateway as a repeater
@@ -185,14 +197,14 @@
 #define _MUTEX 0
 
 
-// Define if OLED Display is connected to I2C bus. Note that defining an OLED display does not
-// impact performance negatively, certainly if no OLED is connected. Wrong OLED will not show
-// sensible results on the OLED display
-// OLED==0; No OLED display connected
-// OLED==1; 0.9" Oled Screen based on SSD1306
-// OLED==2;	1.3" Oled screens for Wemos, 128x64 SH1106
-#if !defined OLED
-#	define OLED 1
+// Define if Oled Display is connected to I2C bus. Note that defining an Oled display does not
+// impact performance negatively, certainly if no Oled is connected. Wrong Oled will not show
+// sensible results on the Oled display
+// _OLED==0;	No Oled display connected
+// _OLED==1;	0.9" Oled Screen based on SSD1306
+// _OLED==2;	1.3" Oled screens for Wemos, 128x64 SH1106
+#if !defined _OLED
+#	define _OLED 1
 #endif
 
 
@@ -208,25 +220,27 @@
 #define _GATEWAYMGT 0
 
 
-// Do extensive logging
+// Do extensive logging to file
 // Use the ESP8266 SPIFS filesystem to do extensive logging.
 // We must take care that the filesystem never(!) is full, and for that purpose we
 // rather have new records/line of statistics than very old.
 // Of course we must store enough records to make the filesystem work
-#define _STAT_LOG 1
-
+#if !defined _START_LOG
+#	define _STAT_LOG 0
+#endif //_START_LOG
 
 
 // Set the Server Settings (IMPORTANT)
 #define _LOCUDPPORT 1700					// UDP port of gateway! Often 1700 or 1701 is used for upstream comms
 
 // Timing
-#define _MSG_INTERVAL 15					// Reset timer in seconds
-#define _PULL_INTERVAL 55					// PULL_DATA messages to server to get downstream in milliseconds
+#define _PULL_INTERVAL 20					// PULL_DATA messages to server to get downstream in seconds
 #define _STAT_INTERVAL 120					// Send a 'stat' message to server
 #define _NTP_INTERVAL 3600					// How often do we want time NTP synchronization
-#define _WWW_INTERVAL	60					// Number of seconds before we refresh the WWW page
-
+#define _WWW_INTERVAL 60					// Number of seconds before we refresh the WWW page
+#define _FILE_INTERVAL 30					// Number of timer (in secs) before writing to files
+#define _MSG_INTERVAL 31					// Message timeout timer in seconds
+#define _RST_INTERVAL 90					// Reset interval in seconds, total chip reset
 
 // This defines whether or not we would use the gateway as 
 // as sort of backend decoding system for local sensors which decodes
@@ -247,7 +261,7 @@
 // ntp
 // Please add daylight saving time to NTP_TIMEZONES when desired
 #define NTP_TIMESERVER "nl.pool.ntp.org"	// Country and region specific
-#define NTP_TIMEZONES	1					// How far is our Timezone from UTC (excl daylight saving/summer time)
+#define NTP_TIMEZONES	2					// How far is our Timezone from UTC (excl daylight saving/summer time)
 #define SECS_IN_HOUR	3600
 #define NTP_INTR 0							// Do NTP processing with interrupts or in loop();
 
@@ -260,7 +274,9 @@
 // as a regular sensor value.
 // Set its LoRa address and key below in this file, See spec. para 4.3.2
 // NOTE: The node is switched off by default. Switch it on in the GUI
-#define _GATEWAYNODE 0
+#if !defined _GATEWAYNODE
+#	define _GATEWAYNODE 0
+#endif //_GATEWAYNODE
 
 
 // We can put the gateway in such a mode that it will (only) recognize
@@ -297,7 +313,9 @@
 //	- SF seen (8-bit integer with SF per bit)
 // The initial version _NUMMAX stores max this many nodes, please make
 // _MAXSEEN==0 when not used
-#define _MAXSEEN 20
+#if !defined _MAXSEEN
+#	define _MAXSEEN 20
+#endif
 #define _SEENFILE "/gwayNum.txt"
 
 
@@ -320,5 +338,3 @@
 // and need no changing
 #define _TTNSERVER "router.eu.thethings.network"
 #define _TTNPORT 1700							// Standard port for TTN
-
-

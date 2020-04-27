@@ -1,4 +1,4 @@
-// 1-channel LoRa Gateway for ESP8266
+// 1-channel LoRa Gateway for ESP8266 and ESP32
 // Copyright (c) 2016-2020 Maarten Westenberg version for ESP mcu's
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
@@ -66,17 +66,21 @@ struct espGwayConfig {
 	uint16_t views;				// Number of sendWebPage() calls
 	uint16_t wifis;				// Number of WiFi Setups
 	uint16_t reents;			// Number of re-entrant interrupt handler calls
-	uint16_t ntpErr;			// Number of UTP requests that failed
 	uint16_t ntps;
 	uint16_t logFileRec;		// Logging File Record number
 	uint16_t logFileNo;			// Logging File Number
 	uint16_t logFileNum;		// Number of log files max
+	uint16_t formatCntr;		// Count the number of formats
+
+	uint16_t ntpErr;			// Number of UTP requests that failed
+	uint16_t waitErr;			// Number of times the loraWait() call failed
+	uint16_t waitOk;			// Number of times the loraWait() call success
 	
 	uint8_t ch;					// index to freqs array, freqs[gwayCofnig.ch]=868100000 default
 	uint8_t sf;					// range from SF7 to SF12
 	uint8_t debug;				// range 0 to 4
 	uint8_t pdebug;				// pattern debug, 
-	uint8_t trusted;			// pattern debug, 
+	uint8_t trusted;			// pattern debug,
 	
 	bool cad;					// is CAD enabled?
 	bool hop;					// Is HOP enabled (Note: default be disabled)
@@ -85,6 +89,7 @@ struct espGwayConfig {
 	bool seen;
 	bool expert;
 	bool monitor;
+	bool dusbStat;				// Status of _DUSB
 	
 } gwayConfig;
 

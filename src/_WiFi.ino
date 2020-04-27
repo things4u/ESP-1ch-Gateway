@@ -1,4 +1,4 @@
-// 1-channel LoRa Gateway for ESP8266
+// 1-channel LoRa Gateway for ESP8266 and ESP32
 // Copyright (c) 2016-2020 Maarten Westenberg version for ESP8266
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
@@ -235,17 +235,17 @@ int WlanConnect(int maxTry) {
 	// Value 0 is reserved for setup() first time connect
 	int i=0;
 
-	while ( (WiFi.status() != WL_CONNECTED) && (( i<= maxTry ) || (maxTry==0)) )
+	while ((WiFi.status() != WL_CONNECTED) && (( i<= maxTry ) || (maxTry==0)) )
 	{
 		// We try every SSID in wpa array until success
-		for (int j=wpa_index; (j< (sizeof(wpa)/sizeof(wpa[0]))) && (WiFi.status() != WL_CONNECTED ); j++)
+		for (unsigned int j=wpa_index; (j<(sizeof(wpa)/sizeof(wpa[0]))) && (WiFi.status() != WL_CONNECTED ); j++)
 		{
 			// Start with well-known access points in the list
 			char *ssid		= wpa[j].login;
 			char *password	= wpa[j].passw;
 			
 #			if _MONITOR>=1
-			if (debug>=1)  {
+			if ((debug>=1) && (pdebug & P_MAIN)) {
 				Serial.print(i);
 				Serial.print(':');
 				Serial.print(j); 
@@ -284,7 +284,7 @@ int WlanConnect(int maxTry) {
 			agains=1;
 			while ((WiFi.status() != WL_CONNECTED) && (agains < 8)) {
 				agains++;		
-				delay(8000);											//delay(agains*500);
+				delay(8000);											// delay(agains*500);
 #				if _MONITOR>=1
 				if ( debug>=0 ) {
 					Serial.print(".");									// Serial only
@@ -301,13 +301,6 @@ int WlanConnect(int maxTry) {
 	  
 		i++;			// Number of times we try to connect
 	} //while
-
-
-#		if _MONITOR>=1
-		if ((debug>=2) & (pdebug & P_MAIN)) {
-			mPrint("WlanConnect:: Connected="+ String(WiFi.SSID()) );
-		}
-#		endif //_MONITOR
 
 	yield();
 	return(1);

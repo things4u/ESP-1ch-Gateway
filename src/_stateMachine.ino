@@ -1,4 +1,4 @@
-// 1-channel LoRa Gateway for ESP8266
+// 1-channel LoRa Gateway for ESP8266 and ESP32
 // Copyright (c) 2016-2020 Maarten Westenberg version for ESP8266
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
@@ -80,9 +80,9 @@ void stateMachine()
 	
 #	if _MONITOR>=1
 	if (intr != flags) {
-		String response = "";
+		String response = "stateMachine:: Error: flags="+String(flags,HEX)+", ";
 		mStat(intr, response);
-		mPrint("FLAG  ::"+response);
+		mPrint(response);
 	}
 #	endif //_MONITOR
 
@@ -204,10 +204,10 @@ void stateMachine()
 		
 		// else, S_RX of S_TX for example
 		else {
-			//yield();												// May take too much time for RX
+			//
 		} // else S_RX or S_TX, TXDONE
 		
-		yield();
+		yield();										// if hopping is enabled
 		
 	}// intr==0 && gwayConfig.hop
 
@@ -277,8 +277,8 @@ void stateMachine()
 			rssi = readRegister(REG_RSSI);							// Read the RSSI
 			_rssi = rssi;											// Read the RSSI in the state variable
 
-			_event = 0;												// Make 0, as soon as we have an interrupt
-			detTime = micros();										// mark time that preamble detected
+			_event=0;												// Make 0, as soon as we have an interrupt
+			detTime=micros();										// mark time that preamble detected
 			
 #			if _MONITOR>=1
 			if ((debug>=1) && (pdebug & P_PRE)) {
@@ -287,6 +287,7 @@ void stateMachine()
 				mPrint(response);
 			}
 #			endif //_MONITOR
+			writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) 0x00);
 			writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);			// reset all interrupt flags
 			opmode(OPMODE_RX_SINGLE);								// set reg 0x01 to 0x06 for receiving
 			
@@ -382,7 +383,7 @@ void stateMachine()
 			}
 #			endif //_MONITOR
 			_state=S_SCAN;
-			//_event=1;												// XXX 06/03 loop until interrupt
+			//_event=1;												// XXX 19/06/03 loop until interrupt
 			writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) 0x00);
 			writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);
 		}
@@ -430,6 +431,7 @@ void stateMachine()
 			// Reset all interrupts as soon as possible
 			// But listen ONLY to RXDONE and RXTOUT interrupts 
 			//writeRegister(REG_IRQ_FLAGS, IRQ_LORA_CDDETD_MASK | IRQ_LORA_RXDONE_MASK);
+
 			// If we want to reset CRC, HEADER and RXTOUT flags as well
 			writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF );			// XXX 180326, reset all CAD Detect interrupt flags
 			
@@ -443,7 +445,7 @@ void stateMachine()
 
 			detTime = micros();
 #			if _MONITOR>=1
-			if (( debug>=1 ) && ( pdebug & P_CAD )) {
+			if ((debug>=1) && (pdebug & P_CAD)) {
 				String response = "CAD:: ";
 				mStat(intr, response);
 				mPrint(response);
@@ -520,7 +522,7 @@ void stateMachine()
 				mPrint ("CAD:: intr is 0x00");
 			}
 #			endif //_MONITOR
-			_event=1;												// Stay in CAD _state until real interrupt
+			//_event=1;												// Stay in CAD _state until real interrupt
 		}
 		
 		// else we do not recognize the interrupt. We print an error
@@ -528,8 +530,8 @@ void stateMachine()
 		//
 		else {
 #			if _MONITOR>=1
-			if (( debug>=0) && ( pdebug & P_CAD )) { 
-				mPrint("Err CAD: Unknown::" + String(intr) ); 
+			if ( debug>=0) { 
+				mPrint("ERROR CAD: Unknown::" + String(intr) ); 
 			}
 #			endif //_MONITOR
 			_state = S_SCAN;
@@ -564,10 +566,9 @@ void stateMachine()
 			//
 			if (intr & IRQ_LORA_CRCERR_MASK) {
 #				if _MONITOR>=1
-				if (( debug>=0 ) && ( pdebug & P_RX )) {
-					String response = "";
+				if ((debug>=0) && (pdebug & P_RX)) {
+					String response = "UP CRC ERROR:: ";
 					mStat(intr, response);
-					Serial.print(F("Rx CRC err: "));
 				}
 #				endif //_MONITOR
 
@@ -597,8 +598,9 @@ void stateMachine()
 			
 			// If we are here, no CRC error occurred, start timer
 #			if _DUSB>=1 || _MONITOR>=1
-				uint32_t ffTime = micros();	
-#			endif			
+				uint32_t rxDoneTime = micros();	
+#			endif	
+		
 			// There should not be an error in the message
 			LoraUp.payLoad[0]= 0x00;								// Empty the message
 
@@ -612,12 +614,13 @@ void stateMachine()
 			
 			if((LoraUp.payLength = receivePkt(LoraUp.payLoad)) <= 0) {
 #				if _MONITOR>=1
-				if (( debug>=1 ) && ( pdebug & P_RX )) {
-					String response = "sMachine:: Error S-RX: payLenth=";
+				if ((debug>=0) && (pdebug & P_RX)) {
+					String response = "sMachine:: ERROR S-RX: payLength=";
 					response += String(LoraUp.payLength);
 					mPrint(response);
 				}
 #				endif //_MONITOR
+
 				_event=1;
 				writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) 0x00);	// Reset the interrupt mask
 				writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);
@@ -627,9 +630,9 @@ void stateMachine()
 			}
 			
 #			if _MONITOR>=1
-			if ((pdebug & P_RX) && (debug >= 2)) {
+			if ((debug >=2) && (pdebug & P_RX)) {
 				String response  = "RXDONE:: dT=";
-				response += String(ffTime - detTime);
+				response += String(rxDoneTime - detTime);
 				mStat(intr, response);
 				mPrint(response);
 			}
@@ -664,7 +667,7 @@ void stateMachine()
 			if (receivePacket() <= 0) {								// read is not successful
 #				if _MONITOR>=1
 				if (( debug>=0 ) && ( pdebug & P_RX )) {
-					mPrint("sMach:: Error receivePacket");
+					mPrint("sMach:: ERROR receivePacket");
 				}
 #				endif //_MONITOR
 			}
@@ -737,7 +740,7 @@ void stateMachine()
 			// which is normall an indication of RXDONE
 			//writeRegister(REG_IRQ_FLAGS, IRQ_LORA_HEADER_MASK);
 #			if _MONITOR>=1
-			if (( debug>=3 ) && ( pdebug & P_RX )) {
+			if ((debug>=3 ) && (pdebug & P_RX)) {
 				mPrint("RX HEADER:: " + String(intr));
 			}
 #			endif //_MONITOR
@@ -750,7 +753,7 @@ void stateMachine()
 		//
 		else if (intr == 0x00) {
 #			if _MONITOR>=1
-			if (( debug>=3) && ( pdebug & P_RX )) {
+			if ((debug>=3) && (pdebug & P_RX)) {
 				mPrint("S_RX no INTR:: " + String(intr));
 			}
 #			endif //_MONITOR
@@ -773,16 +776,16 @@ void stateMachine()
 
 	  
 	  // ----------------------------------------------------------------------------------------
-	  // Start the transmission of a message in state S-TX
+	  // Start the transmission of a message in state S-TX (DOWN)
 	  // This is not an interrupt state, we use this state to start transmission
 	  // the interrupt TX-DONE tells us that the transmission was successful.
 	  // It therefore is no use to set _event==1 as transmission might
 	  // not be finished in the next loop iteration
 	  //
 	  case S_TX:
-	  
+
 		// We need a timeout for this case. In case there does not come an interrupt,
-		// then there will nog be a TXDONE but probably another CDDONE/CDDETD before
+		// then there will not be a TXDONE but probably another CDDONE/CDDETD before
 		// we have a timeout in the main program (Keep Alive)
 		if (intr == 0x00) {
 #			if _MONITOR>=1
@@ -790,40 +793,33 @@ void stateMachine()
 				mPrint("TX:: 0x00");
 			}
 #			endif //_MONITOR
-			_event=1;
-			_state=S_TXDONE;
+			_event= 1;
 		}
 
+		loraWait(&LoraDown);
+	
 		// Set state to transmit
-		_state = S_TXDONE;
-		
 		// Clear interrupt flags and masks
 		writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) 0x00);
 		writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);				// reset interrupt flags
 		
 	  	// Initiate the transmission of the buffer (in Interrupt space)
 		// We react on ALL interrupts if we are in TX state.
-		txLoraModem(
-			LoraDown.payLoad,
-			LoraDown.payLength,
-			LoraDown.tmst,
-			LoraDown.sfTx,
-			LoraDown.powe,
-			LoraDown.fff,
-			LoraDown.crc,
-			LoraDown.iiq
-		);
-		// After filling the buffer we only react on TXDONE interrupt
+		txLoraModem(&LoraDown);
 		
-#		if _MONITOR>=1
-		if (( debug>=1 ) && ( pdebug & P_TX )) { 
-			mPrint("TX done:: " + String(intr) ); 
-		}
-#		endif //_MONITOR
-		// More or less start at the "case TXDONE:" below 
+		// After filling the buffer we only react on TXDONE interrupt
+		// So, more or less start at the "case TXDONE:" below 
 		_state=S_TXDONE;
 		_event=1;													// Or remove the break below
-		
+
+#		if _MONITOR>=1
+		if (( debug>=1 ) && ( pdebug & P_TX )) {
+			String response="TX fini:: ";
+			mStat(intr, response);
+			mPrint(response); 
+		}
+#		endif //_MONITOR
+
 	  break; // S_TX
 
 	  
@@ -839,17 +835,17 @@ void stateMachine()
 		if (intr & IRQ_LORA_TXDONE_MASK) {
 
 #			if _MONITOR>=1
-			if (( debug>=0 ) && ( pdebug & P_TX )) {
-				String response =  "T TXDONE:: rcvd=" + String(micros());
-				response += ", diff=" + String(micros()-LoraDown.tmst);
-				mPrint(response);
-			}
-#			endif //_MONITOR
-
-#			if _MONITOR>=2
-			if (pdebug & P_TX) {
-				String response  = "T TXDONE:: rcvd=" + micros();
-				response += ", diff=" + String(micros()-LoraDown.tmst);
+			if (( debug>=1 ) && ( pdebug & P_TX )) {
+				String response =  "Dwns TXDONE:: OK: rcvd=";
+				printInt(micros(),response);
+				if (micros() < LoraDown.tmst) {
+					response += ", diff=-" ;
+					printInt(LoraDown.tmst - micros(), response );
+				}
+				else {
+					response += ", diff=";
+					printInt(micros()-LoraDown.tmst, response);
+				}
 				mPrint(response);
 			}
 #			endif //_MONITOR
@@ -869,9 +865,10 @@ void stateMachine()
 			_event=0;
 			writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) 0x00);
 			writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);			// reset interrupt flags
+			
 #			if _MONITOR>=1
-			if (( debug>=1 ) && ( pdebug & P_TX )) {
-				mPrint("T TXDONE:: done OK");
+			if (( debug>=2 ) && ( pdebug & P_TX )) {
+				mPrint("TXDONE:: done OK");
 			}
 #			endif //_MONITOR
 		}
@@ -880,7 +877,7 @@ void stateMachine()
 		else if ( intr != 0 ) {
 #			if _MONITOR>=1
 			if (( debug>=0 ) && ( pdebug & P_TX )) {
-				String response =  "TXDONE:: unknown int:";
+				String response =  "TXDONE:: Error unknown intr=";
 				mStat(intr, response);
 				mPrint(response);
 			} //_MONITOR
@@ -906,11 +903,6 @@ void stateMachine()
 #				endif //_MONITOR
 				startReceiver();
 			}
-#			if _MONITOR>=1
-			if (( debug>=3 ) && ( pdebug & P_TX )) {
-				mPrint("T TXDONE:: No Interrupt");
-			}
-#			endif //_MONITOR
 		}
 	
 

@@ -1,4 +1,4 @@
-// 1-channel LoRa Gateway for ESP8266
+// 1-channel LoRa Gateway for ESP8266 and ESP32
 // Copyright (c) 2016-2020 Maarten Westenberg version for ESP8266
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
@@ -18,9 +18,8 @@
 // ========================================================================================
 
 
-
-// ----------------------------------------------------------------------------
-// DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN 
+// ------------------------------- DOWN ----------------------------------------
+//
 // Send DOWN a LoRa packet over the air to the node. This function does all the 
 // decoding of the server message and prepares a Payload buffer.
 // The payload is actually transmitted by the sendPkt() function.
@@ -29,7 +28,7 @@
 // NOTE: This is not an interrupt function, but is started by loop().
 // The _status is set an the end of the function to TX and in _stateMachine
 // function the actual transmission function is executed.
-// The LoraDown.tmst contains the timestamp that the tranmission should finish.
+// The LoraDown.tmst contains the timestamp that the tranmission should finish (Node start reading).
 // ----------------------------------------------------------------------------
 int sendPacket(uint8_t *buf, uint8_t length) 
 {
@@ -48,7 +47,6 @@ int sendPacket(uint8_t *buf, uint8_t length)
 	// 12-byte header;
 	//		HDR (1 byte)
 	//		
-	//
 	// Data Reply for JOIN_ACCEPT as sent by server:
 	//		AppNonce (3 byte)
 	//		NetID (3 byte)
@@ -58,46 +56,45 @@ int sendPacket(uint8_t *buf, uint8_t length)
 	//		CFList (fill to 16 bytes)
 			
 	int i=0;
-	StaticJsonDocument<312> jsonBuffer;							// Use of arduinoJson version 6!
+	//StaticJsonDocument<312> jsonBuffer;							// Use of arduinoJson version 6!
 	char * bufPtr = (char *) (buf);
 	buf[length] = 0;
 	
 #	if _MONITOR>=1
 	if (( debug>=2) && (pdebug & P_TX)) {
-		mPrint("sendPacket:: " + String((char *)buf) + "< ");
+		mPrint("Dwn sendPacket:: " + String((char *)buf) + "< ");
 	}
 #	endif //_MONITOR
 
 	// Use JSON to decode the string after the first 4 bytes.
 	// The data for the node is in the "data" field. This function destroys original buffer
-	auto error = deserializeJson(jsonBuffer, bufPtr);
-		
+	auto error = deserializeJson(jsonBuffer, bufPtr);		
 	if (error) {
 #		if _MONITOR>=1
-		if (( debug>=1) && (pdebug & P_TX)) {
-			mPrint("T sendPacket:: ERROR Json Decode: " + String(bufPtr) );
+		if ((debug>=0) && (pdebug & P_TX)) {
+			mPrint("Dwn sendPacket:: ERROR: Json Decode: " + String(bufPtr) );
 		}
 #		endif //_MONITOR
 		return(-1);
 	}
-	yield();
 	
 	// Meta Data sent by server (example)
 	// {"txpk":{"codr":"4/5","data":"YCkEAgIABQABGmIwYX/kSn4Y","freq":868.1,"ipol":true,"modu":"LORA","powe":14,"rfch":0,"size":18,"tmst":1890991792,"datr":"SF7BW125"}}
 
 	// Used in the protocol of Gateway:
+
 	JsonObject root		= jsonBuffer.as<JsonObject>();	// 191111 Avoid Crashes
-	
+
+	LoraDown.tmst		= (uint32_t) root["txpk"]["tmst"].as<unsigned long>();
 	const char * data	= root["txpk"]["data"];			// Downstream Payload
 	uint8_t psize		= root["txpk"]["size"];			// Payload size
 	bool ipol			= root["txpk"]["ipol"];
-	uint8_t powe		= root["txpk"]["powe"];			// power, e.g. 14 or 27
-	LoraDown.tmst		= (uint32_t) root["txpk"]["tmst"].as<unsigned long>();
+//	uint8_t powe		= root["txpk"]["powe"];			// power, e.g. 14 or 27
 	
 	// Not used in the protocol of Gateway TTN:
 	const char * datr	= root["txpk"]["datr"];			// eg "SF7BW125"
-	const char * modu	= root["txpk"]["modu"];			// =="LORA"
-	const char * codr	= root["txpk"]["codr"];			// e.g. "4/5"
+	//const char * modu	= root["txpk"]["modu"];			// =="LORA"
+	//const char * codr	= root["txpk"]["codr"];			// e.g. "4/5"
 	//if (root["txpk"].containsKey("imme") ) {
 	//	const bool imme = root["txpk"]["imme"];			// Immediate Transmit (tmst don't care)
 	//}
@@ -111,7 +108,7 @@ int sendPacket(uint8_t *buf, uint8_t length)
 	}
 	else {												// There is data!
 #		if _MONITOR>=1
-		if ((debug>=0) && ( pdebug & P_TX )) {
+		if ((debug>=0) && (pdebug & P_TX)) {
 			mPrint("sendPacket:: ERROR: data is NULL");
 		}
 #		endif //_MONITOR
@@ -125,81 +122,79 @@ int sendPacket(uint8_t *buf, uint8_t length)
 	base64_decode((char *) payLoad, (char *) data, strlen(data));	// Fill payload w decoded message
 
 	// Compute wait time in microseconds
-	uint32_t w = (uint32_t) (LoraDown.tmst - micros());	// Wait Time compute
+	int32_t w = (int32_t) (LoraDown.tmst - micros());	// Wait Time compute
 
 // _STRICT_1CH determines how we will react on downstream messages.
 //
 // If _STRICT==1, we will answer (in the RX1 timeslot) on the frequency we receive on.
-// We will anser in RX2 in rthe time set by _RX2_SF.
+// We will anser in RX2 in the Spreading Factor set by _RX2_SF (set in configGway.h)
 // This way, we can better communicate as a single gateway machine
-// Otherwise we will answer in RX with RF==12 and use special answer frequency
 //
 #if _STRICT_1CH == 1
 	// RX1 is requested frequency
 	// RX2 is SF _RX2_SF probably SF9
 	// If possible use RX1 timeslot as this is our frequency.
-	// Do not use RX2 or JOIN2 as they contain other frequencies
+	// Do not use RX2 or JOIN2 as they contain other frequencies (868.5 MHz)
+
+	LoraDown.powe	= 14;								// On all freqs except 869.5MHz power is limited
+	LoraDown.freq	= freqs[gwayConfig.ch].dwnFreq;		// Use the requestor Down frequency (always)
 	
-	// Wait time RX1
-	if ((w>1000000) && (w<3000000)) { 
-		LoraDown.tmst-=1000000; 
-		LoraDown.sfTx= sfi;									// Take care, TX sf not to be mixed with SCAN
+	// Wait time RX1, between 1 and 2 seconds, or OTAA between 6 and 7 seconds
+	if (((w>0000000) && (w<2000000)) ||
+		((w>5000000) && (w<6000000)) )
+	{ 													// LoraDown.sfTx set by initiator
+#		ifdef _PROFILER
+		if ((debug>=2) && (pdebug & P_TX)) {
+			mPrint("loraPacket:: RX1: micros="+String(micros())); 
+		}
+#		endif //_PROFILER
 	}
-	// RX2. Is tmst correction necessary
-	else if ((w>6000000) && (w<7000000)) { 
-		LoraDown.tmst-=500000; 								// Corrrect the Timestamp
-		LoraDown.sfTx= _RX2_SF;								// Use the RX2 downstream SF (may be dedicated to TTN)
+
+	// RX2. 
+	else if (((w>2000000) && (w<3000000)) ||
+			 ((w>6000000) && (w<7000000)) )
+	{ 
+		LoraDown.sfTx= _RX2_SF;							// Use the RX2 downstream SF (may be dedicated to TTN)
 	}
-	LoraDown.powe	= 14;									// On all freqs except 869.5MHz power is limited
-	LoraDown.fff	= freqs[gwayConfig.ch].dwnFreq;			// Use the corresponding Down frequency
+	
+	else {
+#		if _PROFILER>=1
+		if ((debug>=2) && (pdebug & P_TX)) {
+			mPrint("_STRICT==1:: Not RX1 or RX2, wait= "+String(w/1000000)+"."+String(w%1000000)+", SF="+String(LoraDown.sfTx)+", Freq="+LoraDown.freq );
+		}
+#		endif //_PROFILER
+		// And do not convert the down SF.
+	}
 
 #else
-// Elif _STRICT_1CH == 0, we will receive messags from the TTN gateway presumably on SF9/869.5MHz
+// elif _STRICT_1CH == 0, we will receive messags from the TTN gateway presumably on SF9/869.5MHz
 // And since the Gateway is a single channel gateway, and its nodes are probably
 // single channel too. They will not listen to that frequency at all.
 // Pleae note that this parameter is more for nodes (that cannot change freqs)
 // than for gateways.
+// We will probably answer in RX with RF==12 and use special answer frequency
 //
-	LoraDown.powe = powe;
-	const float ff		= root["txpk"]["freq"];			// eg 869.525
+	LoraDown.powe	= root["txpk"]["powe"];
+	const float ff	= root["txpk"]["freq"];				// eg 869.525
 	// convert double frequency (MHz) into uint32_t frequency in Hz.
-	LoraDown.fff = (uint32_t) ((uint32_t)((ff+0.000035)*1000)) * 1000;
+	LoraDown.freq = (uint32_t) ((uint32_t)((ff+0.000035)*1000)) * 1000;
 #endif //_STRICT_1CH
+
+	yield();
 	
 	LoraDown.payLoad = payLoad;				
 
 #	if _MONITOR>=1
-	if (( debug>=1 ) && ( pdebug & P_TX)) {
-	
-		mPrint("T LoraDown tmst=" + String(LoraDown.tmst));
-		
-		if ( debug>=2 ) {
-			Serial.print(F(" Request:: "));
-			Serial.print(F(" tmst="));		Serial.print(LoraDown.tmst); Serial.print(F(" wait=")); Serial.println(w);
-		
-			Serial.print(F(" strict="));	Serial.print(_STRICT_1CH);
-			Serial.print(F(" datr="));		Serial.println(datr);
-			Serial.print(F(" Rfreq=")); 	Serial.print(freqs[gwayConfig.ch].dwnFreq); 
-			Serial.print(F(" ->")); 		Serial.println(LoraDown.fff);
-			Serial.print(F(" sf  =")); 		Serial.print(atoi(datr+2)); Serial.print(F(" ->")); Serial.println(LoraDown.sfTx);
-		
-			Serial.print(F(" modu="));		Serial.println(modu);
-			Serial.print(F(" powe="));		Serial.println(powe);
-			Serial.print(F(" codr="));		Serial.println(codr);
-
-			Serial.print(F(" ipol="));		Serial.println(ipol);
-			Serial.println();
-		}
+	if (( debug>=2 ) && ( pdebug & P_TX)) {
+		mPrint("Dwn sendPacket:: TX tmst=" + String(LoraDown.tmst));
 	}
 #	endif // _MONITOR
 
 	if (LoraDown.payLength != psize) {
 #		if _MONITOR>=1
-		Serial.print(F("sendPacket:: WARNING payLength: "));
-		Serial.print(LoraDown.payLength);
-		Serial.print(F(", psize="));
-		Serial.println(psize);
-		if (debug>=2) Serial.flush();
+		if (debug>=0) {
+			mPrint("Dwn sendPacket:: WARNING payLength=" + String(LoraDown.payLength) + ", psize=" + String(psize) );
+		}
 #		endif //_MONITOR
 	}
 #	if _MONITOR>=1
@@ -221,30 +216,24 @@ int sendPacket(uint8_t *buf, uint8_t length)
 		case 2: statc.msg_down_2++; break;
 	}
 
-#	if _MONITOR>=1
-	if (( debug>=2 ) && ( pdebug & P_TX )) {
-		mPrint("T sendPacket:: fini OK");
-	}
-#	endif //_MONITOR
-
 	// All data is in Payload and parameters and need to be transmitted.
 	// The function is called in user-space
 	_state = S_TX;										// _state set to transmit
 	
 #	if _MONITOR>=1
-	if ((debug>=1) && ( pdebug & P_TX)) {
+	if ((debug>=2) && ( pdebug & P_TX)) {
 		mPrint("sendPacket:: STRICT=" + String(_STRICT_1CH) );
 	}
 #	endif //_MONITOR
 	
 	return 1;
-}//sendPacket DOWN
+} //sendPacket DOWN
 
 
 
 
-// ----------------------------------------------------------------------------
-// UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP
+// --------------------------------- UP ---------------------------------------
+//
 // Based on the information read from the LoRa transceiver (or fake message)
 // build a gateway message to send upstream (to the user somewhere on the web).
 //
@@ -257,19 +246,18 @@ int sendPacket(uint8_t *buf, uint8_t length)
 // returns:
 //	buff_index:
 // ----------------------------------------------------------------------------
-int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool internal) 
+int buildPacket(uint8_t *buff_up, struct LoraUp *LoraUp, bool internal) 
 {
 	int32_t SNR;
     int16_t rssicorr;
 	int16_t prssi;										// packet rssi
 	
 	char cfreq[12] = {0};								// Character array to hold freq in MHz
-	//lastTmst = tmst;									// Following/according to spec
-	int buff_index=0;
+	uint16_t buff_index=0;
 	char b64[256];
 	
-	uint8_t *message = LoraUp.payLoad;
-	char messageLength = LoraUp.payLength;
+	uint8_t *message = LoraUp->payLoad;
+	char messageLength = LoraUp->payLength;
 		
 #if _CHECK_MIC==1
 	unsigned char NwkSKey[16] = _NWKSKEY;
@@ -284,9 +272,9 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 		rssicorr = 157;
 	}
 	else {
-		SNR = LoraUp.snr;
-		prssi = LoraUp.prssi;								// read register 0x1A, packet rssi
-		rssicorr = LoraUp.rssicorr;
+		SNR = LoraUp->snr;
+		prssi = LoraUp->prssi;								// read register 0x1A, packet rssi
+		rssicorr = LoraUp->rssicorr;
 	}
 
 #if _STATISTICS >= 1
@@ -300,25 +288,25 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 #if _LOCALSERVER==1
 	statr[0].datal=0;
 	int index;
-	if ((index = inDecodes((char *)(LoraUp.payLoad+1))) >=0 ) {
+	if ((index = inDecodes((char *)(LoraUp->payLoad+1))) >=0 ) {
 
-		uint16_t frameCount=LoraUp.payLoad[7]*256 + LoraUp.payLoad[6];
+		uint16_t frameCount=LoraUp->payLoad[7]*256 + LoraUp->payLoad[6];
 		
-		for (int k=0; (k<LoraUp.payLength) && (k<23); k++) {
-			statr[0].data[k] = LoraUp.payLoad[k+9];
+		for (int k=0; (k<LoraUp->payLength) && (k<23); k++) {
+			statr[0].data[k] = LoraUp->payLoad[k+9];
 		};
 		
 		// XXX Check that k<23 when leaving the for loop
 		// XXX or we can not display in statr
 		
 		uint8_t DevAddr[4]; 
-		DevAddr[0]= LoraUp.payLoad[4];
-		DevAddr[1]= LoraUp.payLoad[3];
-		DevAddr[2]= LoraUp.payLoad[2];
-		DevAddr[3]= LoraUp.payLoad[1];
+		DevAddr[0]= LoraUp->payLoad[4];
+		DevAddr[1]= LoraUp->payLoad[3];
+		DevAddr[2]= LoraUp->payLoad[2];
+		DevAddr[3]= LoraUp->payLoad[1];
 
 		statr[0].datal = encodePacket((uint8_t *)(statr[0].data), 
-								LoraUp.payLength-9-4, 
+								LoraUp->payLength -9 -4, 
 								(uint16_t)frameCount, 
 								DevAddr, 
 								decodes[index].appKey, 
@@ -326,28 +314,14 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 	}
 #endif //_LOCALSERVER
 
-	statr[0].tmst = now();
+	statr[0].time = now();								// Not a real timestamp. but the current time
 	statr[0].ch =	gwayConfig.ch;
 	statr[0].prssi = prssi - rssicorr;
-	statr[0].sf =	LoraUp.sf;
+	statr[0].sf =	LoraUp->sf;
 	
 #	if RSSI==1
 		statr[0].rssi = _rssi - rssicorr;
 #	endif // RSII
-
-#	if _DUSB>=2
-	if (debug>=0) {
-		if ((message[4] != 0x26) || (message[1]==0x99)) {
-			Serial.print(F("addr="));
-			for (int i=messageLength; i>0; i--) {
-				if (message[i]<0x10) Serial.print('0');
-				Serial.print(message[i],HEX);
-				Serial.print(' ');
-			}
-			Serial.println();
-		}
-	}
-#	endif //DUSB
 
 	statr[0].node = ( message[1]<<24 | message[2]<<16 | message[3]<<8 | message[4] );
 
@@ -423,12 +397,12 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 					Serial.print(' ');
 		}
 		Serial.println();
-		yield();
+		yield();										// only if debug>=2
 	}
 #endif // _MONITOR
 
-// Show received message status on OLED display
-#if OLED>=1
+// Show received message status on Oled display
+#if _OLED>=1
     char timBuff[20];
     sprintf(timBuff, "%02i:%02i:%02i", hour(), minute(), second());
 	
@@ -455,22 +429,23 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
     display.drawString(0, 48, "LEN: " );
     display.drawString(40, 48, String((int)messageLength) );
     display.display();
-	//yield();
 
-#endif //OLED>=1
+#endif // _OLED>=1
 			
-	int j;
+//	int j;
 	
 	// XXX Base64 library is nopad. So we may have to add padding characters until
 	// 	message Length is multiple of 4!
 	// Encode message with messageLength into b64
 	int encodedLen = base64_enc_len(messageLength);		// max 341
+
 #	if _MONITOR>=1
-	if ((debug>=1) && (encodedLen>255) && ( pdebug & P_RADIO )) {
+	if ((debug>=1) && (encodedLen>255) && (pdebug & P_RADIO)) {
 		mPrint("R buildPacket:: b64 err, len=" + String(encodedLen));
 		return(-1);
 	}
 #	endif // _MONITOR
+
 	base64_encode(b64, (char *) message, messageLength);// max 341
 	// start composing datagram with the header 
 	uint8_t token_h = (uint8_t)rand(); 					// random token
@@ -478,7 +453,6 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 	
 	// pre-fill the data buffer with fixed fields
 	buff_up[0] = PROTOCOL_VERSION;						// 0x01 still
-
 
 	buff_up[1] = token_h;
 	buff_up[2] = token_l;
@@ -495,118 +469,118 @@ int buildPacket(uint32_t tmst, uint8_t *buff_up, struct LoraUp LoraUp, bool inte
 	buff_up[10] = MAC_array[4];
 	buff_up[11] = MAC_array[5];
 
-
-	buff_index = 12; 									// 12-byte binary (!) header
-
+	buff_index	= 12; 									// 12-byte binary (!) header
+	
 	// start of JSON structure that will make payload
-	memcpy((void *)(buff_up + buff_index), (void *)"{\"rxpk\":[", 9);
-	buff_index += 9;
-	buff_up[buff_index] = '{';
-	++buff_index;
-	j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, "\"tmst\":%u", tmst);
+	memcpy((void *)(buff_up + buff_index), (void *)"{\"rxpk\":[{", 10); buff_index += 10;
 	
-#	if _MONITOR>=1
-	if ((j<0) && ( debug>=1 ) && ( pdebug & P_RADIO )) {
-		mPrint("buildPacket:: Error ");
-	}
-#	endif //_MONITOR
+// More versions are defined for the moment, in order to keep timing as low as [possible. 
+// The serializeJson() version hopefully is quicker
 
-	buff_index += j;
-	ftoa((double)freqs[gwayConfig.ch].upFreq / 1000000, cfreq, 6);				// XXX This can be done better
+#ifdef _JSONENCODE
+//------------------
+	StaticJsonDocument<400> doc;
+	// MMM Get rid of this code when ready
 	
-	j = snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"chan\":%1u,\"rfch\":%1u,\"freq\":%s", 0, 0, cfreq);
-	buff_index += j;
-	memcpy((void *)(buff_up + buff_index), (void *)",\"stat\":1", 9);
-	buff_index += 9;
-	memcpy((void *)(buff_up + buff_index), (void *)",\"modu\":\"LORA\"", 14);
-	buff_index += 14;
-	
-	/* Lora datarate & bandwidth, 16-19 useful chars */
-	switch (LoraUp.sf) {
-		case SF6:
-			memcpy((void *)(buff_up + buff_index), (void *)",\"datr\":\"SF6", 12);
-			buff_index += 12;
-			break;
-		case SF7:
-			memcpy((void *)(buff_up + buff_index), (void *)",\"datr\":\"SF7", 12);
-			buff_index += 12;
-			break;
-		case SF8:
-            memcpy((void *)(buff_up + buff_index), (void *)",\"datr\":\"SF8", 12);
-            buff_index += 12;
-            break;
-		case SF9:
-            memcpy((void *)(buff_up + buff_index), (void *)",\"datr\":\"SF9", 12);
-            buff_index += 12;
-            break;
-		case SF10:
-            memcpy((void *)(buff_up + buff_index), (void *)",\"datr\":\"SF10", 13);
-            buff_index += 13;
-            break;
-		case SF11:
-            memcpy((void *)(buff_up + buff_index), (void *)",\"datr\":\"SF11", 13);
-            buff_index += 13;
-            break;
-		case SF12:
-            memcpy((void *)(buff_up + buff_index), (void *)",\"datr\":\"SF12", 13);
-            buff_index += 13;
-            break;
-		default:
-            memcpy((void *)(buff_up + buff_index), (void *)",\"datr\":\"SF?", 12);
-            buff_index += 12;
-	}
-	memcpy((void *)(buff_up + buff_index), (void *)"BW125\"", 6); buff_index += 6;
-	memcpy((void *)(buff_up + buff_index), (void *)",\"codr\":\"4/5\"", 13); buff_index += 13;
-	buff_index += snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"lsnr\":%li", (long)SNR);
-	buff_index += snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index, ",\"rssi\":%d,\"size\":%u", prssi-rssicorr, messageLength);
-	memcpy((void *)(buff_up + buff_index), (void *)",\"data\":\"", 9); buff_index += 9;
+	//doc["time"] = "";
+
+	doc["chan"] = "0";
+	doc["rfch"] = "0";
+	doc["freq"] = "" + (freqs[gwayConfig.ch].upFreq / 1000000);
+	doc["stat"] = "1";
+	doc["modu"] = "LORA";
+	doc["datr"] = "SF" + String(LoraUp->sf) + "BW125";
+	doc["rssi"] = "" +(prssi-rssicorr);
+	doc["lsnr"] = "" +(long)SNR;
+	doc["codr"] = "4/5";
 
 	// Use gBase64 library to fill in the data string
-	encodedLen = base64_enc_len(messageLength);			// max 341
+	encodedLen = base64_enc_len(messageLength);			// max 341	
+	doc["size"] = "" + encodedLen;
+
+	int len= base64_encode(doc["data"], (char *)message, messageLength);
+
+	LoraUp->tmst = doc["tmst"] = "" + (uint32_t) micros() + _RXDELAY1;		// Tmst correction							
+	
+	const char	* p =  (const char *) & (buff_up [buff_index]);				// Start in buff where to put the serializedJson
+	int written = serializeJson(doc, (const char *)p, buff_index+20 );		// size is buff_index + encoded data + some closing chars
+
+
+#else // _JSONENCODE undefined or ==0, this is default
+// -----------------
+	ftoa((double)freqs[gwayConfig.ch].upFreq / 1000000, cfreq, 6);		// XXX This can be done better
+	if ((LoraUp->sf<6) || (LoraUp->sf>12)) { 				// Lora datarate & bandwidth SF6-SF12, 16-19 useful chars */
+		LoraUp->sf=7;
+	}			
+
+//	buff_index += snprintf((char *)(buff_up + buff_index), 
+//		TX_BUFF_SIZE-buff_index, 
+//		"%04d-%02d-%02d %02d:%02d:%02d CET", 
+//		year(),month(),day(),hour(),minute(),second());
+
+	buff_index += snprintf((char *)(buff_up + buff_index), 
+		TX_BUFF_SIZE-buff_index, 
+		"\"chan\":%1u,\"rfch\":%1u,\"freq\":%s,\"stat\":1,\"modu\":\"LORA\"" , 
+		0, 0, cfreq);
+	
+	buff_index += snprintf((char *)(buff_up + buff_index), TX_BUFF_SIZE-buff_index
+		, ",\"datr\":\"SF%uBW125\",\"codr\":\"4/5\",\"lsnr\":%li,\"rssi\":%d,\"size\":%u,\"data\":\""
+		, LoraUp->sf, (long)SNR, prssi-rssicorr, messageLength);
+
+	// Use gBase64 library to fill in the data string
+	encodedLen = base64_enc_len(messageLength);				// max 341
 	buff_index += base64_encode((char *)(buff_up + buff_index), (char *) message, messageLength);
 
-	buff_up[buff_index] = '"';
-	++buff_index;
+	
+	LoraUp->tmst = (uint32_t) micros()+ _RXDELAY1; 			// MMM Correct timing with defined number,
+															// https://github.com/TheThingsNetwork/lorawan-stack/issues/277
+
+	// Get rid of this code when ready	
+
+	buff_index += snprintf((char *)(buff_up + buff_index), 
+		TX_BUFF_SIZE-buff_index, "\",\"tmst\":%u", 
+		LoraUp->tmst);	
+
+#endif // _JSONENCODE undefined or ==0
+// ---------------------
+
 
 	// End of packet serialization
-	buff_up[buff_index] = '}';
-	++buff_index;
-	buff_up[buff_index] = ']';
-	++buff_index;
+	buff_up[buff_index]   = '}'; 
+	buff_up[buff_index+1] = ']'; 
+	buff_up[buff_index+2] = '}'; 
+	buff_index += 3;
 	
-	// end of JSON datagram payload */
-	buff_up[buff_index] = '}';
-	++buff_index;
 	buff_up[buff_index] = 0; 							// add string terminator, for safety
 
-// When we have the node address and the SF, fill the listSeen array
-// with the required data. _MAXSEEN must be >0 for this to happen.
-// statr[0] contains the statistics of the node last seen.
-#if  _MAXSEEN >= 1
-	yield();											// MMM May not be necessary
-	addSeen(listSeen, statr[0] );
-#endif
+	// When we have the node address and the SF, fill the listSeen array
+	// with the required data. _MAXSEEN must be >0 for this to happen.
+	// statr[0] contains the statistics of the node last seen.
+#	if  _MAXSEEN >= 1
+		//yield();										// MMM 200316 Huge influence !!! on timing
+		addSeen(listSeen, statr[0]);
+#	endif
 
-#if _STAT_LOG == 1	
-	// Do statistics logging. In first version we might only
-	// write part of the record to files, later more
-	addLog( (unsigned char *)(buff_up), buff_index );
-#endif //_STAT_LOG
-	
+#	if _STAT_LOG == 1	
+		// Do statistics logging. In first version we might only
+		// write part of the record to files, later more
+		addLog( (unsigned char *)(buff_up), buff_index );
+#	endif //_STAT_LOG
+
 #	if _MONITOR>=1
-	if (( debug>=2 ) && ( pdebug & P_RX )) {			// debug: display JSON payload
-		mPrint("RXPK:: "+String((char *)(buff_up + 12))+"R RXPK:: package length="+String(buff_index));		
+	if ((debug>=2) && (pdebug & P_RX)) {			// debug: display JSON payload
+		mPrint("UP RXPK:: "+String((char *)(buff_up + 12))+" , length="+String(buff_index));		
 	}
 #	endif
+
 	return(buff_index);
-}// buildPacket
+	
+}// buildPacket()
 
 
 
-
-
-// ----------------------------------------------------------------------------
-// UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP 
+// --------------------------------- UP ---------------------------------------
+//
 // Receive a LoRa package over the air, LoRa and deliver to server(s)
 //
 // Receive a LoRa message and fill the buff_up char buffer.
@@ -629,40 +603,61 @@ int receivePacket()
 	// in one UDP message as the Semtech Gateway spec does allow this.
 	// XXX Bit ... Not yet supported
 
-		// Take the timestamp as soon as possible, to have accurate reception timestamp
-		// TODO: tmst can jump if micros() overflow.
-		uint32_t tmst = (uint32_t) micros();			// Only microseconds, rollover in 5X minutes
+#ifdef _PROFILER
+	if ((debug>=1) && (pdebug & P_RX)) {
+		String response = "UP receivePacket:: start: micr=";
+			printInt(micros(),response);
+			response += ", tmst=";
+			printInt(LoraUp.tmst,response);
+			mPrint(response);
+	}
+#endif // _PROFILER
 		
 		// Handle the physical data read from LoraUp
 		if (LoraUp.payLength > 0) {
 
 			// externally received packet, so last parameter is false (==LoRa external)
-            int build_index = buildPacket(tmst, buff_up, LoraUp, false);
+			// Make a buffer to transmit later
+            int build_index = buildPacket(buff_up, &LoraUp, false);
 
-			// REPEATER is a special function where we retransmit received 
+			// REPEATER is a special function where we retransmit package received 
 			// message on _ICHANN to _OCHANN.
 			// Note:: For the moment _OCHANN is not allowed to be same as _ICHANN
-#if _REPEATER==1
+#			if _REPEATER==1
 			if (!sendLora(LoraUp.payLoad, LoraUp.payLength)) {
 				return(-3);
 			}
-#endif
-			
+#			endif
+
+#			ifdef _TTNSERVER	
 			// This is one of the potential problem areas.
 			// If possible, USB traffic should be left out of interrupt routines
 			// rxpk PUSH_DATA received from node is rxpk (*2, par. 3.2)
-#ifdef _TTNSERVER
+
 			if (!sendUdp(ttnServer, _TTNPORT, buff_up, build_index)) {
 				return(-1); 							// received a message
 			}
+#			endif //_TTNSERVER
+
 			yield();
-#endif
-			// Use our own defined server or a second well kon server
-#ifdef _THINGSERVER
+			Udp.flush();								// MMM 200419
+
+#ifdef _PROFILER
+			if ((debug>=1) && (pdebug & P_RX)) {
+				String response = "UP receivePacket:: sendUdp: micr=";
+				printInt(micros(),response);
+				response += ", tmst=";
+				printInt(LoraUp.tmst,response);
+				mPrint(response);
+			}
+#endif // _PROFILER
+
+#			ifdef _THINGSERVER
+			// Use our own defined server or a second well known server
 			if (!sendUdp(thingServer, _THINGPORT, buff_up, build_index)) {
 				return(-2); 							// received a message
 			}
-#endif
+#			endif //_THINGSERVER
 
 #if _LOCALSERVER==1
 			// Or special case, we do not use a local server to receive
@@ -698,7 +693,7 @@ int receivePacket()
 				//uint16_t frameCount=LoraUp.payLoad[7]*256 + LoraUp.payLoad[6];
 
 #if _DUSB>=1
-				if (( debug>=1 ) && ( pdebug & P_RX )) {
+				if ((debug>=2) && (pdebug & P_RX)) {
 					Serial.print(F("R receivePacket:: Ind="));
 					Serial.print(index);
 					Serial.print(F(", Len="));
@@ -719,6 +714,7 @@ int receivePacket()
 					Serial.println();
 				}
 #endif //DUSB
+
 			}
 #			if _MONITOR>=1
 			else if (( debug>=2 ) && ( pdebug & P_RX )) {
@@ -730,6 +726,8 @@ int receivePacket()
 			// Reset the message area
 			LoraUp.payLength = 0;
 			LoraUp.payLoad[0] = 0x00;
+			
+			
 			return(build_index);
         }
 		

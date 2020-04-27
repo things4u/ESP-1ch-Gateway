@@ -1,6 +1,6 @@
 # Single Channel LoRaWAN Gateway
 
-Version 6.2.0, January 29, 2020 
+Version 6.2.4, February 29, 2020 
 Author: M. Westenberg (mw12554@hotmail.com)  
 Copyright: M. Westenberg (mw12554@hotmail.com)  
 
@@ -16,10 +16,30 @@ Maintained by Maarten Westenberg (mw12554@hotmail.com)
 
 # Release Notes
 
+Features release 6.2.4 (April 25, 2020)
+- Changes the date layout used in the output to be more standard: 3 characters weekday, months and day 2 chars
+- Changed the configGway.h file a lot ro define default values for parameters while at the 
+	same time allowing changing through PlatformIO
+- Updated the documentation itself and updated link in the software
+- For Monitor output use the same stringTime() function
+- Added the _PROFILER definition to read the timing (PlatformIO only)
+- Adapt the documentation and start writing hardware guide (for compile options)
+- Changed the delay for TX (Downlink messages) -. Removed to 0 for _STIRCT_1CH
+- Index of iSeen messages was in Hex -> Changed to decimal
+- Added a timing correction for sending message of aound 700000 uSec (0.7 Sec) to make downlink work
+- Changed naming of tmst (TimeStamp) functions
+- Removed function printlog(), as it was not used
+- Moved the SPIFFS file operations to a timer function in loop() as it consumer far too much time. 
+As a result regular timestamp is reduced.
+- Removed the logging functions for the same reasons. User can choose to put those on again.
+- Added Udp.flush() when NTP messages arrive during operations 
+- Changed layout of webpage. Changed sequence to first OFF and then ON
+- Changed website to include loraWait statistics
+
 Features release 6.2.3 (February 23, 2020)
 - Lots of bugs and documentation fixes
 - Added customizable #define statements through platformio.ini file (Read!!!)
-- Changed the WiFiManager code to better support both architectures: ESP8266 and ESP32\
+- Changed the WiFiManager code to better support both architectures: ESP8266 and ESP32
 
 Features release 6.2.1 (February 2, 2020)
 - PlatformIO support

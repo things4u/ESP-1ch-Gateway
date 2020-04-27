@@ -16,9 +16,9 @@ Maintained by Maarten Westenberg (mw12554@hotmail.com)
 
 # ToDo Functions
 
-Features not in release 6.2.3
+Features not in release 6.2.4
 
-
+- Change Downstream timing to be interrupt driven.
 - Frequency: Support for eu433 frequencies (Standard)
 - Testing and timing of downlink functions (need quiet area)
 - Get HOP frequency functions to work on three frequencies

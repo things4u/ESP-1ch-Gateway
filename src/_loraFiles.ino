@@ -54,7 +54,9 @@ void id_print (String id, String val)
 }
 
 
-
+// ============================================================================
+// config functions
+//
 
 // ----------------------------------------------------------------------------
 // INITCONFIG; Init the gateway configuration file
@@ -75,7 +77,9 @@ void initConfig(struct espGwayConfig *c)
 	(*c).monitor = true;				// Monitoring is ON
 	(*c).trusted = 1;
 	(*c).txDelay = 0;					// First Value without saving is 0;
-}
+	(*c).dusbStat = true;
+
+} // initConfig()
 
 // ----------------------------------------------------------------------------
 // Read the config file and fill the (copied) variables
@@ -95,6 +99,7 @@ int readGwayCfg(const char *fn, struct espGwayConfig *c)
 	}
 	debug	= (*c).debug;
 	pdebug	= (*c).pdebug;
+	(*c).boots++;										// Increment Boot Counter
 
 #	if _GATEWAYNODE==1
 		if (gwayConfig.fcnt != (uint8_t) 0) {
@@ -102,8 +107,11 @@ int readGwayCfg(const char *fn, struct espGwayConfig *c)
 		}
 #	endif
 
+	writeGwayCfg(CONFIGFILE, &gwayConfig );				// And writeback the configuration, not to miss a boot
+
 	return 1;
-}
+	
+} // readGwayCfg()
 
 
 // ----------------------------------------------------------------------------
@@ -222,6 +230,14 @@ int readConfig(const char *fn, struct espGwayConfig *c)
 			id_print(id, val);
 			(*c).ntpErr = (uint16_t) val.toInt();
 		}
+		else if (id == "WAITERR") {								// WAITERR setting
+			id_print(id, val);
+			(*c).waitErr = (uint16_t) val.toInt();
+		}
+		else if (id == "WAITOK") {								// WAITOK setting
+			id_print(id, val);
+			(*c).waitOk = (uint16_t) val.toInt();
+		}
 		else if (id == "NTPETIM") {								// NTPERR setting
 			id_print(id, val);
 			(*c).ntpErrTime = (uint32_t) val.toInt();
@@ -258,6 +274,10 @@ int readConfig(const char *fn, struct espGwayConfig *c)
 			id_print(id, val);
 			(*c).trusted= (int8_t) val.toInt();
 		}
+		else if (id == "FORMAT") {								// TRUSTED setting
+			id_print(id, val);
+			(*c).formatCntr= (int8_t) val.toInt();
+		}
 		else {
 #			if _MONITOR>=1
 				mPrint(F("readConfig:: tries++"));
@@ -268,7 +288,8 @@ int readConfig(const char *fn, struct espGwayConfig *c)
 	f.close();
 
 	return(1);
-}//readConfig
+	
+} // readConfig()
 
 
 // ----------------------------------------------------------------------------
@@ -291,7 +312,8 @@ int writeGwayCfg(const char *fn, struct espGwayConfig *c)
 #	endif //_GATEWAYNODE
 
 	return(writeConfig(fn, c));
-}
+} // writeGwayCfg
+
 
 // ----------------------------------------------------------------------------
 // Write the configuration as found in the espGwayConfig structure
@@ -330,10 +352,13 @@ int writeConfig(const char *fn, struct espGwayConfig *c)
 	f.print("REENTS");	f.print('='); f.print((*c).reents);		f.print('\n');
 	f.print("NTPETIM");	f.print('='); f.print((*c).ntpErrTime); f.print('\n');
 	f.print("NTPERR");	f.print('='); f.print((*c).ntpErr);		f.print('\n');
+	f.print("WAITERR");	f.print('='); f.print((*c).waitErr);	f.print('\n');
+	f.print("WAITOK");	f.print('='); f.print((*c).waitOk);		f.print('\n');
 	f.print("NTPS");	f.print('='); f.print((*c).ntps);		f.print('\n');
 	f.print("FILEREC");	f.print('='); f.print((*c).logFileRec); f.print('\n');
 	f.print("FILENO");	f.print('='); f.print((*c).logFileNo);	f.print('\n');
 	f.print("FILENUM");	f.print('='); f.print((*c).logFileNum); f.print('\n');
+	f.print("FORMAT");	f.print('='); f.print((*c).formatCntr); f.print('\n');
 	f.print("DELAY");	f.print('='); f.print((*c).txDelay); 	f.print('\n');
 	f.print("TRUSTED");	f.print('='); f.print((*c).trusted); 	f.print('\n');
 	f.print("EXPERT");	f.print('='); f.print((*c).expert); 	f.print('\n');
@@ -342,7 +367,7 @@ int writeConfig(const char *fn, struct espGwayConfig *c)
 	
 	f.close();
 	return(1);
-}
+} // writeConfig()
 
 
 
@@ -363,6 +388,7 @@ int writeConfig(const char *fn, struct espGwayConfig *c)
 int addLog(const unsigned char * line, int cnt) 
 {
 #	if _STAT_LOG==1
+
 	char fn[16];
 	
 	if (gwayConfig.logFileRec > LOGFILEREC) {		// Have to make define for this
@@ -417,12 +443,14 @@ int addLog(const unsigned char * line, int cnt)
 		Serial.print(gwayConfig.logFileRec);
 
 		Serial.print(F(": "));
-#		if _DUSB>=2
+#		if _MONITOR>=2
+		{
 			for (i=0; i< 12; i++) {				// The first 12 bytes contain non printable characters
 				Serial.print(line[i],HEX);
 				Serial.print(' ');
 			}
-#		else //_DUSB>=2
+		}
+#		else //_MONITOR>=2
 			i+=12;
 #		endif //_DUSB>=2
 		Serial.print((char *) &line[i]);	// The rest if the buffer contains ascii
@@ -441,44 +469,14 @@ int addLog(const unsigned char * line, int cnt)
 #	endif //_STAT_LOG
 
 	return(1);
-} //addLog
+} //addLog()
 
 
-// ----------------------------------------------------------------------------
-// Print (all) logfiles
-// Return:
-//	<none>
-// Parameters:
-//	<none>
-// ----------------------------------------------------------------------------
-void printLog()
-{
-#if _STAT_LOG==1
-	char fn[16];
 
-#	if _DUSB>=1
-	for (int i=0; i< LOGFILEMAX; i++ ) {
-		sprintf(fn,"/log-%d", gwayConfig.logFileNo - i);
-		if (!SPIFFS.exists(fn)) break;		// break the loop
-
-		// Open the file for reading
-		File f = SPIFFS.open(fn, "r");
-
-		for (int j=0; j<LOGFILEREC; j++) {
-			
-			String s=f.readStringUntil('\n');
-			if (s.length() == 0) break;
-
-			Serial.println(s.substring(12));			// Skip the first 12 Gateway specific binary characters
-			yield();
-		}
-	}
-#	endif //_DUSB
-#endif //_STAT_LOG
-} //printLog
-
-
-#if _MAXSEEN >= 1
+// ============================================================================
+// Below are the xxxSeen() functions. These functions keep track of the kast
+// time a device was seen bij the gateway.
+// These functions are not round-robin and they do not need to be.
 
 // ----------------------------------------------------------------------------
 // initSeen
@@ -490,6 +488,7 @@ void printLog()
 // ----------------------------------------------------------------------------
 int initSeen(struct nodeSeen *listSeen) 
 {
+#if _MAXSEEN >= 1
 	for (int i=0; i< _MAXSEEN; i++) {
 		listSeen[i].idSeen=0;
 		listSeen[i].sfSeen=0;
@@ -498,8 +497,10 @@ int initSeen(struct nodeSeen *listSeen)
 		listSeen[i].timSeen=(time_t) 0;					// 1 jan 1970 0:00:00 hrs
 	}
 	iSeen= 0;											// Init index to 0
+#endif // _MAXSEEN
 	return(1);
-}
+
+} // initSeen()
 
 
 // ----------------------------------------------------------------------------
@@ -514,6 +515,7 @@ int initSeen(struct nodeSeen *listSeen)
 // ----------------------------------------------------------------------------
 int readSeen(const char *fn, struct nodeSeen *listSeen)
 {
+#if _MAXSEEN >= 1
 	int i;
 	iSeen= 0;												// Init the index at 0
 	
@@ -540,10 +542,8 @@ int readSeen(const char *fn, struct nodeSeen *listSeen)
 		String val="";
 		
 		if (!f.available()) {
-#			if _MONITOR>=1
-				String response="readSeen:: No more info left in file, i=";
-				response += i;
-				mPrint(response);
+#			if _MONITOR>=2
+				mPrint("readSeen:: No more info left in file, i=" + String(i));
 #			endif //_MONITOR
 			break;
 		}
@@ -561,16 +561,13 @@ int readSeen(const char *fn, struct nodeSeen *listSeen)
 		iSeen++;											// Increase index, new record read
 	}
 	f.close();
-	
-#	if _MONITOR>=1
-	if ((debug >= 2) && (pdebug & P_MAIN)) {
-		Serial.print("readSeen:: ");
-		printSeen(listSeen);
-	}
-#	endif //_MONITOR
+
+#endif // _MAXSEEN
+
 	// So we read iSeen records
 	return 1;
-}
+	
+} // readSeen()
 
 
 // ----------------------------------------------------------------------------
@@ -584,6 +581,7 @@ int readSeen(const char *fn, struct nodeSeen *listSeen)
 // ----------------------------------------------------------------------------
 int writeSeen(const char *fn, struct nodeSeen *listSeen)
 {
+#if _MAXSEEN >= 1
 	int i;
 	if (!SPIFFS.exists(fn)) {
 #		if _MONITOR>=1
@@ -610,48 +608,11 @@ int writeSeen(const char *fn, struct nodeSeen *listSeen)
 	}
 	
 	f.close();
-#	if _DUSB>=1
-	if ((debug >= 2) && (pdebug & P_MAIN)) {
-		Serial.print("writeSeen:: ");
-		printSeen(listSeen);
-	}
-#	endif //_DUSB
+#endif // _MAXSEEN
 	return(1);
 }
 
-// ----------------------------------------------------------------------------
-// printSeen
-// - This function writes the last seen array to the USB !!
-// ----------------------------------------------------------------------------
-int printSeen(struct nodeSeen *listSeen) {
 
-#	if _DUSB>=1
-    int i;
-	if (( debug>=2 ) && ( pdebug & P_MAIN )) {
-	
-		Serial.println(F("printSeen:: "));
-		
-		for (i=0; i<iSeen; i++) {
-			if (listSeen[i].idSeen != 0) {
-				String response;
-				
-				response = i;
-				response += ", Tim=";
-
-				stringTime(listSeen[i].timSeen, response);
-
-				response += ", addr=0x";
-				printHex(listSeen[i].idSeen,' ', response);
-				
-				response += ", SF=0x";
-				response += listSeen[i].sfSeen;
-				Serial.println(response);
-			}
-		}
-	}
-#	endif //_DUSB
-	return(1);
-}
 
 // ----------------------------------------------------------------------------
 // addSeen
@@ -668,71 +629,61 @@ int printSeen(struct nodeSeen *listSeen) {
 // ----------------------------------------------------------------------------
 int addSeen(struct nodeSeen *listSeen, struct stat_t stat) 
 {
-
-	int i=0;
+#if _MAXSEEN >= 1
+	int i;
 	for (i=0; i<iSeen; i++) {						// For all known records
 
+		// If the record node is equal, we found the record already.
+		// So increment cntSeen
 		if (listSeen[i].idSeen==stat.node) {
-
-			listSeen[i].timSeen = (time_t)stat.tmst;
+		
+			listSeen[i].timSeen = (time_t)stat.time;
 			listSeen[i].cntSeen++;					// Not included on function para
-			listSeen[i].idSeen = stat.node;
+			//listSeen[i].idSeen = stat.node;		// Not necessary, is the same
 			listSeen[i].chnSeen = stat.ch;
-			listSeen[i].sfSeen = stat.sf;			// Or the argument
-	
-			writeSeen(_SEENFILE, listSeen);
+			listSeen[i].sfSeen = stat.sf;			// The SF argument
+//			writeSeen(_SEENFILE, listSeen);
+			
+#			if _MONITOR>=2
+			if ((debug>=1) && (pdebug & P_MAIN)) {
+				mPrint("addSeen:: adding i="+String(i)+", node="+String(stat.node,HEX));
+			}
+#			endif
 
 			return 1;
 		}
 	}
 	
-	// Else: We did not find the current record so make a new Seen entry
+	// else: We did not find the current record so make a new Seen entry
 	if ((i>=iSeen) && (i<_MAXSEEN)) {
 		listSeen[i].idSeen = stat.node;
 		listSeen[i].chnSeen = stat.ch;
-		listSeen[i].sfSeen = stat.sf;			// Or the argument
-		listSeen[i].timSeen = (time_t)stat.tmst;
-		listSeen[i].cntSeen = 1;					// Not included on function para	
+		listSeen[i].sfSeen = stat.sf;				// The SF argument
+		listSeen[i].timSeen = (time_t)stat.time;	// Timestamp correctly
+		listSeen[i].cntSeen = 1;					// We see this for the first time	
 		iSeen++;
-		//return(1);
 	}
 
-#	if _MONITOR>=2
-	if ((debug>=1) && (pdebug & P_MAIN)) {
-		String response= "addSeen:: New i=";
+#	if _MONITOR>=1
+	if ((debug>=2) && (pdebug & P_MAIN)) {
+		String response= "addSeen:: i=";
 		response += i;
 		response += ", tim=";
-		stringTime(stat.tmst, response);
+		stringTime(stat.time, response);
 		response += ", iSeen=";
-		response += String(iSeen,HEX);
+		response += String(iSeen);
 		response += ", node=";
 		response += String(stat.node,HEX);
 		response += ", listSeen[0]=";
-		
-		printHex(listSeen[0].idSeen,' ',response);
-		Serial.print("<"); Serial.print(listSeen[0].idSeen, HEX); Serial.print(">");
-
-		mPrint(response);
-		
-		response += ", listSeen[0]=";
-		printHex(listSeen[0].idSeen,' ',response);
+		printHex(listSeen[0].idSeen,':',response);
 
 		mPrint(response);
 	}
-#	endif
+#	endif // _MONITOR
 
-	// USB Only
-#	if _DUSB>=2
-	if ((debug>=2) && (pdebug & P_MAIN)) {
-		Serial.print("addSeen i=");
-		Serial.print(i);
-		Serial.print(", id=");
-		Serial.print(listSeen[i].idSeen,HEX);
-		Serial.println();
-	}
-#	endif // _DUSB	
-
+#endif //_MAXSEEN>=1 
 	return 1;
-}
+	
+} // addSeen()
 
-#endif //_MAXSEEN>=1 End of File
+// End of File

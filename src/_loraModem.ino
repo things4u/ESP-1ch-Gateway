@@ -1,4 +1,4 @@
-// 1-channel LoRa Gateway for ESP8266
+// 1-channel LoRa Gateway for ESP8266 and ESP32
 // Copyright (c) 2016-2020 Maarten Westenberg version for ESP8266
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
@@ -193,14 +193,15 @@ void writeBuffer(uint8_t addr, uint8_t *buf, uint8_t len)
 void setRate(uint8_t sf, uint8_t crc) 
 {
 	uint8_t mc1=0, mc2=0, mc3=0;
-#	if _MONITOR>=2
+
 	if ((sf<SF7) || (sf>SF12)) {
+#		if _MONITOR>=2
 		if (( debug>=1 ) && ( pdebug & P_RADIO )) {
 			mPrint("setRate:: SF=" + String(sf));
 		}
-		return;
+#		endif //_MONITOR
+		sf=8;
 	}
-#	endif //_MONITOR
 
 	// Set rate based on Spreading Factor etc
     if (sx1272) {
@@ -303,7 +304,8 @@ void  opmode(uint8_t mode)
 // This function should only be used for receiver operation. The current
 // receiver frequency is determined by gwayConfig.ch index like so: freqs[gwayConfig.ch] 
 // ----------------------------------------------------------------------------------------
-void hop() {
+void hop() 
+{
 
 	// 1. Set radio to standby
 	opmode(OPMODE_STANDBY);
@@ -360,8 +362,8 @@ void hop() {
 }
 	
 
-// ----------------------------------------------------------------------------------------
-// UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP UP
+// ------------------------------------- UP -----------------------------------------------
+//
 // This LoRa function reads a message from the LoRa transceiver
 // on Success: returns message length read when message correctly received.
 // on Failure: it returns a negative value on error (CRC error for example).
@@ -446,16 +448,11 @@ uint8_t receivePkt(uint8_t *payload)
 		}
 
 		if (readRegister(REG_FIFO_RX_CURRENT_ADDR) != readRegister(REG_FIFO_RX_BASE_AD)) {
-#if			_DUSB>=1
+#if			_MONITOR>=1
 			if (( debug>=1 ) && ( pdebug & P_RADIO )) {
-				Serial.print(F("RX BASE <"));
-				Serial.print(readRegister(REG_FIFO_RX_BASE_AD));
-				Serial.print(F("> != RX CURRENT <"));
-				Serial.print(readRegister(REG_FIFO_RX_CURRENT_ADDR));
-				Serial.print(F(">"));
-				Serial.println();
+				mPrint("RX BASE <" + String(readRegister(REG_FIFO_RX_BASE_AD)) + "> != RX CURRENT <" + String(readRegister(REG_FIFO_RX_CURRENT_ADDR)) + ">"	);
 			}
-#			endif //_DUSB
+#			endif //_MONITOR
 		}
 		
         //uint8_t currentAddr = readRegister(REG_FIFO_RX_CURRENT_ADDR);	// 0x10
@@ -487,28 +484,23 @@ uint8_t receivePkt(uint8_t *payload)
 		// As long as _MONITOR is enabled, and P_RX debug messages are selected,
 		// the received packet is displayed on the output.
 #		if _MONITOR>=1
-		if (( debug>=1 ) && ( pdebug & P_RX )){
+		if ((debug>=1) && (pdebug & P_RX)){
 		
-			String response = "rxPkt:: t=";
+			String response = "UP receivePkt:: rxPkt: t=";
 			stringTime(now(), response);
+			response += ", f=" + String(gwayConfig.ch) + ", sf=" + String(sf);
 			
-			Serial.print(F(", f="));
-			Serial.print(gwayConfig.ch);
-			Serial.print(F(", sf="));
-			Serial.print(sf);
+			response += ", a=";
+			uint8_t DevAddr [4];
+					DevAddr[0] = payload[4];
+					DevAddr[1] = payload[3];
+					DevAddr[2] = payload[2];
+					DevAddr[3] = payload[1];
+			printHex((IPAddress)DevAddr, ':', response);
 			
-			Serial.print(F(", a="));
-			if (payload[4]<0x10) Serial.print('0'); Serial.print(payload[4], HEX);
-			if (payload[3]<0x10) Serial.print('0'); Serial.print(payload[3], HEX);
-			if (payload[2]<0x10) Serial.print('0'); Serial.print(payload[2], HEX);
-			if (payload[1]<0x10) Serial.print('0'); Serial.print(payload[1], HEX);
-			
-			Serial.print(F(", flags="));
-			Serial.print(irqflags,HEX);
-			Serial.print(F(", addr="));
-			Serial.print(currentAddr);
-			Serial.print(F(", len="));
-			Serial.print(receivedCount);
+			response += ", flags=" + String(irqflags,HEX);
+			response += ", addr=" + String(currentAddr);
+			response += ", len=" + String(receivedCount);
 
 			// If debug level 1 is specified, we display the content of the message as well
 			// We need to decode the message as well will it make any sense
@@ -517,15 +509,9 @@ uint8_t receivePkt(uint8_t *payload)
 			if (debug>=1)  {							// Must be 1 for operational use
 
 				int index;								// The index of the codex struct to decode
-				String response="";
+				//String response="";
 
 				uint8_t data[receivedCount];
-				
-				uint8_t DevAddr [4];
-					DevAddr[0] = payload[4];
-					DevAddr[1] = payload[3];
-					DevAddr[2] = payload[2];
-					DevAddr[3] = payload[1];
 			
 				if ((index = inDecodes((char *)(payload+1))) >=0 ) {	
 					mPrint(", Ind="+String(index));
@@ -570,12 +556,10 @@ uint8_t receivePkt(uint8_t *payload)
 					Serial.print(data[i], HEX);
 					Serial.print(' ');
 				}
-			|
+			}
 #			endif // _TRUSTED_DECODE
 			
 			mPrint(response);							// Print response for Serial or mPrint
-			
-			if (debug>=2) Serial.flush();
 		}
 #		endif //MONITOR
 		return(receivedCount);
@@ -586,13 +570,15 @@ uint8_t receivePkt(uint8_t *payload)
 		IRQ_LORA_RXTOUT_MASK |
 		IRQ_LORA_HEADER_MASK | 
 		IRQ_LORA_CRCERR_MASK));							// 0x12; Clear RxDone IRQ_LORA_RXDONE_MASK
-    return 0;
+
+	return 0;
+	
 } //receivePkt UP
 	
 	
 	
-// ----------------------------------------------------------------------------------------
-// DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN 
+// ------------------------------ DOWN ----------------------------------------------------
+//
 // This DOWN function sends a payload to the LoRa node over the air
 // Radio must go back in standby mode as soon as the transmission is finished
 // 
@@ -600,15 +586,14 @@ uint8_t receivePkt(uint8_t *payload)
 // ----------------------------------------------------------------------------------------
 bool sendPkt(uint8_t *payLoad, uint8_t payLength)
 {
-#	if _DUSB>=2
+#	if _MONITOR>=2
 	if (payLength>=128) {
 		if (debug>=1) {
-			Serial.print("sendPkt:: len=");
-			Serial.println(payLength);
+			mPrint("sendPkt Dwn:: len="+String(payLength));
 		}
 		return false;
 	}
-#	endif
+#	endif //_MONITOR
 	
 	writeRegister(REG_FIFO_ADDR_PTR, (uint8_t) readRegister(REG_FIFO_TX_BASE_AD));	// 0x0D, 0x0E
 	
@@ -617,9 +602,10 @@ bool sendPkt(uint8_t *payLoad, uint8_t payLength)
 	writeBuffer(REG_FIFO, (uint8_t *) payLoad, payLength);
 	
 	return true;
-}
+} // sendPkt()
 
-// ----------------------------------------------------------------------------------------
+
+// ------------------------------------------ DOWN ----------------------------------------
 // loraWait()
 // This function implements the wait protocol needed for downstream transmissions.
 // Note: Timing of downstream and JoinAccept messages is VERY critical.
@@ -635,72 +621,46 @@ bool sendPkt(uint8_t *payLoad, uint8_t payLength)
 // to make sure that delay() did not take too much time this works.
 // 
 // Parameter: uint32-t tmst gives the micros() value when transmission should start. (!!!)
-// Note: We assume LoraDown.sfTx contains the SF we will use for downstream message.
+// so it contains the local Gateway time as a reference when to start Downlink.
+// Note: We assume LoraDown->sfTx contains the SF we will use for downstream message.
+//		gwayConfig.txDelay is the delay as specified in the GUI
 // ----------------------------------------------------------------------------------------
 
-void loraWait(const uint32_t timestamp)
+void loraWait(struct LoraDown *LoraDown)
 {
-	uint32_t startMics = micros();						// Start of the loraWait function
-	uint32_t tmst = timestamp;
-
-	int32_t adjust=0;
-	switch (LoraDown.sfTx) {
-		case 7: adjust= 60000; break;					// Make time for SF7 longer 
-		case 8: break;									// Around 60ms
-		case 9: break;
-		case 10: break;
-		case 11: break;
-		case 12: break;
-		default:
-#		if _DUSB>=1
-		if (( debug>=1 ) && ( pdebug & P_TX )) {
-			Serial.print(F("T loraWait:: unknown SF="));
-			Serial.print(LoraDown.sfTx);
-		}
-#		endif
-		break;
-	}
-	tmst = tmst + gwayConfig.txDelay + adjust;			// tmst based on txDelay and spreading factor
-	uint32_t waitTime = tmst - micros();				// Or make waitTime an unsigned and change next statement
-	if (micros()>tmst) {								// to (waitTime<0)
-		Serial.println(F("loraWait:: Error wait time < 0"));
+	int32_t delayTmst = (int32_t)(LoraDown->tmst - micros()) + gwayConfig.txDelay;
+												// delayTmst based on txDelay and spreading factor
+	
+	if ((delayTmst > 8000000) || (delayTmst < 0)) {					// Delay is  > 8 secs
+#		if _MONITOR>=1
+			String response= "Dwn loraWait:: ERROR: ";
+			printDwn(LoraDown,response);
+			mPrint(response);
+#		endif // _MONITOR
+		gwayConfig.waitErr++;
 		return;
 	}
-	
+
 	// For larger delay times we use delay() since that is for > 15ms
-	// This is the most efficient way
-	while (waitTime > 16000) {
+	// This is the most efficient way.
+	// MMM Check for huge wait times
+	while (delayTmst > 15000) {
 		delay(15);										// ms delay including yield, slightly shorter
-		waitTime= tmst - micros();
+//		delayMicroseconds(15000);						// ms delay including yield, slightly shorter
+		delayTmst -= 15000;
 	}
-	// The remaining wait time is less tan 15000 uSecs
-	// And we use delayMicroseconds() to wait
-	if (waitTime>0) delayMicroseconds(waitTime);
+	
+	// The remaining wait time is less than 15000 uSecs
+	// but more than 1000 mSecs (see above)
+	// therefore we use delayMicroseconds() to wait
+	delayMicroseconds(delayTmst);
 
-#	if _DUSB>=1
-	else if ((waitTime+20) < 0) {
-		Serial.println(F("loraWait:: TOO LATE"));		// Never happens
-	}
-
-	if (( debug>=2 ) && ( pdebug & P_TX )) { 
-		Serial.print(F("T start: ")); 
-		Serial.print(startMics);
-		Serial.print(F(", tmst: "));					// tmst
-		Serial.print(tmst);
-		Serial.print(F(", end: "));						// This must be micros(), and equal to tmst
-		Serial.print(micros());
-		Serial.print(F(", waited: "));
-		Serial.print(tmst - startMics);
-		Serial.print(F(", delay="));
-		Serial.print(gwayConfig.txDelay);
-		Serial.println();
-		if (debug>=2) Serial.flush();
-	}
-#	endif
+	gwayConfig.waitOk++;
+	return;
 }
 
 
-// ----------------------------------------------------------------------------------------
+// -------------------------------------- DOWN --------------------------------------------
 // txLoraModem
 // Init the transmitter and transmit the buffer
 // After successful transmission (dio0==1) TxDone re-init the receiver
@@ -724,31 +684,12 @@ void loraWait(const uint32_t timestamp)
 // 14. Write buffer (byte by byte)
 // 15. Wait until the right time to transmit has arrived
 // 16. opmode TX
+//
+// Transmission to the device not is not done often, but is time critical.
 // ----------------------------------------------------------------------------------------
 
-void txLoraModem(
-				uint8_t *payLoad, 		// Payload contents
-				uint8_t payLength, 		// Length of payload
-				uint32_t tmst, 			// Timestamp
-				uint8_t sfTx,			// Sending spreading factor
-				uint8_t powe, 			// power
-				uint32_t freq, 			// frequency
-				uint8_t crc, 			// Do we use CRC error checking
-				uint8_t iiq				// Interrupt
-				)
+void txLoraModem(struct LoraDown *LoraDown)
 {
-#	if _DUSB>=2
-	if (debug>=1) {
-		// Make sure that all serial stuff is done before continuing
-		Serial.print(F("txLoraModem::"));
-		Serial.print(F("  powe: ")); Serial.print(powe);
-		Serial.print(F(", freq: ")); Serial.print(freq);
-		Serial.print(F(", crc: ")); Serial.print(crc);
-		Serial.print(F(", iiq: 0X")); Serial.print(iiq,HEX);
-		Serial.println();
-		if (debug>=2) Serial.flush();
-	}
-#	endif
 
 	_state = S_TX;
 		
@@ -762,19 +703,19 @@ void txLoraModem(
 	opmode(OPMODE_STANDBY);									// set 0x01 to 0x01
 	
 	// 3. Init spreading factor and other Modem setting
-	setRate(sfTx, crc);
+	setRate(LoraDown->sfTx, LoraDown->crc);
 	
 	// Frequency hopping
 	//writeRegister(REG_HOP_PERIOD, (uint8_t) 0x00);		// set 0x24 to 0x00 only for receivers
 	
 	// 4. Init Frequency, config channel
-	setFreq(freq);
+	setFreq(LoraDown->freq);
 
 	// 6. Set power level, REG_PAC
-	setPow(powe);
+	setPow(LoraDown->powe);
 	
 	// 7. prevent node to node communication
-	writeRegister(REG_INVERTIQ, (uint8_t) iiq);					// 0x33, (0x27 or 0x40)
+	writeRegister(REG_INVERTIQ, (uint8_t) (LoraDown->iiq));	// 0x33, (0x27 or 0x40)
 	
 	// 8. set the IRQ mapping DIO0=TxDone DIO1=NOP DIO2=NOP (or less for 1ch gateway)
     writeRegister(REG_DIO_MAPPING_1, (uint8_t)(
@@ -793,27 +734,33 @@ void txLoraModem(
 	opmode(OPMODE_FSTX);									// set 0x01 to 0x02 (actual value becomes 0x82)
 	
 	// 11, 12, 13, 14. write the buffer to the FiFo
-	sendPkt(payLoad, payLength);
-
-	// 15. wait extra delay out. The delayMicroseconds timer is accurate until 16383 uSec.
-	loraWait(tmst);
+	sendPkt(LoraDown->payLoad, LoraDown->payLength);
 	
 	//Set the base addres of the transmit buffer in FIFO
 	writeRegister(REG_FIFO_ADDR_PTR, (uint8_t) readRegister(REG_FIFO_TX_BASE_AD));	// set 0x0D to 0x0F (contains 0x80);	
 	
 	//For TX we have to set the PAYLOAD_LENGTH
-	writeRegister(REG_PAYLOAD_LENGTH, (uint8_t) payLength);		// set 0x22, max 0x40==64Byte long
+	writeRegister(REG_PAYLOAD_LENGTH, (uint8_t) LoraDown->payLength);		// set 0x22, max 0x40==64Byte long
 	
 	//For TX we have to set the MAX_PAYLOAD_LENGTH
 	writeRegister(REG_MAX_PAYLOAD_LENGTH, (uint8_t) MAX_PAYLOAD_LENGTH);	// set 0x22, max 0x40==64Byte long
 	
 	// Reset the IRQ register
 	writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) 0x00);			// Clear the mask
-	writeRegister(REG_IRQ_FLAGS, (uint8_t) IRQ_LORA_TXDONE_MASK);// set 0x12 to 0x08, clear TXDONE
+//	writeRegister(REG_IRQ_FLAGS, (uint8_t) IRQ_LORA_TXDONE_MASK);// set 0x12 to 0x08, clear TXDONE
+	writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);// set 0x12 to 0xFF, clear TXDONE and others
 	
 	// 16. Initiate actual transmission of FiFo
 	opmode(OPMODE_TX);											// set 0x01 to 0x03 (actual value becomes 0x83)
-	
+
+#	if _MONITOR>=1
+	if (( debug>=1 ) && ( pdebug & P_TX )) {
+		String response = "Dwn txLoraModem:: end: ";
+		printDwn(LoraDown, response);
+		mPrint(response);
+	}
+#	endif //_MONITOR
+
 }// txLoraModem
 
 
@@ -985,8 +932,7 @@ void cadScanner()
 //	8.	Set interrupt masks
 //	9.	Clear INT flags
 // ----------------------------------------------------------------------------------------
-void initLoraModem(
-				)
+void initLoraModem()
 {
 	_state = S_INIT;
 #if defined(ESP32_ARCH)
@@ -995,7 +941,6 @@ void initLoraModem(
     digitalWrite(pins.rst, HIGH);
 	delayMicroseconds(10000);
 	digitalWrite(pins.ss, HIGH);
-
 #else
 	// Reset the transceiver chip with a pulse of 10 mSec
 	digitalWrite(pins.rst, HIGH);
@@ -1095,7 +1040,8 @@ void initLoraModem(
 // the receiver either in single message (CAD) of in continuous
 // reception (STD).
 // ----------------------------------------------------------------------------------------
-void startReceiver() {
+void startReceiver() 
+{
 	initLoraModem();								// XXX 180326, after adapting this function 
 	if (gwayConfig.cad) {
 #		if _DUSB>=1

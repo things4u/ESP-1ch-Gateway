@@ -1,4 +1,4 @@
-// 1-channel LoRa Gateway for ESP8266
+// 1-channel LoRa Gateway for ESP8266 and ESP32
 // Copyright (c) 2016-2020 Maarten Westenberg version for ESP8266
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
@@ -56,7 +56,7 @@
 // Set center frequency. If in doubt, choose the first one, comment out all others
 // Each "real" gateway should support the first 3 frequencies according to LoRa spec.
 // NOTE: This means you have to specify at least 3 frequencies here for the single
-//	channel gateway to work. 
+//	channel gateway to work according to spec. 
 struct vector {
 	// Upstream messages
 	uint32_t upFreq;							// 4 bytes
@@ -70,7 +70,8 @@ struct vector {
 	uint8_t  dwnHi;								// 1 bytes
 };
 
-
+// Define all the relevant LoRa Regions
+//==
 #ifdef EU863_870
 // This the the EU863_870 format as used in most of Europe
 // It is also the default for most of the single channel gateway work.
@@ -106,7 +107,7 @@ vector freqs [] = {
 };
 
 #elif defined(US902_928)
-// The frequency plan for USA is a difficult one. As yout can see, the uplink protocol uses
+// The frequency plan for USA is a difficult one. As you can see, the uplink protocol uses
 // SF7-SF10 and BW125 whereas the downlink protocol uses SF7-SF12 and BW500.
 // Also the number of chanels is not equal.
 vector freqs [] = {
@@ -180,10 +181,9 @@ volatile uint8_t _event=0;
 // so we need to store the current value we like to work with
 uint8_t _rssi;	
 
-uint32_t nowTime=0;
-uint32_t msgTime=0;
-uint32_t hopTime=0;
-uint32_t detTime=0;
+uint32_t msgTime=0;							// in seconds, Thru nowSeconds, now()
+uint32_t hopTime=0;							// in micros()
+uint32_t detTime=0;							// In micros()
 
 #if _PIN_OUT==1
 // ----------------------------------------------------------------------------
@@ -271,7 +271,7 @@ struct pins {
 // Each time a message is received or sent the statistics are updated.
 // In case _STATISTICS==1 we define the last _MAXSTAT messages as statistics
 struct stat_t {
-	time_t tmst;							// Time since 1970 in seconds		
+	uint32_t time;							// Time since 1970 in seconds		
 	uint32_t node;							// 4-byte DEVaddr (the only one known to gateway)
 	uint8_t ch;								// Channel index to freqs array
 	uint8_t sf;
@@ -342,27 +342,28 @@ struct stat_t	statr[1];					// Always have at least one element to store in
 // Define the payload structure used to separate interrupt and SPI
 // processing from the loop() part
 uint8_t payLoad[128];						// Payload i
-struct LoraBuffer {
-	uint8_t	* 	payLoad;
+struct LoraDown {
+	uint32_t	tmst;						//
+	uint32_t	freq;
 	uint8_t		payLength;
-	uint32_t	tmst;						// in millis()
 	uint8_t		sfTx;
 	uint8_t		powe;
-	uint32_t	fff;
 	uint8_t		crc;
 	uint8_t		iiq;
+	uint8_t	* 	payLoad;
 } LoraDown;
 
 // Up buffer (from Lora sensor to UDP)
 // This struct contains all data of the buffer received from devices to gateway
 
 struct LoraUp {
-	uint8_t		payLoad[128];
-	uint8_t		payLength;
-	int			prssi; 
 	int32_t		snr;
-	int			rssicorr;
+	uint32_t	tmst;
+	int16_t		prssi; 
+	int16_t		rssicorr;
+	uint8_t		payLength;
 	uint8_t		sf;
+	uint8_t		payLoad[128];
 } LoraUp;
 
 
