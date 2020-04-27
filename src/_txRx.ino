@@ -158,11 +158,11 @@ int sendPacket(uint8_t *buf, uint8_t length)
 	}
 	
 	else {
-#		if _PROFILER>=1
+#		if _MONITOR>=1
 		if ((debug>=2) && (pdebug & P_TX)) {
 			mPrint("_STRICT==1:: Not RX1 or RX2, wait= "+String(w/1000000)+"."+String(w%1000000)+", SF="+String(LoraDown.sfTx)+", Freq="+LoraDown.freq );
 		}
-#		endif //_PROFILER
+#		endif //_MONITOR
 		// And do not convert the down SF.
 	}
 

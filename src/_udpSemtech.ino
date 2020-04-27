@@ -350,17 +350,18 @@ int readUdp(int packetSize)
 			if (buff_down[0]== 1) {
 #				if _MONITOR>=1
 				if ((debug>=1) && (pdebug & P_TX)) {
-					mPrint("UP readUDP:: PKT_TX_ACK: protocol version 1");
+					mPrint("UP readUdp:: PKT_TX_ACK: protocol version 1");
 					data = buff_down + 4;
 					data[packetSize] = 0;
-					mPrint("UP readUdp:: PKT_TX_ACK: size="+String(packetSize)+", data="+String((char *)data)); 
 				}
 #				endif
 				break;										// return
 			}
 
 #			ifdef _PROFILER
+			if ((debug>=1) && (pdebug & P_TX)) {
 				mPrint("UP readUDP:: TX_ACK protocol version 2+");
+			}
 #			endif //_PROFILER
 
 
