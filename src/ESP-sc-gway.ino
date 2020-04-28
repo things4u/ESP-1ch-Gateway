@@ -179,7 +179,7 @@ uint32_t eventTime = 0;										// Timing of _event to change value (or not).
 uint32_t sendTime = 0;										// Time that the last message transmitted
 uint32_t doneTime = 0;										// Time to expire when CDDONE takes too long
 uint32_t statTime = 0;										// last time we sent a stat message to server
-uint32_t pullTime = 0;										// last time we sent a pull_data request to server\
+uint32_t pullTime = 0;										// last time we sent a pull_data request to server
 uint32_t rstTime  = 0;										// When to reset the timer
 uint32_t fileTime = 0;										// Wite the configuration to file
 

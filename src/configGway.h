@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP32 and ESP8266
 // Copyright (c) Maarten Westenberg 2016-2020 
 
-#define VERSION "V.6.2.4.EU868; PlatformIO 200425m"
+#define VERSION "V.6.2.4.EU868; PlatformIO 200428n"
 //
 // Based on work done by Thomas Telkamp for Raspberry PI 1ch gateway and many others.
 //
@@ -225,9 +225,9 @@
 // We must take care that the filesystem never(!) is full, and for that purpose we
 // rather have new records/line of statistics than very old.
 // Of course we must store enough records to make the filesystem work
-#if !defined _START_LOG
+#if !defined _STAT_LOG
 #	define _STAT_LOG 0
-#endif //_START_LOG
+#endif //_STAT_LOG
 
 
 // Set the Server Settings (IMPORTANT)
