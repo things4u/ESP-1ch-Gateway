@@ -164,7 +164,7 @@ If the heap drops below 18 KBytes some functions may not behave as expected (in 
 
 ## Editing the configNode.h file
 
-The configNode.h file is used to set teh WiFi access point and the structure of known 
+The configNode.h file is used to set the WiFi access point and the structure of known 
 sensors to the 1-channel gateway.
 Setting the known WiFi access points (SSID and password) must be done at compile time.
 
