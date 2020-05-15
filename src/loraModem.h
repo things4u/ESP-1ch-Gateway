@@ -259,7 +259,7 @@ struct pins {
 #elif _PIN_OUT==5
 
 // ----------------------------------------------------------------------------
-// For ESP32/Heltec Wifi LoRA 32(V2) HTIT-WB32LA board with 0.9" OLED
+// For ESP32/Heltec Wifi LoRA 32(V2) board with 0.9" OLED
 //
 // SCK  == GPIO5/ PIN5
 // SS   == GPIO18/PIN18 CS
