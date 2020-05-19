@@ -203,13 +203,15 @@ Also the gateway may or may not support Class B, which is a superset of class A.
  
 ### Selecting you standard pin-out
 
-We support two pin-out configurations out-of-the-box: HALLARD and COMPRESULT.
-If you use one of these two, just set the parameter to the right value.
-If your pin definitions are different, update the loraModem.h file to reflect these settings.
+We support five pin-out configurations out-of-the-box, see below.
+If you use one of these, just set the parameter to the right value.
+If your pin definitions are different, update the loraModem.h and oLED.h file to reflect these settings.
 	1: HALLARD
 	2: COMRESULT pin out
-	3: ESP32 pin out
-	4: Other, define your own in loraModem.h
+	3: ESP32/Wemos based board
+	4: ESP32/TTGO based board
+	5: ESP32/Heltec Wifi LoRA 32(V2)
+
 
  \#define _PIN_OUT 1
 

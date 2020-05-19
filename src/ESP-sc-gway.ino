@@ -26,7 +26,9 @@
 
 #if defined (ARDUINO_ARCH_ESP32) || defined(ESP32)
 #	define ESP32_ARCH 1
-#	define _PIN_OUT 4										// For ESP32 this pin-out is standard
+#	ifndef _PIN_OUT
+#		define _PIN_OUT 4										// For ESP32 this pin-out is standard
+#	endif
 #elif defined(ARDUINO_ARCH_ESP8266)
 	//
 #else
