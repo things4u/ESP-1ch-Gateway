@@ -484,7 +484,7 @@ The following things are still on my wish list to make to the single channel gat
 - Use the SPIFFS for storing .css files
 - Look at Class B and C support
 
-![logo](./images/illustration-Maarten-In.JPG)
+![logo](images/illustration-Maarten-In.JPG)
  
 # License
 
