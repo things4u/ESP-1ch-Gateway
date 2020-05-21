@@ -164,7 +164,7 @@ If the heap drops below 18 KBytes some functions may not behave as expected (in 
 
 ## Editing the configNode.h file
 
-The configNode.h file is used to set the WiFi access point and the structure of known 
+The configNode.h file is used to set teh WiFi access point and the structure of known 
 sensors to the 1-channel gateway.
 Setting the known WiFi access points (SSID and password) must be done at compile time.
 
@@ -203,15 +203,13 @@ Also the gateway may or may not support Class B, which is a superset of class A.
  
 ### Selecting you standard pin-out
 
-We support five pin-out configurations out-of-the-box, see below.
-If you use one of these, just set the parameter to the right value.
-If your pin definitions are different, update the loraModem.h and oLED.h file to reflect these settings.
+We support two pin-out configurations out-of-the-box: HALLARD and COMPRESULT.
+If you use one of these two, just set the parameter to the right value.
+If your pin definitions are different, update the loraModem.h file to reflect these settings.
 	1: HALLARD
 	2: COMRESULT pin out
-	3: ESP32/Wemos based board
-	4: ESP32/TTGO based board
-	5: ESP32/Heltec Wifi LoRA 32(V2)
-
+	3: ESP32 pin out
+	4: Other, define your own in loraModem.h
 
  \#define _PIN_OUT 1
 
