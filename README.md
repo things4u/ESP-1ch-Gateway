@@ -61,7 +61,7 @@ Then just open the ESP-sc-gway.ino file at src directory and build or upload
 
 ## Arduino IDE
 
-Create a place on you filesystem wo work on the files. In thius directory creat the source directory "ESP-sc-gway" 
+Create a place on your filesystem to work on the files. In this directory create the source directory "ESP-sc-gway" 
 and the libraries directory "libraries". When unpacking the source at github: 
 Copy the content of the "src" directory to the Aruino IDE "ESP-sc-gway" directory and copy the contents 
 of the "lib" to the Arduino IDE "libraries" directory;
@@ -484,7 +484,8 @@ The following things are still on my wish list to make to the single channel gat
 - Use the SPIFFS for storing .css files
 - Look at Class B and C support
 
-
+ ![logo](./images/illustration _Maarten-In.JPG)
+ 
 # License
 
 The source files of the gateway sketch in this repository is made available under the MIT
