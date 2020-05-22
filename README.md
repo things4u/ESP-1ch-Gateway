@@ -484,7 +484,7 @@ The following things are still on my wish list to make to the single channel gat
 - Use the SPIFFS for storing .css files
 - Look at Class B and C support
 
-![logo](https://github.com/things4u/ESP-1ch-Gateway/blob/master/images/illustration-Maarten-In.jpg)
+![logo](https://github.com/things4u/ESP-1ch-Gateway/blob/master/images/illustration-Maarten-In.jpg?raw=true "aap")
  
 # License
 
