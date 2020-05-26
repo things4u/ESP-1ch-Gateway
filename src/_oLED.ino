@@ -61,7 +61,7 @@ void acti_oLED()
 #if _OLED>=1
 	// Initialising the UI will init the display too.
 	display.clear();
-	
+
 # if _OLED==1
 	display.setFont(ArialMT_Plain_16);
 	display.drawString(0, 0, "READY,  SSID=");
@@ -74,11 +74,11 @@ void acti_oLED()
 	display.drawString(0, 16, WiFi.SSID());
 	display.drawString(0, 32, "IP=");
 	display.drawString(0, 48, WiFi.localIP().toString().c_str() );
-# endif
+# endif //_OLED
 
 	display.display();
-	
-#endif // _OLED
+
+#endif //_OLED
 	delay(4000);
 }
 
@@ -99,7 +99,7 @@ void msg_oLED(String mesg)
 
     display.display();
 	yield();
-#endif // _OLED
+#endif //_OLED
 }
 
 // Print a larger Oled message consisting of two strings
@@ -117,7 +117,7 @@ void msg_lLED(String mesg, String mesg2)
 	
     display.display();
 	yield();
-#endif // _OLED
+#endif //_OLED
 }
 
 // --------------------------------------------------------------------

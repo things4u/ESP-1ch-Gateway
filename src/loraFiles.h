@@ -69,7 +69,6 @@ struct espGwayConfig {
 	uint16_t ntps;
 	uint16_t logFileRec;		// Logging File Record number
 	uint16_t logFileNo;			// Logging File Number
-	uint16_t logFileNum;		// Number of log files max
 	uint16_t formatCntr;		// Count the number of formats
 
 	uint16_t ntpErr;			// Number of UTP requests that failed
@@ -81,6 +80,10 @@ struct espGwayConfig {
 	uint8_t debug;				// range 0 to 4
 	uint8_t pdebug;				// pattern debug, 
 	uint8_t trusted;			// pattern debug,
+	
+	uint8_t	maxSeen;			// Max Seen lines on GUI (not saved for reboots)
+	uint8_t maxMoni;			// Max Monitoring lines	(not saved)
+	uint8_t maxStat;			// Max history lines (not saved)
 	
 	bool cad;					// is CAD enabled?
 	bool hop;					// Is HOP enabled (Note: default be disabled)
@@ -99,13 +102,10 @@ struct espGwayConfig {
 
 // We do keep admin of logfiles by number
 // 
-//uint32_t logFileNo = 0;		// Included in struct espGwayConfig LogFile number
-//uint32_t logFileRec = 0;		// Number of records in a single logfile
-//uint32_t logFileNum = 1;		// Number of log files
 #define LOGFILEMAX 10
 #define LOGFILEREC 100
 
-#endif // _STAT_LOG
+#endif //_STAT_LOG
 
 // Define the node list structure
 //
@@ -126,7 +126,7 @@ struct nodeSeen {
 	uint8_t chnSeen;
 	uint8_t sfSeen;				// Encode the SF seen.This might differ per message!
 };
-struct nodeSeen listSeen[_MAXSEEN];
+struct nodeSeen * listSeen;
 
 
 // define the logging structure used for printout of error and warning messages

@@ -27,7 +27,7 @@
 // 2. 1.3" OLED with much better and larger display
 // 4. TTGO board
 
-#if _OLED>=1										// If OLED is used
+#if _OLED>=1									// If OLED is used
 
 // ----------------------------------------------------------------------------------------
 // Define the different PIN's used for SCL/SDA for each arch.
@@ -45,10 +45,10 @@
 #define OLED_SDA 4								// GPIO4 / 
 #define OLED_RST 16								// Reset pin (Some OLED displays do not have it)
 
-#elif _PIN_OUT==5								// Heltec Wifi LoRA 32(V2) onboard OLED
-#define OLED_SCL 15								// GPIO22 / SCL
-#define OLED_SDA 4								// GPIO21 / SDA
-#define OLED_RST 16								// Reset pin
+#elif _PIN_OUT==5								// TTGO with external OLED
+#define OLED_SCL 22								// GPIO22 / SCL
+#define OLED_SDA 21								// GPIO21 / SDA
+#define OLED_RST 16								// Reset pin (Some OLED displays do not have it)
 
 #endif
 
@@ -60,7 +60,7 @@
 #include "SSD1306.h"
 #define OLED_ADDR 0x3C							// Default 0x3C for 0.9", for 1.3" it is 0x78
 SSD1306  display(OLED_ADDR, OLED_SDA, OLED_SCL);// i2c ADDR & SDA, SCL on wemos
-#endif
+#endif //_OLED
 
 // This is an 1.3" OLED display which is running on I2C
 #if _OLED==2
@@ -69,4 +69,4 @@ SSD1306  display(OLED_ADDR, OLED_SDA, OLED_SCL);// i2c ADDR & SDA, SCL on wemos
 SH1106  display(OLED_ADDR, OLED_SDA, OLED_SCL);	// i2c ADDR & SDA, SCL on wemos
 #endif
 
-#endif// _OLED>=1
+#endif //_OLED>=1

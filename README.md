@@ -1,7 +1,7 @@
 # Single Channel LoRaWAN Gateway
 
-Version 6.2.4, 
-Data: April 25, 2020  
+Version 6.2.5, 
+Data: May 21, 2020  
 Author: M. Westenberg (mw12554@hotmail.com)  
 Copyright: M. Westenberg (mw12554@hotmail.com)  
 
@@ -13,13 +13,14 @@ without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
 
 Maintained by Maarten Westenberg (mw12554@hotmail.com) 
 
-
+![logo](https://github.com/things4u/ESP-1ch-Gateway/blob/master/images/illustration-Maarten-In.jpg?raw=true "aap")
+ 
 # Description
 
 First of all: PLEASE READ THIS FILE AND [Documentation](http://things4u.github.io/Projects/SingleChannelGateway) 
 it should contain most of the information you need to get going.
 Unfortunately I do not have the time to follow up on all emails, and as most information including pin-outs 
-etc etc are contained on these pages I hope you have the time to read them and post any remaining questions.
+etc. etc. are contained on these pages I hope you have the time to read them and post any remaining questions.
 
 I do have more than 10 Wemos D1 mini boards running, some I built myself, 
 some 10+ on Hallard, 3 on ComResult and 4 ESP32 boards. They ALL work without problems
@@ -55,23 +56,23 @@ At this moment the src directory contains the PlatformIO source, and therefore w
 The applies to the libraries.
 
 ## PlatformIO
-When in PlatformIO, choose <File> and then <Add folder to Workspace...> and select the new LoRa-1ch-ESP-Gateway 
+When in PlatformIO, choose <File> and then <Add folder to Workspace...> and select your new LoRa-1ch-ESP-Gateway 
 top directory.
 Then just open the ESP-sc-gway.ino file at src directory and build or upload
 
 ## Arduino IDE
 
-Create a place on your filesystem to work on the files. In this directory create the source directory "ESP-sc-gway" 
+Create a place on you filesystem to work on the files. In this directory create the source directory "ESP-sc-gway" 
 and the libraries directory "libraries". When unpacking the source at github: 
 Copy the content of the "src" directory to the Aruino IDE "ESP-sc-gway" directory and copy the contents 
-of the "lib" to the Arduino IDE "libraries" directory;
+of the "lib" directory to the Arduino IDE "libraries" directory;
 
 ## testing
 
 The single channel gateway has been tested on a gateway with the Wemos D1 Mini, 
 using a HopeRF RFM95W transceiver.  Tests were done on 868 version of LoRa and some 
 testing on 433 MHz.
-The LoRa nodes tested againts this gateway are:
+The LoRa nodes tested against this gateway are:
 
 - TeensyLC with HopeRF RFM95 radio
 - Arduino Pro-Mini (default Armega328 model, 8MHz 3.3V and 16MHz 3.3V)
@@ -203,13 +204,14 @@ Also the gateway may or may not support Class B, which is a superset of class A.
  
 ### Selecting you standard pin-out
 
-We support two pin-out configurations out-of-the-box: HALLARD and COMPRESULT.
-If you use one of these two, just set the parameter to the right value.
-If your pin definitions are different, update the loraModem.h file to reflect these settings.
+We support five pin-out configurations out-of-the-box, see below.
+If you use one of these, just set the parameter to the right value.
+If your pin definitions are different, update the loraModem.h and oLED.h file to reflect these settings.
 	1: HALLARD
 	2: COMRESULT pin out
-	3: ESP32 pin out
-	4: Other, define your own in loraModem.h
+	3: ESP32/Wemos based board
+	4: ESP32/TTGO based ESP32 boarda
+	5: ESP32/Heltec Wifi LoRA 32(V2)
 
  \#define _PIN_OUT 1
 
@@ -484,8 +486,7 @@ The following things are still on my wish list to make to the single channel gat
 - Use the SPIFFS for storing .css files
 - Look at Class B and C support
 
-![logo](https://github.com/things4u/ESP-1ch-Gateway/blob/master/images/illustration-Maarten-In.jpg?raw=true "aap")
- 
+
 # License
 
 The source files of the gateway sketch in this repository is made available under the MIT

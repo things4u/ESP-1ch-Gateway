@@ -27,7 +27,7 @@
 #if defined (ARDUINO_ARCH_ESP32) || defined(ESP32)
 #	define ESP32_ARCH 1
 #	ifndef _PIN_OUT
-#		define _PIN_OUT 4										// For ESP32 this pin-out is standard
+#		define _PIN_OUT 4									// For ESP32 pin-out 4 is default
 #	endif
 #elif defined(ARDUINO_ARCH_ESP8266)
 	//
@@ -76,7 +76,7 @@ extern "C" {
 
 // ----------- Specific ESP32 stuff --------------
 #if defined(ESP32_ARCH)
-#	include <WiFi.h>										// MMM added 20Feb
+#	include <WiFi.h>
 #	include <ESPmDNS.h>
 #	include <SPIFFS.h>
 #	include <WiFiManager.h>								// Standard lib for ESP WiFi config through an AP
@@ -86,7 +86,7 @@ extern "C" {
 #	if _SERVER==1
 #		include <WebServer.h>								// Standard Webserver for ESP32
 #		include <Streaming.h>          						// http://arduiniana.org/libraries/streaming/
-		WebServer server(_SERVERPORT); // MMM added 20Feb
+		WebServer server(_SERVERPORT);
 #	endif //_SERVER
 
 #	if _OTA==1
@@ -130,7 +130,7 @@ extern "C" {
 // ----------- Declaration of variables --------------
 
 uint8_t debug=1;											// Debug level! 0 is no msgs, 1 normal, 2 extensive
-uint8_t pdebug= P_MAIN | P_GUI;								// Initially only MAIN and GUI
+uint8_t pdebug= P_MAIN ;									// Initially only MAIN and GUI
 
 #if _GATEWAYNODE==1
 #	if _GPS==1
@@ -152,8 +152,7 @@ uint8_t		MAC_array[6];
 // ----------------------------------------------------------------------------
 
 // Set spreading factor (SF7 - SF12)
-sf_t sf 			= _SPREADING;
-sf_t sfi 			= _SPREADING;							// Initial value of SF
+sf_t sf 			= _SPREADING;							// Initial value of SF					
 
 // Set location, description and other configuration parameters
 // Defined in ESP-sc_gway.h
@@ -183,7 +182,7 @@ uint32_t doneTime = 0;										// Time to expire when CDDONE takes too long
 uint32_t statTime = 0;										// last time we sent a stat message to server
 uint32_t pullTime = 0;										// last time we sent a pull_data request to server
 uint32_t rstTime  = 0;										// When to reset the timer
-uint32_t fileTime = 0;										// Wite the configuration to file
+uint32_t fileTime = 0;										// Write the configuration to file
 
 #define TX_BUFF_SIZE  1024									// Upstream buffer to send to MQTT
 #define RX_BUFF_SIZE  1024									// Downstream received from MQTT
@@ -286,6 +285,8 @@ void setup() {
 	MAC_char[18] = 0;
 	char hostname[12];										// hostname space
 
+	initConfig(&gwayConfig);
+		
 #	if _DUSB>=1
 		Serial.begin(_BAUDRATE);							// As fast as possible for bus
 		delay(500);
@@ -318,7 +319,7 @@ void setup() {
 		msg_oLED("FORMAT");
 		SPIFFS.format();
 		delay(500);
-		initConfig(&gwayConfig);
+		initConfig(&gwayConfig);							// After a format reinit variables
 	}
 	
 	// If we set SPIFFS_FORMAT in 
@@ -329,7 +330,7 @@ void setup() {
 	initConfig(&gwayConfig);
 	gwayConfig.formatCntr++;
 	if ((debug>=1) && (pdebug & P_MAIN)) {
-		mPrint("Format SPIFFS Filesystem Done");
+		mPrint("SPIFFS Format Done");
 	}
 #	endif //_SPIFFS_FORMAT>=1
 
@@ -349,8 +350,9 @@ void setup() {
 	// Read the config file for all parameters not set in the setup() or configGway.h file
 	// This file should be read just after SPIFFS is initializen and before
 	// other configuration parameters are used.
+	// It will overwrite any settings given by initConfig
 	//
-	if (readGwayCfg(CONFIGFILE, &gwayConfig) > 0) {			// read the Gateway Config
+	if (readGwayCfg(_CONFIGFILE, &gwayConfig) > 0) {			// read the Gateway Config
 #		if _MONITOR>=1
 		if (debug>=0) {
 			mPrint("readGwayCfg:: return OK");
@@ -400,7 +402,7 @@ void setup() {
 	yield();
 
 #	if _MONITOR>=1
-	if ((debug>=1) & ( pdebug & P_MAIN )) {
+	if ((debug>=1) & (pdebug & P_MAIN)) {
 		mPrint("setup:: WlanConnect="+String(WiFi.SSID()) );
 	}
 #	endif
@@ -461,7 +463,7 @@ void setup() {
 	pinMode(pins.rst, OUTPUT);
     pinMode(pins.dio0, INPUT);								// This pin is interrupt
 	pinMode(pins.dio1, INPUT);								// This pin is interrupt
-	//pinMode(pins.dio2, INPUT);							// XXX future expansion
+	//pinMode(pins.dio2, INPUT);								// XXX future expansion
 
 	// Init the SPI pins
 #if defined(ESP32_ARCH)
@@ -545,7 +547,7 @@ void setup() {
 		}
 #		endif //_MONITOR
 
-		writeGwayCfg(CONFIGFILE, &gwayConfig );
+		writeGwayCfg(_CONFIGFILE, &gwayConfig );
 	}
 #	endif //NTP_INTR
 
@@ -613,17 +615,24 @@ void setup() {
 	// Or in the traditional Comresult case
 	else {
 		attachInterrupt(pins.dio0, Interrupt_0, RISING);	// Separate interrupts
-		attachInterrupt(pins.dio1, Interrupt_1, RISING);	// Separate interrupts		
+		attachInterrupt(pins.dio1, Interrupt_1, RISING);	// Separate interrupts
+		//attachInterrupt(pins.dio2, Interrupt_2, RISING);	// Separate interrupts		
 	}
-	
-	writeConfig(CONFIGFILE, &gwayConfig);					// Write config
+
+#	if _MONITOR>=1
+	if ((debug>=2) && (pdebug & P_TX)) {
+		mPrint("sendPacket:: STRICT=" + String(_STRICT_1CH) );
+	}
+#	endif //_MONITOR
+
+	writeConfig(_CONFIGFILE, &gwayConfig);					// Write config
 	writeSeen(_SEENFILE, listSeen);							// Write the last time record  is seen
 
 	// activate Oled display
 #	if _OLED>=1
 		acti_oLED();
 		addr_oLED();
-#	endif // _OLED
+#	endif //_OLED
 
 	mPrint(" --- Setup() ended, Starting loop() ---");
 
@@ -673,7 +682,7 @@ void loop ()
 	//
 	while( (packetSize= Udp.parsePacket()) > 0) {
 #		if _MONITOR>=1
-		if ((debug>=2) && (pdebug & P_TX)){
+		if ((debug>=3) && (pdebug & P_TX)) {
 			mPrint("loop:: readUdp available");
 		}
 #		endif //_MONITOR
@@ -712,11 +721,11 @@ void loop ()
 	// So it will kick in if there are not many messages for the gateway.
 	// Note: Be careful that it does not happen too often in normal operation.
 	//
-	if ( ((nowSeconds - statr[0].time) > _MSG_INTERVAL ) &&
+	if ( ((nowSeconds - statr[0].time) > _MSG_INTERVAL) &&
 		(msgTime <= statr[0].time) ) 
 	{
 #		if _MONITOR>=1
-		if (( debug>=2 ) && ( pdebug & P_MAIN )) {
+		if ((debug>=2) && (pdebug & P_MAIN)) {
 			String response="";
 			response += "REINIT:: ";
 			response += String( _MSG_INTERVAL );
@@ -798,7 +807,7 @@ void loop ()
 				if ((debug>=1) || (pdebug & P_MAIN)) {
 					mPrint("sensorPacket: Error");
 				}
-#				endif// _MONITOR
+#				endif //_MONITOR
 			}
 		}
 #		endif//_GATEWAYNODE
@@ -818,7 +827,7 @@ void loop ()
 		pullTime = nowSeconds;
 		
 #		if _MONITOR>=1
-		if ((debug>=1) && (pdebug & P_RX)) {
+		if ((debug>=2) && (pdebug & P_RX)) {
 			String response = "UP ESP-sc-gway:: PKT_PULL_DATA message sent: micr=";
 			printInt(micros(), response);
 			mPrint(response);
@@ -867,22 +876,18 @@ void loop ()
 			}
 			else {
 				setTime(newTime);
-				if (year(now()) != 1970) {
-#					if _MONITOR>=1
-					if ((debug>=1) && (pdebug & P_MAIN)) {
-						ntptimer = nowSeconds;					// Do not when year(now())=="1970" beacause of "FORMAT"
-					}
-#					endif
+				if (year(now()) != 1970) {						// Do not when year(now())=="1970"
+					ntptimer = nowSeconds;						// beacause of "FORMAT"
 				}
 			}
 		}
 #	endif//NTP_INTR
 
-#	if _MAXSEEN >= 1
+#	if _MAXSEEN>=1
 		if ((nowSeconds - fileTime) >= _FILE_INTERVAL) {
 			writeSeen(_SEENFILE, listSeen);
 			fileTime = nowSeconds;
 		}
-#	endif // _MAXSEEN
+#	endif //_MAXSEEN
 
 }//loop

@@ -101,15 +101,13 @@ int readUdp(int packetSize)
 	uint8_t buff_down[RX_BUFF_SIZE];		// Buffer for downstream
 
 	// Make sure we are connected over WiFI
-	if (WlanConnect(10) < 0) {				// MMM 200316 Every call contains yield()
+	if (WlanConnect(10) < 0) {
 #		if _MONITOR>=1
 			mPrint("Dwn readUdp:: ERROR connecting to WLAN");
 #		endif //_MONITOR
 		Udp.flush();
 		return(-1);
 	}
-	
-	//yield();								// MMM 200320 Clear buffer in kernel (?)
 	
 	if (packetSize > RX_BUFF_SIZE) {
 #		if _MONITOR>=1
@@ -118,8 +116,6 @@ int readUdp(int packetSize)
 		Udp.flush();
 		return(-1);
 	}
-
-	//yield();								// MMM 200406
 	
 	// We assume here that we know the originator of the message.
 	// In practice however this can be any sender!
@@ -160,7 +156,7 @@ int readUdp(int packetSize)
 		uint8_t ident= buff_down[3];
 
 #		if _MONITOR>=1
-		if ((debug>=2) && (pdebug & P_TX)) {
+		if ((debug>=3) && (pdebug & P_TX)) {
 			mPrint("Dwn readUdp:: message ident="+String(ident));
 		}
 #		endif //_MONITOR
@@ -173,23 +169,37 @@ int readUdp(int packetSize)
 		// As this function is used for downstream only, this option
 		// will never be selected but is included as a reference only
 		// Para 5.2.1, Semtech Gateway to Server Interface document
+		//	Byte 0:		Version
+		//	byte 1+2:	Token
+		//	byte 3: 	Command code (0x00)
+		//
 		case PKT_PUSH_DATA: 							// 0x00 UP
 #			if _MONITOR>=1
 			if (debug>=1) {
 				mPrint("Dwn PKT_PUSH_DATA:: size "+String(packetSize)+" From "+String(remoteIpNo.toString()));
 			}
 #			endif //_MONITOR
-			//Udp.flush();
+			Udp.flush();
 		break;
 
 
 		// This message is sent DOWN by the server to acknowledge receipt of a
 		// (sensor) PKT_PUSH_DATA message sent with the code above.
 		// Para 5.2.2, Semtech Gateway to Server Interface document
+		// The length of this package is 4 bytes:
+		//	byte 0:		Protol version (0x01 or 0x02)
+		//	byte 1+2:	Token copied from requestor
+		//	byte 3:		0x01, ack PKT_PUSH_ACK
+		//
 		case PKT_PUSH_ACK:								// 0x01 DOWN
 #			if _MONITOR>=1
 			if ((debug>=2) && (pdebug & P_TX)) {
-				mPrint("Dwn PKT_PUSH_ACK:: size="+String(packetSize)+", From "+String(remoteIpNo.toString())); 
+				char res[128];				
+				sprintf(res, "Dwn PKT_PUSH_ACK:: size=%u, IP=%d.%d.%d.%d, port=%d ", 
+					packetSize, 
+					remoteIpNo[0], remoteIpNo[1], remoteIpNo[2],remoteIpNo[3], 
+					remotePortNo);
+				mPrint(res);
 			}
 #			endif //_MONITOR
 			//Udp.flush();
@@ -200,13 +210,14 @@ int readUdp(int packetSize)
 		// This is a request/UP message and will not be executed by this function.
 		// We have it here as a description only. 
 		//	Para 5.2.3, Semtech Gateway to Server Interface document
+		//
 		case PKT_PULL_DATA:								// 0x02 UP
 #			if _MONITOR>=1
 			if ((debug>=1) && (pdebug & P_RX)) {
-				mPrint("Dwn readUdp:: PKT_PULL_DATA");
+				mPrint("Dwn PKT_PULL_DATA");
 			}
 #			endif //_MONITOR
-			Udp.flush();					// MMM 200419 Added
+			Udp.flush();								// MMM 200419 Added
 		break;
 
 
@@ -224,24 +235,14 @@ int readUdp(int packetSize)
 		case PKT_PULL_ACK:								// 0x04 DOWN
 #			if _MONITOR>=1
 			if ((debug>=2) && (pdebug & P_TX)) {
-				String response="Dwn readUdp PKT_PULL_ACK: micr=";
-				printInt(micros(), response);
-				response += ", size="+String(packetSize)+" From ";
-				printIP(remoteIpNo,'.',response);
-				response += ", port " +String(remotePortNo);
-				mPrint(response);
-
-				if (debug>=2) {
-					Serial.print(F(", data: "));
-					for (int i=0; i<packetSize; i++) {
-						Serial.print(buff_down[i],HEX);
-						Serial.print(':');
-					}
-					Serial.println();
-				}
+				char res[128];				
+				sprintf(res, "Dwn PKT_PULL_ACK:: size=%u, IP=%d.%d.%d.%d, port=%d ", 
+					packetSize, 
+					remoteIpNo[0], remoteIpNo[1], remoteIpNo[2],remoteIpNo[3], 
+					remotePortNo);
+				mPrint(res);
 			}
 #			endif //_MONITOR
-
 			
 			yield();			
 			
@@ -258,13 +259,14 @@ int readUdp(int packetSize)
 		//	JOIN_ACCEPT_DELAY1	5 s
 		//	JOIN_ACCEPT_DELAY2	6 s
 		// Para 5.2.5, Semtech Gateway to Server Interface document
+		// or https://github.com/Lora-net/packet_forwarder/blob/master/PROTOCOL.TXT
 		//
 		case PKT_PULL_RESP:								// 0x03 DOWN
 
 			// Define when we start with the response to node
 #			ifdef _PROFILER
-			if ((debug>=1) && (pdebug & P_TX)) {
-				mPrint("Dwn PKT_PULL_RESP:: sendPacket: micros="+String(micros() ));
+			if ((debug>=2) && (pdebug & P_TX)) {
+				mPrint("Dwn PKT_PULL_RESP:: start sendPacket: micros="+String(micros() ));
 			}
 #			endif //_PROFILER
 
@@ -301,27 +303,14 @@ int readUdp(int packetSize)
 			// (We normally react on ALL interrupts if we are in TX state)
 			txLoraModem(&LoraDown);
 
-			// wait extra delay out. The delayMicroseconds timer is accurate until 16383 uSec.
-#			ifdef _PROFILER
-			if ((debug>=1) && (pdebug & P_TX))
-			{
-				String response = "Dwn PKT_PULL_RESP:: txLoraModem done: ";
-				printDwn(&LoraDown, response);
-				mPrint(response);
-			}
-#			endif //_PROFILER
-
 #			if _MONITOR>=1
-			if (( debug>=2 ) && ( pdebug & P_TX )) {
+			if ((debug>=2) && (pdebug & P_TX)) {
 				uint8_t flags = readRegister(REG_IRQ_FLAGS);
 				uint8_t mask  = readRegister(REG_IRQ_FLAGS_MASK);
 				uint8_t intr  = flags & ( ~ mask );
 
-				String response="Dwn txLoraModem fini:: ";
-				mStat(intr, response);
-				mPrint(response); 
 
-				response = "Dwn readUdp:: PKT_PULL_RESP from IP="+String(remoteIpNo.toString())
+				String response = "Dwn readUdp:: PKT_PULL_RESP from IP="+String(remoteIpNo.toString())
 					+", micros=" + String(micros())
 					+", wait=";
 				if (sendTime < micros()) {
@@ -330,7 +319,12 @@ int readUdp(int packetSize)
 				else {
 					response += "-" + String(sendTime - micros()) ;
 				};
-				mPrint(response);
+
+
+				response+=", stat:: ";
+				mStat(intr, response);
+				mPrint(response); 
+
 			}
 #			endif //_MONITOR
 
@@ -338,19 +332,33 @@ int readUdp(int packetSize)
 			// So, more or less start at the "case TXDONE:"  
 			_state=S_TXDONE;
 			_event=1;										// Or remove the break below
-			
-			// No break!!
 
+//			Udp.flush();									// MMM 200509 flush UDP buffer
+
+			// No break!! so next secton will be executed
+
+#		ifdef _PROFILER
+		// measure the total time for transmissioon here
+			if ((debug>=2) && (pdebug & P_TX)) {
+				mPrint("Dwn PKT_PULL_RESP:: finit: micros="+String(micros() ));
+			}
+#		endif //_PROFILER
 
 		// This is the response to the PKT_PULL_RESP message by the sensor device
 		// it is sent by the gateway UP to the server to confirm the PULL_RESP message.
+		//	byte 0:		Protocol version
+		//	byte 1+2:	Port number of originator
+		//	byte 3:		Message ID TX_ACK == 0x06
+		//	byte 4-11:	Gateway ident
+		//	byte 12-:	Optional Error Data
 		//
 		case PKT_TX_ACK:									// Message id: 0x05 UP
 
 			if (buff_down[0]== 1) {
 #				if _MONITOR>=1
-				if ((debug>=1) && (pdebug & P_TX)) {
+				if ((debug>=3) && (pdebug & P_TX)) {
 					mPrint("UP readUdp:: PKT_TX_ACK: protocol version 1");
+					
 					data = buff_down + 4;
 					data[packetSize] = 0;
 				}
@@ -358,11 +366,11 @@ int readUdp(int packetSize)
 				break;										// return
 			}
 
-#			ifdef _PROFILER
-			if ((debug>=1) && (pdebug & P_TX)) {
+#			if _MONITOR>=1
+			if ((debug>=2) && (pdebug & P_TX)) {
 				mPrint("UP readUDP:: TX_ACK protocol version 2+");
 			}
-#			endif //_PROFILER
+#			endif //_MONITOR
 
 
 			// Now respond with an PKT_TX_ACK; UP 
@@ -396,7 +404,7 @@ int readUdp(int packetSize)
 			}
 			else {
 #				if _MONITOR>=1
-				if ((debug>=0) && (pdebug & P_TX)) {
+				if ((debug>=2) && (pdebug & P_TX)) {
 					mPrint("UP readUdp:: PKT_TX_ACK: micros="+String(micros()));
 				}
 #				endif //_MONITOR
@@ -437,10 +445,18 @@ int readUdp(int packetSize)
 		}
 		
 #		if _MONITOR>=1
-		if (debug>=2) {
-			String response= "Dwn readUdp:: ret="+String(packetSize)+", data=";
-			for (int i=0; i<packetSize; i++) {
-				response+= String(buff_down[i]) + " ";
+		if ((debug>=3) && (pdebug & P_TX)) {
+			String response= "Dwn readUdp:: ident="+String(ident,HEX);
+			response+= ", tmst=" + String(LoraDown.tmst);
+			response+= ", imme=" + String(LoraDown.imme);
+			response+= ", sfTx=" + String(LoraDown.sfTx);
+			response+= ", freq=" + String(LoraDown.freq);
+			if (debug>=3) {
+				if (packetSize > 4) {
+					response+= ", size=" + String(packetSize) + ", data=";
+					buff_down[packetSize] = 0;
+					response+=String((char *)(buff_down+4));
+				}
 			}
 			mPrint(response); 
 		}
@@ -472,19 +488,18 @@ int sendUdp(IPAddress server, int port, uint8_t *msg, uint16_t length)
 	// Check whether we are conected to Wifi and the internet
 	if (WlanConnect(3) < 0) {
 #		if _MONITOR>=1
-		if ( pdebug & P_MAIN ) {
+		if (pdebug & P_MAIN) {
 			mPrint("sendUdp: ERROR not connected to WiFi");
 		}
-#		endif //_MONITOR						// MMM 200426 We removed yield() 
+#		endif //_MONITOR
 		Udp.flush();
 		return(0);
 	}
 
-	//yield();									// MMM 200327 yield not necessary
 
 	//send the update
 #	if _MONITOR>=1
-	if (( debug>=2 ) && ( pdebug & P_MAIN )) {
+	if ((debug>=2) && (pdebug & P_MAIN)) {
 		mPrint("sendUdp: WlanConnect connected to="+WiFi.SSID()+". Server IP="+ String(WiFi.localIP().toString()) );
 	}
 #	endif //_MONITOR
@@ -526,7 +541,7 @@ int sendUdp(IPAddress server, int port, uint8_t *msg, uint16_t length)
 
 
 
-// ----------------------------------------------------------------------------
+// --------------------------------- UP ---------------------------------------
 // pullData()
 // Send UDP periodic Pull_DATA message UP to server to keepalive the connection
 // and to invite the server to send downstream messages when these are available
@@ -591,14 +606,14 @@ void pullData()
 		}
 		Serial.println();
 	}
-#endif // _MONITOR
+#endif //_MONITOR
 
 	return;
 	
 } // pullData()
 
 
-// ----------------------------------------------------------------------------
+// ---------------------------------- UP --------------------------------------
 // sendstat()
 // Send UP periodic status message to server even when we do not receive any
 // data. 
@@ -655,8 +670,8 @@ void sendstat()
     status_report[stat_index] = 0; 							// add string terminator, for safety
 
 #	if _MONITOR>=1
-    if (( debug>=2 ) && ( pdebug & P_MAIN )) {
-		mPrint("M stat update: <"+String(stat_index)+"> "+String((char *)(status_report+12)) );
+    if ((debug>=2) && (pdebug & P_RX)) {
+		mPrint("RX stat update: <"+String(stat_index)+"> "+String((char *)(status_report+12)) );
 	}
 #	endif //_MONITOR
 

@@ -16,6 +16,15 @@ Maintained by Maarten Westenberg (mw12554@hotmail.com)
 
 # Release Notes
 
+Features release 6.2.5 (April 30, 2020)
+- Repaired SF and BW for upstream
+- Rewrote Monitoring to output only the most significant messages for debug==1
+- Make definitions of LASTSEEN and PACKAGE STATISTICS dynamic. Allowing GUI resizing. 
+Look in expert mode to change these settings
+- Rewrote the addLog() function
+- Repaired typos
+- Removed unncessary serial and MONITOR prints
+
 Features release 6.2.4 (April 25, 2020)
 - Changes the date layout used in the output to be more standard: 3 characters weekday, months and day 2 chars
 - Changed the configGway.h file a lot ro define default values for parameters while at the 

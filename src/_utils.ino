@@ -130,7 +130,7 @@ void printHexDigit(uint8_t digit, String & response)
 
 
 // ----------------------------------------------------------------------------------------
-// Print to the monitor console.
+// Print one line to the monitor console array.
 // This function is used all over the gateway code as a substitute for USB debug code.
 // It allows webserver users to view printed/debugging code.
 // With initMonitor() we init the index iMoni=0;
@@ -142,7 +142,14 @@ void printHexDigit(uint8_t digit, String & response)
 // ----------------------------------------------------------------------------------------
 void mPrint(String txt) 
 {
-#	if _MONITOR>=1
+
+#	if _DUSB>=1
+	if (gwayConfig.dusbStat>=1) {
+		Serial.println(txt);								// Copy to serial when configured
+	}
+#	endif //_DUSB
+
+#if _MONITOR>=1
 	time_t tt = now();
 	
 	monitor[iMoni].txt = "";
@@ -152,18 +159,12 @@ void mPrint(String txt)
 	
 	// Use the circular buffer to increment the index
 
-#	if _DUSB>=1
-	if (gwayConfig.dusbStat>=1) {
-		Serial.println(monitor[iMoni].txt);			// Copy to serial when configured
-	}
-#	endif //_DUSB
-
-	iMoni = (iMoni+1) % _MAXMONITOR	;				// And goto 0 when skipping over _MAXMONITOR
+	iMoni = (iMoni+1) % gwayConfig.maxMoni	;				// And goto 0 when skipping over _MAXMONITOR
 	
-#	endif //_MONITOR
+#endif //_MONITOR
 
 	return;
-}
+} //mPrint
 
 
 // ----------------------------------------------------------------------------
@@ -495,7 +496,7 @@ int SerialName(uint32_t a, String & response)
 			return(i);
 		}
 	}
-#endif // _TRUSTED_NODES
+#endif //_TRUSTED_NODES
 
 	return(-1);									// If no success OR is TRUSTED NODES not defined
 } //SerialName

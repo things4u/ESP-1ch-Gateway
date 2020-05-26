@@ -196,7 +196,7 @@ void setRate(uint8_t sf, uint8_t crc)
 
 	if ((sf<SF7) || (sf>SF12)) {
 #		if _MONITOR>=2
-		if (( debug>=1 ) && ( pdebug & P_RADIO )) {
+		if ((debug>=1) && (pdebug & P_RADIO)) {
 			mPrint("setRate:: SF=" + String(sf));
 		}
 #		endif //_MONITOR
@@ -351,7 +351,7 @@ void hop()
 	// the hop function until printed below
 	//
 #	if _MONITOR>=1
-	if (( debug>=2 ) && ( pdebug & P_RADIO )){
+	if ((debug>=2) && (pdebug & P_RADIO)){
 			String response = "hop:: hopTime:: " + String(micros() - hopTime);
 			mStat(0, response);
 			mPrint(response);
@@ -413,7 +413,7 @@ uint8_t receivePkt(uint8_t *payload)
     if (irqflags & IRQ_LORA_CRCERR_MASK)								// Is CRC error?
     {
 #		if _MONITOR>=1
-        if (( debug>=0) && ( pdebug & P_RADIO )) {
+        if ((debug>=0) && (pdebug & P_RADIO)) {
 			String response=("rxPkt:: Err CRC, t=");
 			stringTime(now(), response);
 			mPrint(response);
@@ -428,7 +428,7 @@ uint8_t receivePkt(uint8_t *payload)
 	else if ((irqflags & IRQ_LORA_HEADER_MASK) == false)				// Header not ok?
     {
 #		if _MONITOR>=1
-			if (( debug>=0) && ( pdebug & P_RADIO )) {
+			if ((debug>=0) && (pdebug & P_RADIO)) {
 				mPrint("rxPkt:: Err HEADER");
 			}
 #		endif //_MONITOR
@@ -448,8 +448,8 @@ uint8_t receivePkt(uint8_t *payload)
 		}
 
 		if (readRegister(REG_FIFO_RX_CURRENT_ADDR) != readRegister(REG_FIFO_RX_BASE_AD)) {
-#if			_MONITOR>=1
-			if (( debug>=1 ) && ( pdebug & P_RADIO )) {
+#		if _MONITOR>=1
+			if ((debug>=1) && (pdebug & P_RADIO)) {
 				mPrint("RX BASE <" + String(readRegister(REG_FIFO_RX_BASE_AD)) + "> != RX CURRENT <" + String(readRegister(REG_FIFO_RX_CURRENT_ADDR)) + ">"	);
 			}
 #			endif //_MONITOR
@@ -467,7 +467,7 @@ uint8_t receivePkt(uint8_t *payload)
 
 		if (receivedCount > PAYLOAD_LENGTH) {
 #			if _MONITOR>=1
-				if (( debug>=0 ) & ( pdebug & P_RADIO )) {
+				if ((debug>=0) & (pdebug & P_RADIO)) {
 					mPrint("rxPkt:: ERROR Payliad receivedCount="+String(receivedCount));
 				}
 #			endif //_MONITOR
@@ -484,7 +484,7 @@ uint8_t receivePkt(uint8_t *payload)
 		// As long as _MONITOR is enabled, and P_RX debug messages are selected,
 		// the received packet is displayed on the output.
 #		if _MONITOR>=1
-		if ((debug>=1) && (pdebug & P_RX)){
+		if ((debug>=1) && (pdebug & P_RX)) {
 		
 			String response = "UP receivePkt:: rxPkt: t=";
 			stringTime(now(), response);
@@ -517,7 +517,7 @@ uint8_t receivePkt(uint8_t *payload)
 					mPrint(", Ind="+String(index));
 				}
 				else if (debug>=1) {	
-					mPrint(", ERRRO No Index");
+					mPrint(", ERROR No Index");
 					return(receivedCount);
 				}	
 
@@ -557,11 +557,11 @@ uint8_t receivePkt(uint8_t *payload)
 					Serial.print(' ');
 				}
 			}
-#			endif // _TRUSTED_DECODE
+#			endif //_TRUSTED_DECODE
 			
 			mPrint(response);							// Print response for Serial or mPrint
 		}
-#		endif //MONITOR
+#		endif //_MONITOR
 		return(receivedCount);
     }
 
@@ -628,22 +628,30 @@ bool sendPkt(uint8_t *payLoad, uint8_t payLength)
 
 void loraWait(struct LoraDown *LoraDown)
 {
+	if (LoraDown->imme == 1) {
+		if ((debug>=1) && (pdebug & P_TX)) {
+			mPrint("loraWait:: imme is 1");
+		}
+		return;
+	}
+	
 	int32_t delayTmst = (int32_t)(LoraDown->tmst - micros()) + gwayConfig.txDelay;
 												// delayTmst based on txDelay and spreading factor
 	
-	if ((delayTmst > 8000000) || (delayTmst < 0)) {					// Delay is  > 8 secs
+	if ((delayTmst > 8000000) || (delayTmst < 0)) {		// Delay is  > 8 secs
 #		if _MONITOR>=1
+		if (delayTmst > 8000000) {
 			String response= "Dwn loraWait:: ERROR: ";
 			printDwn(LoraDown,response);
 			mPrint(response);
-#		endif // _MONITOR
+		}
+#		endif //_MONITOR
 		gwayConfig.waitErr++;
 		return;
 	}
 
 	// For larger delay times we use delay() since that is for > 15ms
 	// This is the most efficient way.
-	// MMM Check for huge wait times
 	while (delayTmst > 15000) {
 		delay(15);										// ms delay including yield, slightly shorter
 //		delayMicroseconds(15000);						// ms delay including yield, slightly shorter
@@ -754,7 +762,7 @@ void txLoraModem(struct LoraDown *LoraDown)
 	opmode(OPMODE_TX);											// set 0x01 to 0x03 (actual value becomes 0x83)
 
 #	if _MONITOR>=1
-	if (( debug>=1 ) && ( pdebug & P_TX )) {
+	if ((debug>=1) && (pdebug & P_TX)) {
 		String response = "Dwn txLoraModem:: end: ";
 		printDwn(LoraDown, response);
 		mPrint(response);
@@ -1045,7 +1053,7 @@ void startReceiver()
 	initLoraModem();								// XXX 180326, after adapting this function 
 	if (gwayConfig.cad) {
 #		if _DUSB>=1
-		if (( debug>=1 ) && ( pdebug & P_SCAN )) {
+		if ((debug>=1) && (pdebug & P_SCAN)) {
 			Serial.println(F("S PULL:: _state set to S_SCAN"));
 			if (debug>=2) Serial.flush();
 		}

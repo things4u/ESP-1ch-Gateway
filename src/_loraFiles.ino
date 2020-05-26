@@ -16,7 +16,7 @@
 // This file contains the LoRa filesystem specific code
 
 
-#if _MONITOR>=1
+
 // ----------------------------------------------------------------------------
 // LoRa Monitor logging code.
 // Define one print function and depending on the logging parameter output
@@ -24,14 +24,15 @@
 // ----------------------------------------------------------------------------
 int initMonitor(struct moniLine *monitor) 
 {
-	for (int i=0; i< _MAXMONITOR; i++) {
+#if _MONITOR>=1
+	for (int i=0; i< gwayConfig.maxMoni; i++) {
 		monitor[i].txt= "-";						// Make all lines empty
 	}
 	iMoni=0;										// Init the index
+#endif //_MONITOR
 	return(1);
 }
 
-#endif //_MONITOR
 
 
 // ============================================================================
@@ -45,7 +46,7 @@ int initMonitor(struct moniLine *monitor)
 void id_print (String id, String val) 
 {
 #if _MONITOR>=1
-	if (( debug>=0 ) && ( pdebug & P_MAIN )) {
+	if ((debug>=0) && (pdebug & P_MAIN)) {
 		Serial.print(id);
 		Serial.print(F("=\t"));
 		Serial.println(val);
@@ -78,6 +79,34 @@ void initConfig(struct espGwayConfig *c)
 	(*c).trusted = 1;
 	(*c).txDelay = 0;					// First Value without saving is 0;
 	(*c).dusbStat = true;
+	
+	(*c).maxSeen = _MAXSEEN;
+	(*c).maxStat = _MAXSTAT;
+	(*c).maxMoni = _MAXMONITOR;
+	
+	// We clean all the file statistics. Maybe we can leave them in, but after a fornat
+	// all data has disappeared.
+	(*c).logFileRec = 0;				// In new logFile start with record 0
+	(*c).logFileNo = 0;					// Increase file ID
+
+	// Declarations that are dependent on the init settings
+	// The structure definitions below make it possible to dynamically size and resize the
+	// information in the GUI
+	free(statr); delay(10);
+	statr = (struct stat_t *) malloc((*c).maxStat * sizeof(struct stat_t));
+	for (int i=0; i<(*c).maxStat; i++) {
+		//statr[i].data=0;
+		statr[i].time=0;						// Time since 1970 in seconds		
+		statr[i].node=0;						// 4-byte DEVaddr (the only one known to gateway)
+		statr[i].ch=0;							// Channel index to freqs array
+		statr[i].sf=0;							// Init Spreading Factor
+	}
+
+	free(listSeen); delay(10);
+	listSeen = (struct nodeSeen *) malloc((*c).maxSeen * sizeof(struct nodeSeen));
+	for (int i=0; i<(*c).maxSeen; i+=1) {
+		listSeen[i].idSeen=0;
+	}
 
 } // initConfig()
 
@@ -107,7 +136,7 @@ int readGwayCfg(const char *fn, struct espGwayConfig *c)
 		}
 #	endif
 
-	writeGwayCfg(CONFIGFILE, &gwayConfig );				// And writeback the configuration, not to miss a boot
+	writeGwayCfg(_CONFIGFILE, &gwayConfig );				// And writeback the configuration, not to miss a boot
 
 	return 1;
 	
@@ -141,7 +170,7 @@ int readConfig(const char *fn, struct espGwayConfig *c)
 	while (f.available()) {
 		
 #		if _MONITOR>=1
-		if (( debug>=0 ) && ( pdebug & P_MAIN )) {
+		if ((debug>=0) && (pdebug & P_MAIN)) {
 			Serial.print('.');
 		}
 #		endif //_MONITOR
@@ -254,10 +283,6 @@ int readConfig(const char *fn, struct espGwayConfig *c)
 			id_print(id, val);
 			(*c).logFileRec = (uint16_t) val.toInt();
 		}
-		else if (id == "FILENUM") {								// FILEREC setting
-			id_print(id, val);
-			(*c).logFileNum = (uint16_t) val.toInt();
-		}
 		else if (id == "EXPERT") {								// EXPERT button setting
 			id_print(id, val);
 			(*c).expert = (bool) val.toInt();
@@ -357,7 +382,6 @@ int writeConfig(const char *fn, struct espGwayConfig *c)
 	f.print("NTPS");	f.print('='); f.print((*c).ntps);		f.print('\n');
 	f.print("FILEREC");	f.print('='); f.print((*c).logFileRec); f.print('\n');
 	f.print("FILENO");	f.print('='); f.print((*c).logFileNo);	f.print('\n');
-	f.print("FILENUM");	f.print('='); f.print((*c).logFileNum); f.print('\n');
 	f.print("FORMAT");	f.print('='); f.print((*c).formatCntr); f.print('\n');
 	f.print("DELAY");	f.print('='); f.print((*c).txDelay); 	f.print('\n');
 	f.print("TRUSTED");	f.print('='); f.print((*c).trusted); 	f.print('\n');
@@ -387,86 +411,85 @@ int writeConfig(const char *fn, struct espGwayConfig *c)
 // ----------------------------------------------------------------------------
 int addLog(const unsigned char * line, int cnt) 
 {
-#	if _STAT_LOG==1
 
+#if _STAT_LOG==1
+	File f;
 	char fn[16];
+
+	// If the records does not fit in the file anymore, open a new file
 	
-	if (gwayConfig.logFileRec > LOGFILEREC) {		// Have to make define for this
+	if (gwayConfig.logFileRec > LOGFILEREC) {		// If number of records is ;arger than filesize
+	
 		gwayConfig.logFileRec = 0;					// In new logFile start with record 0
 		gwayConfig.logFileNo++;						// Increase file ID
-		gwayConfig.logFileNum++;					// Increase number of log files
-	}
-	gwayConfig.logFileRec++;
-	
-	// If we have too many logfies, delete the oldest
-	//
-	if (gwayConfig.logFileNum > LOGFILEMAX){
-		sprintf(fn,"/log-%d", gwayConfig.logFileNo - LOGFILEMAX);
-#		if _MONITOR>=1
-		if (( debug>=2 ) && ( pdebug & P_GUI )) {
-			mPrint("addLog:: Too many logfiles, deleting="+String(fn));
+		
+		f.close();									// Close the old file
+		
+		sprintf(fn,"/log-%d", gwayConfig.logFileNo);// Make the new name
+
+		if (gwayConfig.logFileNo > LOGFILEMAX) {	// If we have too many logfies, delete the oldest
+			sprintf(fn,"/log-%d", gwayConfig.logFileNo-LOGFILEMAX );
+#			if _MONITOR>=1
+			if ((debug>=1) && (pdebug & P_RX)) {
+				mPrint("addLog:: Too many logfiles, deleting="+String(fn));
+			}
+#			endif //_MONITOR
+			SPIFFS.remove(fn);
 		}
-#		endif //_MONITOR
-		SPIFFS.remove(fn);
-		gwayConfig.logFileNum--;
 	}
-	
-	// Make sure we have the right fileno
-	sprintf(fn,"/log-%d", gwayConfig.logFileNo); 
+
+	sprintf(fn,"/log-%d", gwayConfig.logFileNo);	// Make sure we have the right fileno
 	
 	// If there is no SPIFFS, Error
 	// Make sure to write the config record/line also
 	if (!SPIFFS.exists(fn)) {
 #		if _MONITOR>=1
-		if (( debug >= 2 ) && ( pdebug & P_GUI )) {
-			mPrint("addLog:: WARNING file="+String(fn)+" does not exist .. rec="+String(gwayConfig.logFileRec) );
+		if ((debug >= 1) && (pdebug & P_RX)) {
+			mPrint("addLog:: WARNING file="+String(fn)+" does not exist. record="+String(gwayConfig.logFileRec) );
 		}
 #		endif //_MONITOR
 	}
 	
-	File f = SPIFFS.open(fn, "a");
+	f = SPIFFS.open(fn, "a");
 	if (!f) {
 #		if _MONITOR>=1
-		if (( debug>=1 ) && ( pdebug & P_GUI )) {
+		if ((debug>=1) && (pdebug & P_RX)) {
 			mPrint("addLOG:: ERROR file open failed="+String(fn));
 		}
 #		endif //_MONITOR
 		return(0);								// If file open failed, return
 	}
-	
+#	if _MONITOR>=2
+	else {
+		mPrint("addLog:: Opening adding file="+String(fn));
+	}
+#	endif
+
+
 	int i=0;
 #	if _MONITOR>=1
-	if (( debug>=2 ) && ( pdebug & P_GUI )) {
-		Serial.print(F("addLog:: fileno="));
-		Serial.print(gwayConfig.logFileNo);
-		Serial.print(F(", rec="));
-		Serial.print(gwayConfig.logFileRec);
-
-		Serial.print(F(": "));
-#		if _MONITOR>=2
-		{
-			for (i=0; i< 12; i++) {				// The first 12 bytes contain non printable characters
-				Serial.print(line[i],HEX);
-				Serial.print(' ');
-			}
-		}
-#		else //_MONITOR>=2
-			i+=12;
-#		endif //_DUSB>=2
-		Serial.print((char *) &line[i]);	// The rest if the buffer contains ascii
-		Serial.println();
+	if ((debug>=1) && (pdebug & P_RX)) {
+		char s[256];
+		i+=12;									// First 12 chars are non printable
+		sprintf(s, "addLog:: fileno=%d, rec=%d : %s",gwayConfig.logFileNo,gwayConfig.logFileRec,&line[i]);
+		mPrint(s);
 	}
 #	endif //_MONITOR
 
-	for (i=0; i< 12; i++) {					// The first 12 bytes contain non printable characters
+	for (i=0; i< 12; i++) {						// The first 12 bytes contain non printable characters
 	//	f.print(line[i],HEX);
 		f.print('*');
 	}
-	f.write(&(line[i]), cnt-12);			// write/append the line to the file
+	f.print(now());
+	f.print(':');
+	f.write(&(line[i]), cnt-12);				// write/append the line to the file
 	f.print('\n');
-	f.close();								// Close the file after appending to it
+	
+	f.close();									// Close the file after appending to it
 
-#	endif //_STAT_LOG
+#endif //_STAT_LOG
+
+	gwayConfig.logFileRec++;
 
 	return(1);
 } //addLog()
@@ -480,7 +503,7 @@ int addLog(const unsigned char * line, int cnt)
 
 // ----------------------------------------------------------------------------
 // initSeen
-// Init the lisrScreen array
+// Init the listScreen array
 // Return:
 //	1: Success
 // Parameters:
@@ -488,8 +511,8 @@ int addLog(const unsigned char * line, int cnt)
 // ----------------------------------------------------------------------------
 int initSeen(struct nodeSeen *listSeen) 
 {
-#if _MAXSEEN >= 1
-	for (int i=0; i< _MAXSEEN; i++) {
+#if _MAXSEEN>=1
+	for (int i=0; i< gwayConfig.maxSeen; i++) {
 		listSeen[i].idSeen=0;
 		listSeen[i].sfSeen=0;
 		listSeen[i].cntSeen=0;
@@ -497,7 +520,7 @@ int initSeen(struct nodeSeen *listSeen)
 		listSeen[i].timSeen=(time_t) 0;					// 1 jan 1970 0:00:00 hrs
 	}
 	iSeen= 0;											// Init index to 0
-#endif // _MAXSEEN
+#endif //_MAXSEEN
 	return(1);
 
 } // initSeen()
@@ -515,7 +538,7 @@ int initSeen(struct nodeSeen *listSeen)
 // ----------------------------------------------------------------------------
 int readSeen(const char *fn, struct nodeSeen *listSeen)
 {
-#if _MAXSEEN >= 1
+#if _MAXSEEN>=1
 	int i;
 	iSeen= 0;												// Init the index at 0
 	
@@ -537,7 +560,7 @@ int readSeen(const char *fn, struct nodeSeen *listSeen)
 
 	delay(1000);
 	
-	for (i=0; i<_MAXSEEN; i++) {
+	for (i=0; i<gwayConfig.maxSeen; i++) {
 		delay(200);
 		String val="";
 		
@@ -562,7 +585,7 @@ int readSeen(const char *fn, struct nodeSeen *listSeen)
 	}
 	f.close();
 
-#endif // _MAXSEEN
+#endif //_MAXSEEN
 
 	// So we read iSeen records
 	return 1;
@@ -581,7 +604,7 @@ int readSeen(const char *fn, struct nodeSeen *listSeen)
 // ----------------------------------------------------------------------------
 int writeSeen(const char *fn, struct nodeSeen *listSeen)
 {
-#if _MAXSEEN >= 1
+#if _MAXSEEN>=1
 	int i;
 	if (!SPIFFS.exists(fn)) {
 #		if _MONITOR>=1
@@ -608,9 +631,10 @@ int writeSeen(const char *fn, struct nodeSeen *listSeen)
 	}
 	
 	f.close();
-#endif // _MAXSEEN
+#endif //_MAXSEEN
 	return(1);
-}
+	
+} //writeseen()
 
 
 
@@ -629,7 +653,7 @@ int writeSeen(const char *fn, struct nodeSeen *listSeen)
 // ----------------------------------------------------------------------------
 int addSeen(struct nodeSeen *listSeen, struct stat_t stat) 
 {
-#if _MAXSEEN >= 1
+#if _MAXSEEN>=1
 	int i;
 	for (i=0; i<iSeen; i++) {						// For all known records
 
@@ -654,8 +678,8 @@ int addSeen(struct nodeSeen *listSeen, struct stat_t stat)
 		}
 	}
 	
-	// else: We did not find the current record so make a new Seen entry
-	if ((i>=iSeen) && (i<_MAXSEEN)) {
+	// else: We did not find the current record so make a new listSeen entry
+	if ((i>=iSeen) && (i<gwayConfig.maxSeen)) {
 		listSeen[i].idSeen = stat.node;
 		listSeen[i].chnSeen = stat.ch;
 		listSeen[i].sfSeen = stat.sf;				// The SF argument
@@ -679,11 +703,11 @@ int addSeen(struct nodeSeen *listSeen, struct stat_t stat)
 
 		mPrint(response);
 	}
-#	endif // _MONITOR
+#	endif //_MONITOR
 
 #endif //_MAXSEEN>=1 
 	return 1;
 	
-} // addSeen()
+} //addSeen()
 
 // End of File
