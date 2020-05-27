@@ -122,11 +122,13 @@ int readConfig(const char *fn, struct espGwayConfig *c)
 	
 	int tries = 0;
 
+	// Even if we do not read a value, give a default
+	initConfig(c);											
+
 	if (!SPIFFS.exists(fn)) {	
 #		if _MONITOR>=1
 			mPrint("readConfig ERR:: file="+String(fn)+" does not exist ..");
 #		endif //_MONITOR
-		initConfig(c);					// If we cannot read the config, at least init known values
 		return(-1);
 	}
 
@@ -157,133 +159,108 @@ int readConfig(const char *fn, struct espGwayConfig *c)
 			}
 #			endif //_MONITOR
 			SPIFFS.format();
+			initConfig(c);
 			f = SPIFFS.open(fn, "r");
 			tries = 0;
 			initSeen(listSeen);
 		}
-		initConfig(c);											// Even if we do not read a value, give a default
 		
 		String id =f.readStringUntil('=');						// Read keyword until '=', C++ thing
 		String val=f.readStringUntil('\n');						// Read value until End of Line (EOL)
-
-		if (id == "MONITOR") {									// MONITOR button setting
-			id_print(id, val);
-			(*c).monitor = (bool) val.toInt();
+		bool bOK = true;
+		if (id == "MONITOR") {				
+			(*c).monitor = (bool) val.toInt();					// MONITOR button setting
 		}
 		else if (id == "CH") { 									// Frequency Channel
-			id_print(id,val); 
 			(*c).ch = (uint8_t) val.toInt();
 		}
 		else if (id == "SF") { 									// Spreading Factor
-			id_print(id, val);
 			(*c).sf = (uint8_t) val.toInt();
 		}
 		else if (id == "FCNT") {								// Frame Counter
-			id_print(id, val);
 			(*c).fcnt = (uint16_t) val.toInt();
 		}
 		else if (id == "DEBUG") {								// Debug Level
-			id_print(id, val);
 			(*c).debug = (uint8_t) val.toInt();
 		}
 		else if (id == "PDEBUG") {								// pDebug Pattern
-			id_print(id, val);
 			(*c).pdebug = (uint8_t) val.toInt();
 		}
 		else if (id == "CAD") {									// CAD setting
-			id_print(id, val);
 			(*c).cad = (bool) val.toInt();
 		}
 		else if (id == "HOP") {									// HOP setting
-			id_print(id, val);
 			(*c).hop = (bool) val.toInt();
 		}
 		else if (id == "BOOTS") {								// BOOTS setting
-			id_print(id, val);
 			(*c).boots = (uint16_t) val.toInt();
 		}
 		else if (id == "RESETS") {								// RESET setting
-			id_print(id, val);
 			(*c).resets = (uint16_t) val.toInt();
 		}
 		else if (id == "WIFIS") {								// WIFIS setting
-			id_print(id, val);
 			(*c).wifis = (uint16_t) val.toInt();
 		}
 		else if (id == "VIEWS") {								// VIEWS setting
-			id_print(id, val);
 			(*c).views = (uint16_t) val.toInt();
 		}
 		else if (id == "NODE") {								// NODE setting
-			id_print(id, val);
 			(*c).isNode = (bool) val.toInt();
 		}
 		else if (id == "REFR") {								// REFR setting
-			id_print(id, val);
 			(*c).refresh = (bool) val.toInt();
 		}
 		else if (id == "REENTS") {								// REENTS setting
-			id_print(id, val);
 			(*c).reents = (uint16_t) val.toInt();
 		}
 		else if (id == "NTPERR") {								// NTPERR setting
-			id_print(id, val);
 			(*c).ntpErr = (uint16_t) val.toInt();
 		}
 		else if (id == "WAITERR") {								// WAITERR setting
-			id_print(id, val);
 			(*c).waitErr = (uint16_t) val.toInt();
 		}
 		else if (id == "WAITOK") {								// WAITOK setting
-			id_print(id, val);
 			(*c).waitOk = (uint16_t) val.toInt();
 		}
 		else if (id == "NTPETIM") {								// NTPERR setting
-			id_print(id, val);
 			(*c).ntpErrTime = (uint32_t) val.toInt();
 		}
 		else if (id == "NTPS") {								// NTPS setting
-			id_print(id, val);
 			(*c).ntps = (uint16_t) val.toInt();
 		}
 		else if (id == "FILENO") {								// FILENO setting
-			id_print(id, val);
 			(*c).logFileNo = (uint16_t) val.toInt();
 		}
 		else if (id == "FILEREC") {								// FILEREC setting
-			id_print(id, val);
 			(*c).logFileRec = (uint16_t) val.toInt();
 		}
 		else if (id == "FILENUM") {								// FILEREC setting
-			id_print(id, val);
 			(*c).logFileNum = (uint16_t) val.toInt();
 		}
 		else if (id == "EXPERT") {								// EXPERT button setting
-			id_print(id, val);
 			(*c).expert = (bool) val.toInt();
 		}
 		else if (id == "SEEN") {								// SEEN button setting
-			id_print(id, val);
 			(*c).seen = (bool) val.toInt();
 		}
 		else if (id == "DELAY") {								// DELAY setting
-			id_print(id, val);
 			(*c).txDelay = (int32_t) val.toInt();
 		}
 		else if (id == "TRUSTED") {								// TRUSTED setting
-			id_print(id, val);
 			(*c).trusted= (int8_t) val.toInt();
 		}
 		else if (id == "FORMAT") {								// TRUSTED setting
-			id_print(id, val);
 			(*c).formatCntr= (int8_t) val.toInt();
 		}
 		else {
 #			if _MONITOR>=1
 				mPrint(F("readConfig:: tries++"));
 #			endif //_MONITOR
+			bOK = false;
 			tries++;
 		}
+		if (bOK)
+			id_print(id, val);
 	}
 	f.close();
 
