@@ -59,7 +59,7 @@ void gateway_mgt(uint8_t size, uint8_t *buff) {
 		case MGT_RESET:
 #			if _MONITOR>=1
 				mPrint(F("gateway_mgt:: RESET"));
-#			endif // _MONITOR
+#			endif //_MONITOR
 			// No further parameters, just reset the GWay
 			setup();								// Call the sketch setup function
 			// Send Ack to server
@@ -74,7 +74,7 @@ void gateway_mgt(uint8_t size, uint8_t *buff) {
 		case MGT_SET_FREQ:
 #			if _MONITOR>=1
 				mPrint(F("gateway_mgt:: SET FREQ"));
-#			endif // _MONITOR
+#			endif //_MONITOR
 			// Byte [4] contains index of Frequency
 		break;
 		default:

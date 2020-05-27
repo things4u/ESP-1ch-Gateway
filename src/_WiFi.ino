@@ -64,7 +64,7 @@ int WlanStatus() {
 #			endif //_MONITOR
 			break;
 		
-		// This code is generated as soonas the AP is out of range
+		// This code is generated as soon as the AP is out of range
 		// Whene detected, the program will search for a better AP in range
 		case WL_NO_SSID_AVAIL:
 #			if _MONITOR>=1
@@ -161,7 +161,7 @@ int wifiMgr()
 		switch (i) {
 			case 1: mPrint("WlanConnect:: WlanStatus Connected"); break;
 			case 0: mPrint("WlanConnect:: WlanStatus Disconnected"); break;
-			default: mPrint("WlatConnect:: WlanStatus other");
+			default: mPrint("WlanConnect:: WlanStatus other");
 		}
 	}
 #	endif //_MONITOR 
@@ -275,7 +275,7 @@ int WlanConnect(int maxTry) {
 			// -1	= No SSID or other cause			
 			int stat = WlanStatus();
 			if ( stat == 1) {
-				writeGwayCfg(CONFIGFILE, &gwayConfig );					// Write configuration to SPIFFS
+				writeGwayCfg(_CONFIGFILE, &gwayConfig );					// Write configuration to SPIFFS
 				return(1);
 			}
 		

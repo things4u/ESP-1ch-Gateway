@@ -1,7 +1,8 @@
 // 1-channel LoRa Gateway for ESP32 and ESP8266
 // Copyright (c) Maarten Westenberg 2016-2020 
 
-#define VERSION "V.6.2.4.EU868; PlatformIO 200428n"
+#define VERSION "V.6.2.5.EU868; PlatformIO 200524i"
+
 //
 // Based on work done by Thomas Telkamp for Raspberry PI 1ch gateway and many others.
 //
@@ -61,7 +62,7 @@
 // the special screen at the GUI.
 // If _DUSB is also set to 1 then most messages will also be copied to USB devices.
 #if !defined _MONITOR
-#define _MONITOR 1
+#	define _MONITOR 1
 #endif
 
 
@@ -70,8 +71,9 @@
 // 1= Keep track of messages statistics, number determined by _MAXSTAT
 // 2= Option 1 + Keep track of messages received PER each SF (default)
 // 3= See Option 2, but with extra channel info (Not used when Hopping is not selected)
-#define _STATISTICS 3
-
+#if !defined _STATISTICS
+#	define _STATISTICS 3
+#endif
 
 // Define the frequency band the gateway will listen on. Valid options are
 // EU863_870	Europe 
@@ -128,13 +130,14 @@
 // Note: DIO3 must be connected for this to work (Heltec and later Wemos gateways). 
 #define _CRCCHECK 1
 
+
 // Definitions for the admin webserver.
 // _SERVER determines whether or not the admin webpage is included in the sketch.
 // Normally, leave it in!
 #define _SERVER 1				// Define local WebServer only if this define is set
 #define _REFRESH 1				// Allow the webserver refresh or not?
 #define _SERVERPORT 80			// Local webserver port (normally 80)
-#define _MAXBUFSIZE 192		// Must be larger than 128, but small enough to work
+#define _MAXBUFSIZE 192			// Must be larger than 128, but small enough to work
 
 
 // Definitions for over the air updates. At the moment we support OTA with IDE
@@ -142,7 +145,9 @@
 // Bonjour is included in iTunes (which is free) and OTA is recommended to install 
 // the firmware on your router witout having to be really close to the gateway and 
 // connect with USB.
-#define _OTA 1
+#if !defined _OTA
+#	define _OTA 1
+#endif
 
 
 // We support a few pin-out configurations out-of-the-box: HALLARD, COMPRESULT and 
@@ -172,7 +177,8 @@
 // NOTE: In all other cases, value 0 works for most gateways with CAD enabled
 #if !defined _STRICT_1CH
 #	define _STRICT_1CH 1
-#endif //_STRICT_1CH
+#endif
+
 
 //
 // Also, normally the server will respond with SF12 in the RX2 timeslot.
@@ -189,12 +195,9 @@
 // This section defines whether we use the gateway as a repeater
 // For his, we use another output channel as the channel (default==0) we are 
 // receiving the messages on.
-#define _REPEATER 0
-
-
-// Will we use Mutex or not?
-// +SPI is input for SPI, SPO is output for SPI
-#define _MUTEX 0
+#if !defined _REPEATER
+#	define _REPEATER 0
+#endif
 
 
 // Define if Oled Display is connected to I2C bus. Note that defining an Oled display does not
@@ -220,42 +223,32 @@
 #define _GATEWAYMGT 0
 
 
-// Do extensive logging to file
+// Do extensive logging to file(s)
 // Use the ESP8266 SPIFS filesystem to do extensive logging.
 // We must take care that the filesystem never(!) is full, and for that purpose we
 // rather have new records/line of statistics than very old.
 // Of course we must store enough records to make the filesystem work
+// NOTE:
+// Please do NOT USE file logging if you are concerned about downstream timing.
+//	The status logging taken about 6 ms (6000 uSec) for each write whereas
+//	normally this is less than 100 uSecs.
 #if !defined _STAT_LOG
 #	define _STAT_LOG 0
-#endif //_STAT_LOG
+#endif
 
 
 // Set the Server Settings (IMPORTANT)
 #define _LOCUDPPORT 1700					// UDP port of gateway! Often 1700 or 1701 is used for upstream comms
 
-// Timing
-#define _PULL_INTERVAL 20					// PULL_DATA messages to server to get downstream in seconds
-#define _STAT_INTERVAL 120					// Send a 'stat' message to server
-#define _NTP_INTERVAL 3600					// How often do we want time NTP synchronization
-#define _WWW_INTERVAL 60					// Number of seconds before we refresh the WWW page
-#define _FILE_INTERVAL 30					// Number of timer (in secs) before writing to files
-#define _MSG_INTERVAL 31					// Message timeout timer in seconds
-#define _RST_INTERVAL 90					// Reset interval in seconds, total chip reset
+
 
 // This defines whether or not we would use the gateway as 
-// as sort of backend decoding system for local sensors which decodes
+// as sort of backend decoding system for local sensors which decodes (such as TTGO T-Beam)
 // 1: _LOCALSERVER is used
 // 0: Do not use _LOCALSERVER 
-#define _LOCALSERVER 1						// See server definitions for decodes
-
-
-// Gateway Ident definitions. Where is the gateway located?
-#define _DESCRIPTION "ESP Gateway"			// Name of the gateway
-#define _EMAIL "mw12554@hotmail.com"		// Owner
-#define _PLATFORM "ESP8266"
-#define _LAT 52.237367
-#define _LON 5.978654
-#define _ALT 14								// Altitude
+#if !defined _LOCALSERVER
+#	define _LOCALSERVER 0					// See server definitions for decodes
+#endif
 
 
 // ntp
@@ -276,11 +269,11 @@
 // NOTE: The node is switched off by default. Switch it on in the GUI
 #if !defined _GATEWAYNODE
 #	define _GATEWAYNODE 0
-#endif //_GATEWAYNODE
+#endif
 
 
 // We can put the gateway in such a mode that it will (only) recognize
-// nodes that are put in a list of trusted nodes 
+// nodes that are put in a list of trusted nodes.
 // Values:
 // 0: Do not use names for trusted Nodes
 // 1: Use the nodes as a translation table for hex codes to names (in TLN)
@@ -290,20 +283,24 @@
 #define _TRUSTED_DECODE 1
 
 
-
 // ========================================================================
 // DO NOT CHANGE BELOW THIS LINE
 // Probably do not change items below this line, only if lists or 
 // configurations on configNode.h are not large enough for example.
 // ========================================================================
 
+
+// Name of he configfile in SPIFFs	filesystem
+// In this file we store the configuration and other relevant info that should
+// survive a reboot of the gateway		
+#define _CONFIGFILE "/gwayConfig.txt"
+
+
 // Maximum number of Message History statistics records gathered. 20 is a good maximum 
 // (memory intensive). For ESP32 maybe 30 could be used as well
-#define _MAXSTAT 20
-
-
-// Define the maximum amount of itemas we monitor on the screen
-#define _MAXMONITOR 20
+#if !defined _MAXSTAT
+#	define _MAXSTAT 20
+#endif
 
 
 // We will log a list of LoRa nodes that was forwarded using this gateway.
@@ -316,13 +313,23 @@
 #if !defined _MAXSEEN
 #	define _MAXSEEN 20
 #endif
-#define _SEENFILE "/gwayNum.txt"
+#define _SEENFILE "/gwaySeen.txt"
 
 
-// Name of he configfile in SPIFFs	filesystem
-// In this file we store the configuration and other relevant info that should
-// survive a reboot of the gateway		
-#define CONFIGFILE "/gwayConfig.txt"
+// Define the maximum amount of items we monitor on the screen
+#if !defined _MAXMONITOR
+#	define _MAXMONITOR 20
+#endif
+
+
+// Timing
+#define _PULL_INTERVAL 20					// PULL_DATA messages to server to get downstream in seconds
+#define _STAT_INTERVAL 120					// Send a 'stat' message to server
+#define _NTP_INTERVAL 3600					// How often do we want time NTP synchronization
+#define _WWW_INTERVAL 60					// Number of seconds before we refresh the WWW page
+#define _FILE_INTERVAL 30					// Number of timer (in secs) before writing to files
+#define _MSG_INTERVAL 31					// Message timeout timer in seconds
+#define _RST_INTERVAL 90					// Reset interval in seconds, total chip reset
 
 
 // Define the correct radio type that you are using
@@ -332,6 +339,11 @@
 
 // Serial Port speed
 #define _BAUDRATE 115200						// Works for debug messages to serial momitor
+
+
+// Will we use Mutex or not?
+// +SPI is input for SPI, SPO is output for SPI
+#define _MUTEX 0
 
 
 // MQTT definitions, these settings should be standard for TTN

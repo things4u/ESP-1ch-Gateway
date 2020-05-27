@@ -154,11 +154,11 @@ int LoRaSensors(uint8_t *buf) {
 			}
 			// Raw coding of LoRa messages to server so add the GPS data raw to the string
 #			if _MONITOR>=1
-			if ((debug>=1) && ( pdebug & P_MAIN )){
+			if ((debug>=1) && (pdebug & P_MAIN)){
 				mPrint("Gps raw:: lat="+String(gps.location.lat())+", lng="+String(gps.location.lng())+", alt="+String(gps.altitude.feet()/3.2808)+", sats="+String(gps.satellites.value()) );
 				//mPrint("Gps raw:: sizeof double="+String(sizeof(double)) );
 			}
-#			endif // _MONITOR
+#			endif //_MONITOR
 			// Length of lat and lng is double
 			double lat = gps.location.lat();
 			double lng = gps.location.lng();
@@ -181,7 +181,7 @@ int LoRaSensors(uint8_t *buf) {
 			memcpy((buf+tchars), &volts, sizeof(float)); tchars += sizeof(float);
 			
 #			if _MONITOR>=1
-			if ((debug>=1) && ( pdebug & P_MAIN )){
+			if ((debug>=1) && (pdebug & P_MAIN)){
 				mPrint("Battery raw="+String(volts));
 			}
 #			endif //_MONITOR
@@ -196,7 +196,7 @@ int LoRaSensors(uint8_t *buf) {
 
 // GENERAL part
 #	if _DUSB>=1 && _GPS==1
-	if (( debug>=2 ) && ( pdebug & P_MAIN )) {
+	if ((debug>=2) && (pdebug & P_MAIN)) {
 		Serial.print("GPS sensor");
 		Serial.print("\tLatitude  : ");
 		Serial.println(gps.location.lat(), 5);
@@ -552,7 +552,7 @@ int sensorPacket() {
 	uint8_t PayLength = LoRaSensors((uint8_t *)(LUP.payLoad + LUP.payLength));
 
 #if _DUSB>=1
-	if ((debug>=2) && (pdebug & P_RADIO )) {
+	if ((debug>=2) && (pdebug & P_RADIO)) {
 		String response="";
 		Serial.print(F("old: "));
 		for (int i=0; i<PayLength; i++) {
@@ -567,7 +567,7 @@ int sensorPacket() {
 	uint8_t CodeLength = encodePacket((uint8_t *)(LUP.payLoad + LUP.payLength), PayLength, (uint16_t)frameCount, DevAddr, AppSKey, 0);
 
 #if _DUSB>=1
-	if ((debug>=2) && (pdebug & P_RADIO )) {
+	if ((debug>=2) && (pdebug & P_RADIO)) {
 		Serial.print(F("new: "));
 		for (int i=0; i<CodeLength; i++) {
 			Serial.print(LUP.payLoad[i],HEX);
@@ -588,7 +588,7 @@ int sensorPacket() {
 	LUP.payLength += micPacket((uint8_t *)(LUP.payLoad), LUP.payLength, (uint16_t)frameCount, NwkSKey, 0);
 
 #if _DUSB>=1
-	if ((debug>=2) && (pdebug & P_RADIO )) {
+	if ((debug>=2) && (pdebug & P_RADIO)) {
 		Serial.print(F("mic: "));
 		for (int i=0; i<LUP.payLength; i++) {
 			Serial.print(LUP.payLoad[i],HEX);
@@ -608,7 +608,7 @@ int sensorPacket() {
 	frameCount++;
 	statc.msg_ttl++;					// XXX Should we count sensor messages as well?
 	statc.msg_sens++;
-	switch(gwayConfig.ch) {			// MMM remove when possible
+	switch(gwayConfig.ch) {
 		case 0: statc.msg_sens_0++; break;
 		case 1: statc.msg_sens_1++; break;
 		case 2: statc.msg_sens_2++; break;
@@ -619,7 +619,7 @@ int sensorPacket() {
 	// 10 value when restarting the gateway.
 	// NOTE: This means that preferences are NOT saved unless >=10 messages have been received.
 	//
-	if ((frameCount % 10)==0) writeGwayCfg(CONFIGFILE, &gwayConfig );
+	if ((frameCount % 10)==0) writeGwayCfg(_CONFIGFILE, &gwayConfig );
 	
 	if (buff_index > 512) {
 		if (debug>0) 
@@ -642,7 +642,7 @@ int sensorPacket() {
 #if _DUSB>=1
 	// If all is right, we should after decoding (which is the same as encoding) get
 	// the original message back again.
-	if ((debug>=2) && (pdebug & P_RADIO )) {
+	if ((debug>=2) && (pdebug & P_RADIO)) {
 		CodeLength = encodePacket((uint8_t *)(LUP.payLoad + 9), PayLength, (uint16_t)frameCount-1, DevAddr, AppSKey, 0);
 		Serial.print(F("rev: "));
 		for (int i=0; i<CodeLength; i++) {
@@ -656,7 +656,7 @@ int sensorPacket() {
 		}
 		Serial.println();
 	}
-#endif // _DUSB
+#endif //_DUSB
 
 	if (gwayConfig.cad) {
 		// Set the state to CAD scanning after sending a packet
@@ -704,15 +704,15 @@ int sensorPacket() {
 uint8_t encodePacket(uint8_t *Data, uint8_t DataLength, uint16_t FrameCount, uint8_t *DevAddr, uint8_t *AppSKey, uint8_t Direction)
 {
 
-#if _DUSB>=1
-	if (( debug>=2 ) && ( pdebug & P_GUI )) {
-		Serial.print(F("G encodePacket:: DevAddr="));
-		for (int i=0; i<4; i++ ) { Serial.print(DevAddr[i],HEX); Serial.print(' '); }
-		Serial.print(F("G encodePacket:: AppSKey="));
-		for (int i=0; i<16; i++ ) { Serial.print(AppSKey[i],HEX); Serial.print(' '); }
-		Serial.println();
+#if _MONITOR>=1
+	if ((debug>=2) && (pdebug & P_MAIN)) {
+		String response="encodePacket:: DevAddr=";
+		for (int i=0; i<4; i++ ) { response+=(String(DevAddr[i],HEX)+(' ')); }
+		response+=", encodePacket:: AppSKey=";
+		for (int i=0; i<16; i++ ) { response+=(String(AppSKey[i],HEX)+(' ')); }
+		mPrint(response);
 	}
-#endif // _DUSB
+#endif //_MONITOR
 
 	//unsigned char AppSKey[16] = _APPSKEY ;	// see configGway.h
 	uint8_t i, j;
@@ -762,4 +762,4 @@ uint8_t encodePacket(uint8_t *Data, uint8_t DataLength, uint16_t FrameCount, uin
 	return(DataLength);				// or only 16*(numBlocks-1)+bLen;
 }
 
-#endif // _GATEWAYNODE || _LOCALSERVER
+#endif //_GATEWAYNODE || _LOCALSERVER

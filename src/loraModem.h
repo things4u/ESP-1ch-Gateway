@@ -254,12 +254,11 @@ struct pins {
 #if _GPS==1
 #define GPS_RX 15
 #define GPS_TX 12
-#endif // _GPS
+#endif //_GPS
 
 #elif _PIN_OUT==5
-
 // ----------------------------------------------------------------------------
-// For ESP32/Heltec Wifi LoRA 32(V2) board with 0.9" OLED
+// For ESP32/Heltec Wifi LoRA 32(V2) HTIT-WB32LA board with 0.9" OLED
 //
 // SCK  == GPIO5/ PIN5
 // SS   == GPIO18/PIN18 CS
@@ -279,6 +278,7 @@ struct pins {
 #define RST 14				// Check
 #define SS 18
 
+
 #else
 // ----------------------------------------------------------------------------
 // Use your own pin definitions, and comment #error line below
@@ -291,7 +291,7 @@ struct pins {
 
 // stat_t contains the statistics that are kept for a message. 
 // Each time a message is received or sent the statistics are updated.
-// In case _STATISTICS==1 we define the last _MAXSTAT messages as statistics
+// In case _STATISTICS==1 we define the last gwayConfig.maxStat message as statistics
 struct stat_t {
 	uint32_t time;							// Time since 1970 in seconds		
 	uint32_t node;							// 4-byte DEVaddr (the only one known to gateway)
@@ -352,12 +352,12 @@ struct stat_c statc;
 
 
 // History of received uplink and downlink messages from nodes
-struct stat_t statr[_MAXSTAT];
+struct stat_t * statr;
 
 
 
 
-#else // _STATISTICS==0
+#else //_STATISTICS==0
 struct stat_t	statr[1];					// Always have at least one element to store in
 #endif
 
@@ -372,6 +372,7 @@ struct LoraDown {
 	uint8_t		powe;
 	uint8_t		crc;
 	uint8_t		iiq;
+	uint8_t		imme;
 	uint8_t	* 	payLoad;
 } LoraDown;
 

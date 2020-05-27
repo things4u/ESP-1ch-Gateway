@@ -320,7 +320,7 @@ void stateMachine()
 			if (rssi > (RSSI_LIMIT - (gwayConfig.hop * 7)))		// Is set to 35, or 29 for HOP
 			{
 #				if _MONITOR>=1
-				if (( debug>=2 ) && ( pdebug & P_SCAN )) {
+				if ((debug>=2) && (pdebug & P_SCAN)) {
 					String response = "SCAN:: -> CAD: ";
 					mStat(intr, response);
 					mPrint(response);
@@ -334,7 +334,7 @@ void stateMachine()
 			// and go back to scanning
 			else {
 #				if _MONITOR>=1
-				if (( debug>=2 ) && ( pdebug & P_SCAN )) {
+				if ((debug>=2) && (pdebug & P_SCAN)) {
 					String response = "SCAN:: rssi=";
 					response += String(rssi);
 					response += ": ";
@@ -376,7 +376,7 @@ void stateMachine()
 		//
 		else {
 #			if _MONITOR>=1
-			if (( debug>=0 ) && ( pdebug & P_SCAN )) {
+			if ((debug>=0) && (pdebug & P_SCAN)) {
 				String response = "SCAN unknown:: ";
 				mStat(intr, response);
 				mPrint(response);
@@ -480,7 +480,7 @@ void stateMachine()
 				rssi = readRegister(REG_RSSI);						// Read the RSSI
 
 #				if _MONITOR>=1
-				if (( debug>=3 ) && ( pdebug & P_CAD )) {
+				if ((debug>=3) && (pdebug & P_CAD)) {
 					mPrint("S_CAD:: CDONE, SF=" + String(sf) );
 				}
 #				endif //_MONITOR
@@ -501,7 +501,7 @@ void stateMachine()
 				cadScanner();										// Which will reset SF to lowest SF
 
 #				if _MONITOR>=1		
-				if (( debug>=3 ) && ( pdebug & P_CAD )) {
+				if ((debug>=3) && (pdebug & P_CAD)) {
 					mPrint("CAD->SCAN:: " + String(intr) );
 				}
 #				endif //_MONITOR
@@ -518,7 +518,7 @@ void stateMachine()
 		//
 		else if (intr == 0x00) {
 #			if _MONITOR>=1
-			if (( debug>=3 ) && ( pdebug & P_CAD )) {
+			if ((debug>=3) && (pdebug & P_CAD)) {
 				mPrint ("CAD:: intr is 0x00");
 			}
 #			endif //_MONITOR
@@ -666,7 +666,7 @@ void stateMachine()
 			//
 			if (receivePacket() <= 0) {								// read is not successful
 #				if _MONITOR>=1
-				if (( debug>=0 ) && ( pdebug & P_RX )) {
+				if ((debug>=0) && (pdebug & P_RX)) {
 					mPrint("sMach:: ERROR receivePacket");
 				}
 #				endif //_MONITOR
@@ -711,7 +711,7 @@ void stateMachine()
 			if ((gwayConfig.cad) || (gwayConfig.hop)) {
 				// Set the state to CAD scanning
 #				if _MONITOR>=1
-				if (( debug>=2 ) && ( pdebug & P_RX )) {
+				if ((debug>=2) && (pdebug & P_RX)) {
 					String response = "RXTOUT:: ";
 					mStat(intr, response);
 					mPrint(response);
@@ -764,7 +764,7 @@ void stateMachine()
 		// as HEADER interrupt comes just before RXDONE
 		else {							
 #			if _MONITOR>=1
-			if (( debug>=0 ) && ( pdebug & P_RX )) {
+			if ((debug>=0) && (pdebug & P_RX)) {
 				mPrint("R S_RX:: no RXDONE, RXTOUT, HEADER:: " + String(intr));
 			}
 #			endif //_MONITOR
@@ -789,12 +789,18 @@ void stateMachine()
 		// we have a timeout in the main program (Keep Alive)
 		if (intr == 0x00) {
 #			if _MONITOR>=1
-			if (( debug>=2 ) && ( pdebug & P_TX )) {
+			if ((debug>=2) && (pdebug & P_TX)) {
 				mPrint("TX:: 0x00");
 			}
 #			endif //_MONITOR
 			_event= 1;
 		}
+
+#		if _MONITOR>=1
+		if ((debug>=1) && (pdebug & P_MAIN)) {
+			mPrint("TX stateMachine:: calling loraWait");
+		}
+#		endif
 
 		loraWait(&LoraDown);
 	
@@ -813,7 +819,7 @@ void stateMachine()
 		_event=1;													// Or remove the break below
 
 #		if _MONITOR>=1
-		if (( debug>=1 ) && ( pdebug & P_TX )) {
+		if ((debug>=1) && (pdebug & P_TX)) {
 			String response="TX fini:: ";
 			mStat(intr, response);
 			mPrint(response); 
@@ -835,11 +841,11 @@ void stateMachine()
 		if (intr & IRQ_LORA_TXDONE_MASK) {
 
 #			if _MONITOR>=1
-			if (( debug>=1 ) && ( pdebug & P_TX )) {
-				String response =  "Dwns TXDONE:: OK: rcvd=";
+			if ((debug>=1) && (pdebug & P_TX)) {
+				String response =  "Dwn stateMachine: TXDONE OK: rcvd=";
 				printInt(micros(),response);
 				if (micros() < LoraDown.tmst) {
-					response += ", diff=-" ;
+					response += ", diff=- " ;
 					printInt(LoraDown.tmst - micros(), response );
 				}
 				else {
@@ -865,18 +871,12 @@ void stateMachine()
 			_event=0;
 			writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) 0x00);
 			writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);			// reset interrupt flags
-			
-#			if _MONITOR>=1
-			if (( debug>=2 ) && ( pdebug & P_TX )) {
-				mPrint("TXDONE:: done OK");
-			}
-#			endif //_MONITOR
 		}
 		
 		// If a soft _event==0 interrupt and no transmission finished:
 		else if ( intr != 0 ) {
 #			if _MONITOR>=1
-			if (( debug>=0 ) && ( pdebug & P_TX )) {
+			if ((debug>=0) && (pdebug & P_TX)) {
 				String response =  "TXDONE:: Error unknown intr=";
 				mStat(intr, response);
 				mPrint(response);
@@ -897,7 +897,7 @@ void stateMachine()
 			if ( sendTime > micros() ) sendTime = 0;				// This could be omitted for usigned ints
 			if (( _state == S_TXDONE ) && (( micros() - sendTime) > 7000000 )) {
 #				if _MONITOR>=1
-				if (( debug>=1 ) && ( pdebug & P_TX )) {
+				if ((debug>=1) && (pdebug & P_TX)) {
 					mPrint("TXDONE:: reset TX");
 				}
 #				endif //_MONITOR
@@ -915,7 +915,7 @@ void stateMachine()
 	  // make sure that we pick up next interrupt
 	  default:
 #		if _MONITOR>=1
-		if (( debug>=0) && ( pdebug & P_PRE )) {
+		if ((debug>=0) && (pdebug & P_PRE)) {
 			mPrint("ERR state=" + String(_state));	
 		}
 #		endif //_MONITOR
