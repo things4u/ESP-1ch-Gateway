@@ -263,7 +263,6 @@ int readConfig(const char *fn, struct espGwayConfig *c)
 		else if (id == "FILEREC") {								// FILEREC setting
 			(*c).logFileRec = (uint16_t) val.toInt();
 		}
-			(*c).logFileNum = (uint16_t) val.toInt();
 		else if (id == "EXPERT") {								// EXPERT button setting
 			(*c).expert = (bool) val.toInt();
 		}
