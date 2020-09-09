@@ -526,7 +526,7 @@ void stateMachine()
 		}
 		
 		// else we do not recognize the interrupt. We print an error
-		// and restart scanning. If hop we start at gwayConfig.ch==1
+		// and restart scanning. If hop we start at gwayConfig.ch==0
 		//
 		else {
 #			if _MONITOR>=1
@@ -567,7 +567,7 @@ void stateMachine()
 			if (intr & IRQ_LORA_CRCERR_MASK) {
 #				if _MONITOR>=1
 				if ((debug>=0) && (pdebug & P_RX)) {
-					String response = "UP CRC ERROR:: ";
+					String response = "^ CRC ERROR:: ";
 					mStat(intr, response);
 				}
 #				endif //_MONITOR
@@ -612,11 +612,10 @@ void stateMachine()
 			// - break
 			// NOTE: receivePacket also increases .ok0 - .ok2 counter
 			
-			if((LoraUp.payLength = receivePkt(LoraUp.payLoad)) <= 0) {
+			if((LoraUp.size = receivePkt(LoraUp.payLoad)) <= 0) {
 #				if _MONITOR>=1
 				if ((debug>=0) && (pdebug & P_RX)) {
-					String response = "sMachine:: ERROR S-RX: payLength=";
-					response += String(LoraUp.payLength);
+					String response = "sMachine:: ERROR S-RX: size=" + String(LoraUp.size);
 					mPrint(response);
 				}
 #				endif //_MONITOR
@@ -797,21 +796,21 @@ void stateMachine()
 		}
 
 #		if _MONITOR>=1
-		if ((debug>=1) && (pdebug & P_MAIN)) {
-			mPrint("TX stateMachine:: calling loraWait");
-		}
+		//if ((debug>=1) && (pdebug & P_MAIN)) {
+		//	mPrint("TX stateMachine:: calling loraWait");
+		//}
 #		endif
 
-		loraWait(&LoraDown);
+		//loraWait(&LoraDown);
 	
 		// Set state to transmit
 		// Clear interrupt flags and masks
-		writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) 0x00);
-		writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);				// reset interrupt flags
+		//writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) 0x00);
+		//writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);				// reset interrupt flags
 		
-	  	// Initiate the transmission of the buffer (in Interrupt space)
+	  	// Initiate the transmission of the buffer (in User space)
 		// We react on ALL interrupts if we are in TX state.
-		txLoraModem(&LoraDown);
+		//txLoraModem(&LoraDown);
 		
 		// After filling the buffer we only react on TXDONE interrupt
 		// So, more or less start at the "case TXDONE:" below 
@@ -842,7 +841,7 @@ void stateMachine()
 
 #			if _MONITOR>=1
 			if ((debug>=1) && (pdebug & P_TX)) {
-				String response =  "Dwn stateMachine: TXDONE OK: rcvd=";
+				String response =  "v OK, stateMachine TXDONE: rcvd=";
 				printInt(micros(),response);
 				if (micros() < LoraDown.tmst) {
 					response += ", diff=- " ;

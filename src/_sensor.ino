@@ -504,12 +504,14 @@ int sensorPacket() {
 	uint8_t buff_up[512];								// Declare buffer here to avoid exceptions
 	uint8_t message[64]={ 0 };							// Payload, init to 0
 	uint8_t mlength = 0;
-	struct LoraUp LUP;
 	uint8_t NwkSKey[16] = _NWKSKEY;
 	uint8_t AppSKey[16] = _APPSKEY;
 	uint8_t DevAddr[4]  = _DEVADDR;
 	
 	// Init the other LoraUp fields
+	
+	struct LoraUp LUP;
+	
 	LUP.sf = 8;											// Send with SF8
 	LUP.prssi = -50;
 	LUP.rssicorr = 139;
@@ -541,7 +543,7 @@ int sensorPacket() {
 	// FPort, either 0 or 1 bytes. Must be != 0 for non MAC messages such as user payload
 	//
 	LUP.payLoad[8] = 0x01;								// FPort must not be 0
-	LUP.payLength  = 9;
+	LUP.size  = 9;
 	
 	// FRMPayload; Payload will be AES128 encoded using AppSKey
 	// See LoRa spec para 4.3.2
@@ -549,7 +551,7 @@ int sensorPacket() {
 	//
 	
 	// Payload bytes in this example are encoded in the LoRaCode(c) format
-	uint8_t PayLength = LoRaSensors((uint8_t *)(LUP.payLoad + LUP.payLength));
+	uint8_t PayLength = LoRaSensors((uint8_t *)(LUP.payLoad + LUP.size));
 
 #if _DUSB>=1
 	if ((debug>=2) && (pdebug & P_RADIO)) {
@@ -564,7 +566,7 @@ int sensorPacket() {
 #endif	//_DUSB
 	
 	// we have to include the AES functions at this stage in order to generate LoRa Payload.
-	uint8_t CodeLength = encodePacket((uint8_t *)(LUP.payLoad + LUP.payLength), PayLength, (uint16_t)frameCount, DevAddr, AppSKey, 0);
+	uint8_t CodeLength = encodePacket((uint8_t *)(LUP.payLoad + LUP.size), PayLength, (uint16_t)frameCount, DevAddr, AppSKey, 0);
 
 #if _DUSB>=1
 	if ((debug>=2) && (pdebug & P_RADIO)) {
@@ -577,7 +579,7 @@ int sensorPacket() {
 	}
 #endif //_DUSB
 
-	LUP.payLength += CodeLength;								// length inclusive sensor data
+	LUP.size += CodeLength;								// length inclusive sensor data
 	
 	// MIC, Message Integrity Code
 	// As MIC is used by TTN (and others) we have to make sure that
@@ -585,12 +587,12 @@ int sensorPacket() {
 	// Note: Until MIC is done correctly, TTN does not receive these messages
 	//		 The last 4 bytes are MIC bytes.
 	//
-	LUP.payLength += micPacket((uint8_t *)(LUP.payLoad), LUP.payLength, (uint16_t)frameCount, NwkSKey, 0);
+	LUP.size += micPacket((uint8_t *)(LUP.payLoad), LUP.size, (uint16_t)frameCount, NwkSKey, 0);
 
 #if _DUSB>=1
 	if ((debug>=2) && (pdebug & P_RADIO)) {
 		Serial.print(F("mic: "));
-		for (int i=0; i<LUP.payLength; i++) {
+		for (int i=0; i<LUP.size; i++) {
 			Serial.print(LUP.payLoad[i],HEX);
 			Serial.print(' ');
 		}

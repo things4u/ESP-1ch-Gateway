@@ -16,6 +16,10 @@ Maintained by Maarten Westenberg (mw12554@hotmail.com)
 
 # Release Notes
 
+Features release 6.2.6 (September 08, 2020)
+- Better timing for downstream
+- Other display of statistics
+
 Features release 6.2.5 (April 30, 2020)
 - Repaired SF and BW for upstream
 - Rewrote Monitoring to output only the most significant messages for debug==1

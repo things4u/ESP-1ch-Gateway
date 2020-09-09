@@ -31,7 +31,7 @@
 // int sendUdp(IPAddress server, int port, uint8_t *msg, uint16_t length)
 // bool connectUdp();
 // void pullData();
-// void sendstat();
+// void sendStat();
 
 // ----------------------------------------------------------------------------
 // connectUdp()
@@ -75,7 +75,7 @@ bool connectUdp()
 // ----------------------------------- DOWN -----------------------------------
 //
 // readUdp()
-// Read DOWN a package from UDP socket, can come from any server
+// Read DOWN a package from UDP socket from server (it can come from any server).
 // Messages are received when server responds to gateway requests from LoRa nodes 
 // (e.g. JOIN requests etc.) or when server has downstream data.
 // We respond only to the server that sents us a message!
@@ -97,21 +97,21 @@ bool connectUdp()
 // ----------------------------------------------------------------------------
 int readUdp(int packetSize)
 { 
-	uint8_t buff[32]; 						// General buffer to use for UDP, set to 32
-	uint8_t buff_down[RX_BUFF_SIZE];		// Buffer for downstream
+	uint8_t buff[64]; 						// General buffer to use for UDP, set to 64 characters
+	uint8_t buff_down[TX_BUFF_SIZE];		// Buffer for downstream
 
 	// Make sure we are connected over WiFI
 	if (WlanConnect(10) < 0) {
 #		if _MONITOR>=1
-			mPrint("Dwn readUdp:: ERROR connecting to WLAN");
+			mPrint("v readUdp:: ERROR connecting to WLAN");
 #		endif //_MONITOR
 		Udp.flush();
 		return(-1);
 	}
 	
-	if (packetSize > RX_BUFF_SIZE) {
+	if (packetSize > TX_BUFF_SIZE) {
 #		if _MONITOR>=1
-			mPrint("Dwn readUdp:: ERROR package of size: " + String(packetSize));
+			mPrint("v readUdp:: ERROR package of size: " + String(packetSize));
 #		endif //_MONITOR
 		Udp.flush();
 		return(-1);
@@ -121,7 +121,7 @@ int readUdp(int packetSize)
 	// In practice however this can be any sender!
 	if (Udp.read(buff_down, packetSize) < packetSize) {
 #		if _MONITOR>=1
-			mPrint("Dwn readUdp:: Reading less chars");
+			mPrint("v readUdp:: Reading less chars");
 #		endif //_MONITOR
 		return(-1);
 	}
@@ -138,7 +138,7 @@ int readUdp(int packetSize)
 		// This is an NTP message arriving
 #		if _MONITOR>=1
 		if (debug>=0) {
-			mPrint("Dwn readUdp:: NTP msg rcvd");
+			mPrint("v readUdp:: NTP msg rcvd");
 		}
 #		endif //_MONITOR
 		gwayConfig.ntpErr++;
@@ -150,14 +150,16 @@ int readUdp(int packetSize)
 	// If it is not NTP it must be a LoRa message for gateway or node
 	
 	else {
+		// First 4 butes are very important, rest is data
+		// Especially the 2 token bytes should be watched.
 		uint8_t *data = (uint8_t *) ((uint8_t *)buff_down + 4);
-		//uint8_t protocol= buff_down[0];
-		//uint16_t token= buff_down[2]*256 + buff_down[1];
+		uint8_t protocol= buff_down[0];
+		uint16_t token= buff_down[2]*256 + buff_down[1];			// LSB first [1], MSB [2] comes after
 		uint8_t ident= buff_down[3];
 
 #		if _MONITOR>=1
 		if ((debug>=3) && (pdebug & P_TX)) {
-			mPrint("Dwn readUdp:: message ident="+String(ident));
+			mPrint("v readUdp:: message ident="+String(ident));
 		}
 #		endif //_MONITOR
 
@@ -166,17 +168,19 @@ int readUdp(int packetSize)
 
 
 		// This message is used by the gateway to send sensor data UP to server. 
-		// As this function is used for downstream only, this option
-		// will never be selected but is included as a reference only
+		// As this function is used for downstream only, this option will never 
+		// be executed by this function but is included as a reference only
 		// Para 5.2.1, Semtech Gateway to Server Interface document
-		//	Byte 0:		Version
-		//	byte 1+2:	Token
-		//	byte 3: 	Command code (0x00)
+		//	Byte 0:		Protocol version (0x01 or 0x02)
+		//	byte 1+2:	Token, random
+		//	byte 3: 	Command code (=0x00)
+		//	Byte 4-11:	Gateway EUI
+		//	Byte 12-n:	JSON data
 		//
-		case PKT_PUSH_DATA: 							// 0x00 UP
+		case PUSH_DATA: 								// 0x00 UP
 #			if _MONITOR>=1
-			if (debug>=1) {
-				mPrint("Dwn PKT_PUSH_DATA:: size "+String(packetSize)+" From "+String(remoteIpNo.toString()));
+			if ((debug>=1) && (pdebug & P_RX)) {
+				mPrint("v PUSH_DATA:: size "+String(packetSize)+" From "+String(remoteIpNo.toString()));
 			}
 #			endif //_MONITOR
 			Udp.flush();
@@ -184,21 +188,23 @@ int readUdp(int packetSize)
 
 
 		// This message is sent DOWN by the server to acknowledge receipt of a
-		// (sensor) PKT_PUSH_DATA message sent with the code above.
+		// (sensor) PUSH_DATA message sent with the code above.
 		// Para 5.2.2, Semtech Gateway to Server Interface document
 		// The length of this package is 4 bytes:
 		//	byte 0:		Protol version (0x01 or 0x02)
 		//	byte 1+2:	Token copied from requestor
-		//	byte 3:		0x01, ack PKT_PUSH_ACK
+		//	byte 3:		ident = 0x01, ack PUSH_ACK
 		//
-		case PKT_PUSH_ACK:								// 0x01 DOWN
+		case PUSH_ACK:								// 0x01 DOWN
 #			if _MONITOR>=1
-			if ((debug>=2) && (pdebug & P_TX)) {
+			if ((debug>=1) && (pdebug & P_TX)) {
 				char res[128];				
-				sprintf(res, "Dwn PKT_PUSH_ACK:: size=%u, IP=%d.%d.%d.%d, port=%d ", 
+				sprintf(res, "v PUSH_ACK:: token=%u, size=%u, IP=%d.%d.%d.%d, port=%d, protocol=%u ", 
+					(buff_down[2]*256+buff_down[1]),
 					packetSize, 
 					remoteIpNo[0], remoteIpNo[1], remoteIpNo[2],remoteIpNo[3], 
-					remotePortNo);
+					remotePortNo,
+					protocol);
 				mPrint(res);
 			}
 #			endif //_MONITOR
@@ -206,51 +212,59 @@ int readUdp(int packetSize)
 		break;
 
 
-		// PULL DATA message
+		// PULL DATA message (Up)
 		// This is a request/UP message and will not be executed by this function.
 		// We have it here as a description only. 
 		//	Para 5.2.3, Semtech Gateway to Server Interface document
 		//
-		case PKT_PULL_DATA:								// 0x02 UP
+		// Byte 0		contains Protocol Version (0x01 or 0x02)
+		// Byte 1-2		Random Token
+		// Byte 3		PULL_DATA ident == 0x02
+		// Byte 4-11	Gateway EUI
+		//
+		case PULL_DATA:								// 0x02 UP
 #			if _MONITOR>=1
 			if ((debug>=1) && (pdebug & P_RX)) {
-				mPrint("Dwn PKT_PULL_DATA");
+				mPrint("v PULL_DATA");
 			}
 #			endif //_MONITOR
 			Udp.flush();								// MMM 200419 Added
 		break;
 
 
-		// PULL_ACK message
-		// This is the response to PKT_PULL_DATA message
+		// PULL_ACK message (Down)
+		// This is the (immediate!) response to PULL_DATA message
 		// Para 5.2.4, Semtech Gateway to Server Interface document
 		// With this ACK, the server confirms the gateway that the route is open
 		// for further PULL_RESP messages from the server (to the device)
 		// The server sends a PULL_ACK to confirm PULL_DATA receipt, no response is needed
 		//
 		// Byte 0		contains Protocol Version == 2
-		// Byte 1-2		Random Token
+		// Byte 1-2		Token as issued from the gatway when requesting
 		// Byte 3		PULL_ACK ident == 0x04
+		// Byte 4-11:	Gateway EUI
 		//
-		case PKT_PULL_ACK:								// 0x04 DOWN
+		case PULL_ACK:									// 0x04 DOWN
 #			if _MONITOR>=1
-			if ((debug>=2) && (pdebug & P_TX)) {
+			if ((debug>=1) && (pdebug & P_TX)) {
 				char res[128];				
-				sprintf(res, "Dwn PKT_PULL_ACK:: size=%u, IP=%d.%d.%d.%d, port=%d ", 
+				sprintf(res, "v PULL_ACK:: token=%u, size=%u, IP=%d.%d.%d.%d, port=%d, protocol=%u ", 
+					(buff_down[2]*256+buff_down[1]),
 					packetSize, 
 					remoteIpNo[0], remoteIpNo[1], remoteIpNo[2],remoteIpNo[3], 
-					remotePortNo);
+					remotePortNo,
+					protocol);
 				mPrint(res);
 			}
 #			endif //_MONITOR
 			
-			yield();			
-			
-			Udp.flush();								// MMM 200419 
+			yield();				
+			Udp.flush();								// MMM 200419
+			// No response is needed
 		break;
 
 
-
+		// PULL_RESP (Down)
 		// This message type is used to confirm OTAA message to the node,
 		// but this message format will also be used for other downstream communication
 		// It's length shall not exceed 1000 Octets. This is:
@@ -258,29 +272,51 @@ int readUdp(int packetSize)
 		//	RECEIVE_DELAY2		2 s (is RECEIVE_DELAY1+1)
 		//	JOIN_ACCEPT_DELAY1	5 s
 		//	JOIN_ACCEPT_DELAY2	6 s
+		//
+		// buff_down[0]:		Version number (==PROTOCOL_VERSION)
+		// buff_down[1-2]:		Token: If Protocol version==0, make 0. If version==2 arbitrary?
+		// buff_down[3]:		PULL_RESP: ident = 0x03
+		// buff_down[4-n]:		payLoad data
+		//
 		// Para 5.2.5, Semtech Gateway to Server Interface document
 		// or https://github.com/Lora-net/packet_forwarder/blob/master/PROTOCOL.TXT
 		//
-		case PKT_PULL_RESP:								// 0x03 DOWN
+		case PULL_RESP:									// 0x03 DOWN
 
+			if (protocol==0x01) {						// If protocol version is 0x01
+				token = 0;								// Use token 0 in that case
+				buff_down[2]=0;
+				buff_down[1]=0;
+			}
+			
 			// Define when we start with the response to node
 #			ifdef _PROFILER
-			if ((debug>=2) && (pdebug & P_TX)) {
-				mPrint("Dwn PKT_PULL_RESP:: start sendPacket: micros="+String(micros() ));
+			if ((debug>=1) && (pdebug & P_TX)) {
+				mPrint("v PULL_RESP:: start sendPacket: micros="+String(micros() ));
+				char res[128];				
+				sprintf(res, "v PULL_RESP:: token=%u, size=%u, IP=%d.%d.%d.%d, port=%d, protocol=%u, micros=%lu", 
+					token,
+					packetSize, 
+					remoteIpNo[0], remoteIpNo[1], remoteIpNo[2],remoteIpNo[3], 
+					remotePortNo,
+					protocol,
+					(unsigned long) micros() 
+				);
+				mPrint(res);
 			}
-#			endif //_PROFILER
+#			endif//_PROFILER
 
 			// Send to the LoRa Node first (timing) and then do reporting to _Monitor
 			_state=S_TX;
 			sendTime = micros();						// record when we started sending the message
-
+// XXX
 			// Send the package DOWN to the sensor
 			// We just read the packet from the Network Server and it is formatted
-			// as described in the specs.
-			if (sendPacket(data, packetSize-4) < 0) {
+			// as described in the specs. This function fills LoraDown struct.
+			if (sendPacket(buff_down, packetSize) < 0) {
 #				if _MONITOR>=1
 				if (debug>=0) {
-					mPrint("Dwn readUdp:: ERROR: PKT_PULL_RESP sendPacket failed");
+					mPrint("v readUdp:: ERROR: PULL_RESP sendPacket failed");
 				}
 #				endif //_MONITOR
 				Udp.flush();
@@ -288,20 +324,22 @@ int readUdp(int packetSize)
 			}
 
 
-			// We need a timeout for this case. In case there does not come an interrupt,
-			// then there will not be a TXDONE but probably another CDDONE/CDDETD before
-			// we have a timeout in the main program (Keep Alive)
+			// We need a timeout for this case. During transmission we should not accept
+			// another package receiving/sending
 
-			loraWait(&LoraDown);
+			if (loraWait(&LoraDown) == 0) {
+				_state=S_CAD;							// Maybe call TXDONE and wait 1 sec
+				_event=1;
+				break;
+			}
 
-			// Set state to transmit
 			// Clear interrupt flags and masks
 			writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) 0x00);			// MMM 200407 Reset
 			writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);				// reset interrupt flags
 			
 			// Initiate the transmission of the buffer
 			// (We normally react on ALL interrupts if we are in TX state)
-			txLoraModem(&LoraDown);
+			txLoraModem(&LoraDown);										// Calling sendPkt() in turn
 
 #			if _MONITOR>=1
 			if ((debug>=2) && (pdebug & P_TX)) {
@@ -310,7 +348,7 @@ int readUdp(int packetSize)
 				uint8_t intr  = flags & ( ~ mask );
 
 
-				String response = "Dwn readUdp:: PKT_PULL_RESP from IP="+String(remoteIpNo.toString())
+				String response = "v readUdp:: PULL_RESP from IP="+String(remoteIpNo.toString())
 					+", micros=" + String(micros())
 					+", wait=";
 				if (sendTime < micros()) {
@@ -337,75 +375,69 @@ int readUdp(int packetSize)
 
 			// No break!! so next secton will be executed
 
-#		ifdef _PROFILER
-		// measure the total time for transmissioon here
+#			ifdef _PROFILER
+			// measure the total time for transmissioon here
 			if ((debug>=2) && (pdebug & P_TX)) {
-				mPrint("Dwn PKT_PULL_RESP:: finit: micros="+String(micros() ));
+				mPrint("v PULL_RESP:: finit: micros="+String(micros() ));
 			}
-#		endif //_PROFILER
+#			endif //_PROFILER
 
-		// This is the response to the PKT_PULL_RESP message by the sensor device
+
+		// TX_ACK (Up)
+		// This is the response to the PULL_RESP message by the sensor device (above)
 		// it is sent by the gateway UP to the server to confirm the PULL_RESP message.
-		//	byte 0:		Protocol version
-		//	byte 1+2:	Port number of originator
-		//	byte 3:		Message ID TX_ACK == 0x06
-		//	byte 4-11:	Gateway ident
-		//	byte 12-:	Optional Error Data
+		//	byte 0:		Protocol version (0x01 or 0x02)
+		//	byte 1+2:	Token number of UP sender
+		//	byte 3:		Message ID TX_ACK == 0x05
+		//	byte 4-n:	Optional Error Data, {"errno":xxxx}
 		//
-		case PKT_TX_ACK:									// Message id: 0x05 UP
+		case TX_ACK:									// Message id: 0x05 UP
 
-			if (buff_down[0]== 1) {
+			if (protocol == 1) {							// Got from the downstream message
 #				if _MONITOR>=1
-				if ((debug>=3) && (pdebug & P_TX)) {
-					mPrint("UP readUdp:: PKT_TX_ACK: protocol version 1");
-					
-					data = buff_down + 4;
-					data[packetSize] = 0;
+				if ((debug>=1) && (pdebug & P_TX)) {
+					mPrint("^ TX_ACK:: readUdp: protocol version 1");
+					//data = buff_down + 4;
+					//data[packetSize-4] = 0;
 				}
 #				endif
 				break;										// return
 			}
 
 #			if _MONITOR>=1
-			if ((debug>=2) && (pdebug & P_TX)) {
-				mPrint("UP readUDP:: TX_ACK protocol version 2+");
+			if ((debug>=1) && (pdebug & P_TX)) {
+				mPrint("^ TX_ACK:: readUDP: protocol version 2+");
 			}
 #			endif //_MONITOR
 
 
-			// Now respond with an PKT_TX_ACK; UP 
+			// UP: Now respond with an TX_ACK
 			// Byte 3 is 0x05; see para 5.2.6 of spec
 			buff[0]= buff_down[0];							// As read from the Network Server
-			buff[1]= buff_down[1];							// Token 1
+			buff[1]= buff_down[1];							// Token 1, copied from downstream
 			buff[2]= buff_down[2];							// Token 2
-			buff[3]= PKT_TX_ACK;							// ident == 0x05;
-			buff[4]= MAC_array[0];
-			buff[5]= MAC_array[1];
-			buff[6]= MAC_array[2];
-			buff[7]= 0xFF;
-			buff[8]= 0xFF;
-			buff[9]= MAC_array[3];
-			buff[10]=MAC_array[4];
-			buff[11]=MAC_array[5];
-			buff[12]=0;										// Not error means "\0"
+			buff[3]= TX_ACK;								// ident == 0x05;
+			buff[4]= 0;										// Not error means "\0"
 			// If it is an error, please look at para 6.1.2
 
 			yield();
 
-			// Only send the PKT_PULL_ACK to the UDP socket that just sent the data!!!
+			// Only send the PULL_ACK to the UDP socket that just sent the data!!!
 			Udp.beginPacket(remoteIpNo, remotePortNo);
+			
+			// XXX We should format the message before sending up with UDP
 			
 			if (Udp.write((unsigned char *)buff, 12) != 12) {
 #				if _MONITOR>=1
 				if (debug>=0) {
-					mPrint("UP readUdp:: ERROR: PKT_PULL_ACK write");
+					mPrint("^ readUdp:: ERROR: PULL_ACK write");
 				}
 #				endif //_MONITOR
 			}
 			else {
 #				if _MONITOR>=1
 				if ((debug>=2) && (pdebug & P_TX)) {
-					mPrint("UP readUdp:: PKT_TX_ACK: micros="+String(micros()));
+					mPrint("^ readUdp:: TX_ACK: micros="+String(micros()));
 				}
 #				endif //_MONITOR
 			}
@@ -413,19 +445,19 @@ int readUdp(int packetSize)
 			if (!Udp.endPacket()) {
 #				if _MONITOR>=1
 				if ((debug>=0) && (pdebug & P_TX)) {
-					mPrint("UP readUdp:: PKT_PULL_DATALL: ERROR Udp.endPacket");
+					mPrint("^ readUdp:: PULL_ACK: ERROR Udp.endPacket");
 				}
 #				endif //_MONITOR
 			}
 			
 			yield();
 
-			// ONLY NOW WE START TO MONITOR THE PKT_PULL_RESP MESSAGE.
+			// ONLY NOW WE START TO MONITOR THE PULL_RESP MESSAGE.
 #			if _MONITOR>=1
 			if ((debug>=1) && (pdebug & P_TX)) {
 				data = buff_down + 4;
-				data[packetSize] = 0;
-				mPrint("Dwn readUdp:: PKT_PULL_RESP: size="+String(packetSize)+", data="+String((char *)data)); 
+				data[packetSize-4] = 0;
+				mPrint("v readUdp:: PULL_RESP: size="+String(packetSize)+", data="+String((char *)data)); 
 			}
 #			endif //_MONITOR
 
@@ -435,8 +467,6 @@ int readUdp(int packetSize)
 #			if _GATEWAYMGT==1
 				// For simplicity, we send the first 4 bytes too
 				gateway_mgt(packetSize, buff_down);
-			else
-
 #			endif
 #			if _MONITOR>=1
 				mPrint(", ERROR ident not recognized="+String(ident));
@@ -446,10 +476,10 @@ int readUdp(int packetSize)
 		
 #		if _MONITOR>=1
 		if ((debug>=3) && (pdebug & P_TX)) {
-			String response= "Dwn readUdp:: ident="+String(ident,HEX);
+			String response= "v readUdp:: ident="+String(ident,HEX);
 			response+= ", tmst=" + String(LoraDown.tmst);
 			response+= ", imme=" + String(LoraDown.imme);
-			response+= ", sfTx=" + String(LoraDown.sfTx);
+			response+= ", sf=" + String(LoraDown.sf);
 			response+= ", freq=" + String(LoraDown.freq);
 			if (debug>=3) {
 				if (packetSize > 4) {
@@ -465,12 +495,12 @@ int readUdp(int packetSize)
 		// For downstream messages
 		return packetSize;
 	}
-}//readUdp
+} //readUdp()
 
 
 // ----------------------------------- UP -------------------------------------
-//
 // sendUdp()
+//
 // Send UP an UDP/DGRAM message to the MQTT server
 // If we send to more than one host (not sure why) then we need to set sockaddr 
 // before sending.
@@ -543,27 +573,30 @@ int sendUdp(IPAddress server, int port, uint8_t *msg, uint16_t length)
 
 // --------------------------------- UP ---------------------------------------
 // pullData()
+// Sending a PULL_DATA request to the server
 // Send UDP periodic Pull_DATA message UP to server to keepalive the connection
 // and to invite the server to send downstream messages when these are available
-// *2, par. 5.2
-//	- Protocol Version (1 byte)
-//	- Random Token (2 bytes)
-//	- PULL_DATA identifier (1 byte) = 0x02
-//	- Gateway unique identifier (8 bytes) = MAC address
+// *2, par. 5.2.3
+//
+//	Byte 0:		Protocol Version (1 byte)
+//	Byte 1-2:	Random Token (2 bytes)
+//	Byte 3:		PULL_DATA identifier (1 byte) = 0x02
+//	Byte 4-11:	8 bytes Gateway unique identifier (8 bytes) = MAC address
 // ----------------------------------------------------------------------------
 void pullData()
 {
-    uint8_t pullDataReq[12]; 								// status report as a JSON object
-    int pullIndex=0;
+    uint8_t pullDataReq[13]; 								// status report as a JSON object
+    int pullIndex	=0;
 	
 	uint8_t token_h = (uint8_t)rand(); 						// random token
     uint8_t token_l = (uint8_t)rand();						// random token
 	
     // pre-fill the data buffer with fixed fields
     pullDataReq[0]  = PROTOCOL_VERSION;						// 0x01
-    pullDataReq[1]  = token_h;
-    pullDataReq[2]  = token_l;
-    pullDataReq[3]  = PKT_PULL_DATA;						// 0x02
+    pullDataReq[1]  = token_l;								// random
+    pullDataReq[2]  = token_h;								// random
+    pullDataReq[3]  = PULL_DATA;							// 0x02
+	
 	// READ MAC ADDRESS OF ESP8266, and return unique Gateway ID consisting of MAC address and 2bytes 0xFF
     pullDataReq[4]  = MAC_array[0];
     pullDataReq[5]  = MAC_array[1];
@@ -573,33 +606,33 @@ void pullData()
     pullDataReq[9]  = MAC_array[3];
     pullDataReq[10] = MAC_array[4];
     pullDataReq[11] = MAC_array[5];
-    //pullDataReq[12] = 0/00; 								// add string terminator, for safety
+	
+    pullDataReq[12] = 0; 									// add string terminator, for safety
 	
     pullIndex = 12;											// 12-byte header
+
+	uint8_t *pullPtr = pullDataReq;
 	
     //send the update
-	
-	uint8_t *pullPtr;
-	pullPtr = pullDataReq,
-#ifdef _TTNSERVER
-    sendUdp(ttnServer, _TTNPORT, pullDataReq, pullIndex);
-	yield();
-#endif
+#	ifdef _TTNSERVER
+		sendUdp(ttnServer, _TTNPORT, pullDataReq, pullIndex);
+		yield();
+#	endif //_TTNSERVER
+
+#	ifdef _THINGSERVER
+		sendUdp(thingServer, _THINGPORT, pullDataReq, pullIndex);
+#	endif
+
 
 #	if _MONITOR>=1
 	if (pullPtr != pullDataReq) {
 		mPrint("pullPtr != pullDatReq");
 	}
-#	endif //_MONITOR
 
-#ifdef _THINGSERVER
-	sendUdp(thingServer, _THINGPORT, pullDataReq, pullIndex);
-#endif
-
-#if _MONITOR>=1
-    if ((debug>=2) && (pdebug & P_MAIN)) {
+    if ((debug>=1) && (pdebug & P_RX)) {
 		yield();
-		mPrint("M PKT_PULL_DATA request, len=" + String(pullIndex) );
+		mPrint("^ PULL_DATA:: token=" +String(token_h*256+token_l) +", len=" + String(pullIndex) );
+		Serial.print("v Gateway EUI=");
 		for (int i=0; i<pullIndex; i++) {
 			Serial.print(pullDataReq[i],HEX);				// debug: display JSON stat
 			Serial.print(':');
@@ -614,13 +647,13 @@ void pullData()
 
 
 // ---------------------------------- UP --------------------------------------
-// sendstat()
+// sendStat()
 // Send UP periodic status message to server even when we do not receive any
 // data. 
 // Parameters:
 //	- <none>
 // ----------------------------------------------------------------------------
-void sendstat()
+void sendStat()
 {
 
     uint8_t status_report[STATUS_SIZE]; 					// status report as a JSON object
@@ -636,7 +669,7 @@ void sendstat()
     status_report[0]  = PROTOCOL_VERSION;					// 0x01
 	status_report[1]  = token_h;
     status_report[2]  = token_l;
-    status_report[3]  = PKT_PUSH_DATA;						// 0x00
+    status_report[3]  = PUSH_DATA;							// 0x00
 	
 	// READ MAC ADDRESS OF ESP8266, and return unique Gateway ID consisting of MAC address and 2bytes 0xFF
     status_report[4]  = MAC_array[0];
@@ -677,7 +710,7 @@ void sendstat()
 
 	if (stat_index > STATUS_SIZE) {
 #		if _MONITOR>=1
-			mPrint("sendstat:: ERROR buffer too big");
+			mPrint("sendStat:: ERROR buffer too big");
 #		endif //_MONITOR
 		return;
 	}
@@ -693,7 +726,7 @@ void sendstat()
 #	endif
 	return;
 
-} // sendstat()
+} // sendStat()
 
 
 #endif //_UDPROUTER

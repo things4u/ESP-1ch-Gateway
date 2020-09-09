@@ -42,7 +42,7 @@
 // int sendTtn(IPAddress server, int port, uint8_t *msg, int length)
 // bool connectTtn()
 // void pullData()
-// void sendstat();
+// void sendStat();
 
 // Add gateway code of functions here
 

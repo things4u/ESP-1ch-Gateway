@@ -67,10 +67,10 @@ void id_print (String id, String val)
 // ----------------------------------------------------------------------------
 void initConfig(struct espGwayConfig *c)
 {
-	(*c).ch = 0;
-	(*c).sf = _SPREADING;
+	(*c).ch = _CHANNEL;					// Default channel to listen to (for region)
+	(*c).sf = _SPREADING;				// Default Spreading Factor when not using CAD
 	(*c).debug = 1;						// debug level is 1
-	(*c).pdebug = P_GUI | P_MAIN;
+	(*c).pdebug = P_GUI | P_MAIN | P_TX;
 	(*c).cad = _CAD;
 	(*c).hop = false;
 	(*c).seen = true;					// Seen interface is ON
@@ -102,7 +102,7 @@ void initConfig(struct espGwayConfig *c)
 		statr[i].sf=0;							// Init Spreading Factor
 	}
 
-	free(listSeen); delay(10);
+	free(listSeen); delay(50);
 	listSeen = (struct nodeSeen *) malloc((*c).maxSeen * sizeof(struct nodeSeen));
 	for (int i=0; i<(*c).maxSeen; i+=1) {
 		listSeen[i].idSeen=0;
@@ -356,7 +356,7 @@ int writeConfig(const char *fn, struct espGwayConfig *c)
 	File f = SPIFFS.open(fn, "w");
 	if (!f) {
 #if _MONITOR>=1	
-		mPrint("writeConfig: ERROR open file="+String(fn));
+		mPrint("writeConfig:: ERROR open file="+String(fn));
 #endif //_MONITOR
 		return(-1);
 	}
@@ -468,7 +468,7 @@ int addLog(const unsigned char * line, int cnt)
 
 	int i=0;
 #	if _MONITOR>=1
-	if ((debug>=1) && (pdebug & P_RX)) {
+	if ((debug>=2) && (pdebug & P_RX)) {
 		char s[256];
 		i+=12;									// First 12 chars are non printable
 		sprintf(s, "addLog:: fileno=%d, rec=%d : %s",gwayConfig.logFileNo,gwayConfig.logFileRec,&line[i]);
@@ -553,7 +553,7 @@ int readSeen(const char *fn, struct nodeSeen *listSeen)
 	File f = SPIFFS.open(fn, "r");
 	if (!f) {
 #		if _MONITOR>=1
-			mPrint("readSeen:: ERROR open file=" + String(fn));
+			mPrint("readSeen:: ERROR open file="+String(fn));
 #		endif //_MONITOR
 		return(-1);
 	}
@@ -575,14 +575,18 @@ int readSeen(const char *fn, struct nodeSeen *listSeen)
 		val=f.readStringUntil('\t'); listSeen[i].cntSeen = (uint32_t) val.toInt();
 		val=f.readStringUntil('\t'); listSeen[i].chnSeen = (uint8_t) val.toInt();
 		val=f.readStringUntil('\n'); listSeen[i].sfSeen = (uint8_t) val.toInt();
-		
+
+		if ((int32_t)listSeen[i].idSeen != 0) {
+			iSeen++;									// Increase index, new record read
+		}
+
 #		if _MONITOR>=1
 		if ((debug>=2) && (pdebug & P_MAIN)) {
-				mPrint("readSeen:: idSeen ="+String(listSeen[i].idSeen,HEX)+", i="+String(i));
+				mPrint(" readSeen:: idSeen ="+String(listSeen[i].idSeen,HEX)+", i="+String(i));
 		}
-#		endif
-		iSeen++;											// Increase index, new record read
+#		endif								
 	}
+
 	f.close();
 
 #endif //_MAXSEEN
@@ -623,11 +627,12 @@ int writeSeen(const char *fn, struct nodeSeen *listSeen)
 	delay(500);
 
 	for (i=0; i<iSeen; i++) {							// For all records indexed
-			f.print((time_t)listSeen[i].timSeen);	f.print('\t');
-			f.print((int32_t)listSeen[i].idSeen);	f.print('\t'); // Typecast to avoid errors in unsigned conversion!
-			f.print((uint32_t)listSeen[i].cntSeen);	f.print('\t');
-			f.print((uint8_t)listSeen[i].chnSeen);	f.print('\t');
-			f.print((uint8_t)listSeen[i].sfSeen);	f.print('\n');			
+		if ((int32_t)listSeen[i].idSeen == 0) break;
+		f.print((time_t)listSeen[i].timSeen);	f.print('\t');
+		f.print((int32_t)listSeen[i].idSeen);	f.print('\t'); // Typecast to avoid errors in unsigned conversion!
+		f.print((uint32_t)listSeen[i].cntSeen);	f.print('\t');
+		f.print((uint8_t)listSeen[i].chnSeen);	f.print('\t');
+		f.print((uint8_t)listSeen[i].sfSeen);	f.print('\n');			
 	}
 	
 	f.close();
@@ -653,8 +658,10 @@ int writeSeen(const char *fn, struct nodeSeen *listSeen)
 // ----------------------------------------------------------------------------
 int addSeen(struct nodeSeen *listSeen, struct stat_t stat) 
 {
+
 #if _MAXSEEN>=1
 	int i;
+	
 	for (i=0; i<iSeen; i++) {						// For all known records
 
 		// If the record node is equal, we found the record already.
@@ -669,7 +676,7 @@ int addSeen(struct nodeSeen *listSeen, struct stat_t stat)
 //			writeSeen(_SEENFILE, listSeen);
 			
 #			if _MONITOR>=2
-			if ((debug>=1) && (pdebug & P_MAIN)) {
+			if ((debug>=3) && (pdebug & P_MAIN)) {
 				mPrint("addSeen:: adding i="+String(i)+", node="+String(stat.node,HEX));
 			}
 #			endif
@@ -677,9 +684,10 @@ int addSeen(struct nodeSeen *listSeen, struct stat_t stat)
 			return 1;
 		}
 	}
-	
+
 	// else: We did not find the current record so make a new listSeen entry
 	if ((i>=iSeen) && (i<gwayConfig.maxSeen)) {
+		mPrint("addSeen:: Adding node i="+String(i) );
 		listSeen[i].idSeen = stat.node;
 		listSeen[i].chnSeen = stat.ch;
 		listSeen[i].sfSeen = stat.sf;				// The SF argument
@@ -689,8 +697,8 @@ int addSeen(struct nodeSeen *listSeen, struct stat_t stat)
 	}
 
 #	if _MONITOR>=1
-	if ((debug>=2) && (pdebug & P_MAIN)) {
-		String response= "addSeen:: i=";
+	if ((debug>=1) && (pdebug & P_MAIN)) {
+		String response= "  addSeen:: i=";
 		response += i;
 		response += ", tim=";
 		stringTime(stat.time, response);

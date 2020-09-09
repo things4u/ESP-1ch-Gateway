@@ -75,7 +75,7 @@ struct espGwayConfig {
 	uint16_t waitErr;			// Number of times the loraWait() call failed
 	uint16_t waitOk;			// Number of times the loraWait() call success
 	
-	uint8_t ch;					// index to freqs array, freqs[gwayCofnig.ch]=868100000 default
+	uint8_t ch;					// index to freqs array, freqs[gwayConfig.ch]=868100000 default
 	uint8_t sf;					// range from SF7 to SF12
 	uint8_t debug;				// range 0 to 4
 	uint8_t pdebug;				// pattern debug, 

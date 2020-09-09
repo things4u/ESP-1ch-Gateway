@@ -30,9 +30,9 @@
 #	define _SENSOR_INTERVAL 300
 
 	// Sensor and app address information
-#define _DEVADDR { 0xAA, 0xAA, 0xAA, 0xAA }
-#define _APPSKEY { 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB }
-#define _NWKSKEY { 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC }
+#	define _DEVADDR { 0xAA, 0xAA, 0xAA, 0xAA }
+#	define _APPSKEY { 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB, 0xBB }
+#	define _NWKSKEY { 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC }
 
 	// For ESP32 based T_BEAM/TTGO boards these two are normally included
 	// If included make value 1, else if not, make them 0
@@ -63,7 +63,7 @@ nodex nodes[] = {
 // Although this is probably overkill in normal gateway situations, it greatly helps
 // in debugging the node messages before they reach the TTN severs.
 //
-#if _LOCALSERVER==1
+#if _LOCALSERVER>=1
 struct codex  {
 	uint32_t id;				// This is the device ID (coded in 4 bytes uint32_t
 	unsigned char nm[32];		// A name string which is free to choose
@@ -136,9 +136,9 @@ wpas wpa[] = {
 #define _DESCRIPTION "ESP Gateway"			// Name of the gateway
 #define _EMAIL "mw12554@hotmail.com"		// Owner
 #define _PLATFORM "ESP8266"
-#define _LAT 52.237367
-#define _LON 5.978654
-#define _ALT 14								// Altitude
+#define _LAT 52.200000
+#define _LON 5.90000
+#define _ALT 1								// Altitude
 
 
 // For asserting and testing the following defines are used.

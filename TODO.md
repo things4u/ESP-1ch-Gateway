@@ -1,6 +1,6 @@
 # Single Channel LoRaWAN Gateway
 
-Last Updated: February 23, 2020	  
+Last Updated: September 08, 2020	  
 Author: M. Westenberg (mw12554@hotmail.com)  
 Copyright: M. Westenberg (mw12554@hotmail.com)  
 
@@ -16,17 +16,19 @@ Maintained by Maarten Westenberg (mw12554@hotmail.com)
 
 # ToDo Functions
 
-Features not in release 6.2.4
+Features not in release 6.2.6
 
-- Change Downstream timing to be interrupt driven.
+- Make better version for _ENCODE
+- Repair _REPEATER to work for devices that are far away from the gateway
+- Change Downstream timing to be more accurate (interrupt driven?).
 - Frequency: Support for eu433 frequencies (Standard)
 - Testing and timing of downlink functions (need quiet area)
-- Get HOP frequency functions to work on three frequencies
+- Get HOP frequency functions to work on three frequencies (Naah)
 - Security: Enable passwords for GUI access and WiFi upload (may not be necessary for normal home router use)
 - Enable remote updating through GUI
-- Support FSK (May not be necessary)
-- Support for other Mode A and B of LoRa devices
-- Support for 3G/4G/5G devices
+- Support FSK (This may not be necessary)
+- Support for other Class A and B, C of LoRa devices
+- Support for 3G/4G/5G devices (Probably overkill for ESP devices, better buy a real gateway)
 
 
 

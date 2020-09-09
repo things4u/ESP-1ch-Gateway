@@ -259,8 +259,8 @@ void stateMachine();													// _stateMachine.ino
 
 bool connectUdp();														// _udpSemtech.ino
 int readUdp(int packetSize);											// _udpSemtech.ino
-int sendUdp(IPAddress server, int port, uint8_t *msg, uint16_t length);		// _udpSemtech.ino
-void sendstat();														// _udpSemtech.ino
+int sendUdp(IPAddress server, int port, uint8_t *msg, uint16_t length);	// _udpSemtech.ino
+void sendStat();														// _udpSemtech.ino
 void pullData();														// _udpSemtech.ino
 
 #if _MUTEX==1
@@ -605,7 +605,7 @@ void setup() {
 		rxLoraModem();
 	}
 	LoraUp.payLoad[0]= 0;
-	LoraUp.payLength = 0;									// Init the length to 0
+	LoraUp.size = 0;										// Init the length to 0
 
 	// init interrupt handlers, which are shared for GPIO15 / D8, 
 	// we switch on HIGH interrupts
@@ -618,12 +618,6 @@ void setup() {
 		attachInterrupt(pins.dio1, Interrupt_1, RISING);	// Separate interrupts
 		//attachInterrupt(pins.dio2, Interrupt_2, RISING);	// Separate interrupts		
 	}
-
-#	if _MONITOR>=1
-	if ((debug>=2) && (pdebug & P_TX)) {
-		mPrint("sendPacket:: STRICT=" + String(_STRICT_1CH) );
-	}
-#	endif //_MONITOR
 
 	writeConfig(_CONFIGFILE, &gwayConfig);					// Write config
 	writeSeen(_SEENFILE, listSeen);							// Write the last time record  is seen
@@ -664,7 +658,7 @@ void loop ()
 	// We will not read Udp in this loop cycle if not connected to Wlan
 	if (WlanConnect(1) < 0) {
 #		if _MONITOR>=1
-		if ((debug >= 0) && (pdebug & P_MAIN)) {
+		if ((debug>=0) && (pdebug & P_MAIN)) {
 			mPrint("loop:: ERROR reconnect WLAN");
 		}
 #		endif //_MONITOR
@@ -688,13 +682,15 @@ void loop ()
 #		endif //_MONITOR
 
 		// DOWNSTREAM
-		// Packet may be PKT_PUSH_ACK (0x01), PKT_PULL_ACK (0x03) or PKT_PULL_RESP (0x04)
+		// Packet may be PUSH_ACK (0x01), PULL_ACK (0x03) or PULL_RESP (0x04)
 		// This command is found in byte 4 (buffer[3])
-
+		// Only PULL_RESP carries more data for sensor and needs action,
+		// others are for Gateway only.
+		//
 		if (readUdp(packetSize) < 0) {
 #			if _MONITOR>=1
 			if (debug>=0)
-				mPrint("Dwn readUdp ERROR, returning < 0");
+				mPrint("v readUdp ERROR, returning < 0");
 #			endif //_MONITOR
 			break;
 		}
@@ -703,7 +699,7 @@ void loop ()
 		// otherwise a UDP message with other TTN content, all ACKs are 4 bytes long
 		else {
 			//_event=1;									// Could be done double if more messages received
-			//mPrint("Dwn udp received="+String(micros())+", packetSize="+String(packetSize));
+			//mPrint("v udp received="+String(micros())+", packetSize="+String(packetSize));
 		}
 	}
 
@@ -751,30 +747,30 @@ void loop ()
 		msgTime = nowSeconds;
 	}
 
-#if _OTA==1
+#	if _OTA==1
 	// Perform Over the Air (OTA) update if enabled and requested by user.
 	// It is important to put this function early in loop() as it is
 	// not called frequently but it should always run when called.
 	//
 	yield();
 	ArduinoOTA.handle();
-#endif //_OTA
+#	endif //_OTA
 
 	// If event is set, we know that we have a (soft) interrupt.
 	// After all necessary web/OTA services are scanned, we will
 	// reloop here for timing purposes. 
-	// Do as less yield() as possible.
+	// v as less yield() as possible.
 	if (_event == 1) {
 		return;
 	}
 	else yield();
 
-#if _SERVER==1
+#	if _SERVER==1
 	// Handle the Web server part of this sketch. Mainly used for administration 
 	// and monitoring of the node. This function is important so it is called at the
 	// start of the loop() function.
 	server.handleClient();
-#endif //_SERVER
+#	endif //_SERVER
 
 
 
@@ -782,10 +778,10 @@ void loop ()
 	//	
     if ((nowSeconds - statTime) >= _STAT_INTERVAL) {		// Wake up every xx seconds
 		yield();											// on 26/12/2017
-        sendstat();											// Show the status message and send to server
+        sendStat();											// Show the status message and send to server
 #		if _MONITOR>=1
 		if ((debug>=2) && (pdebug & P_MAIN)) {
-			mPrint("Send Pushdata sendstat");
+			mPrint("Send Pushdata sendStat");
 		}
 #		endif //_MONITOR
 
@@ -818,6 +814,11 @@ void loop ()
 	// send PULL_DATA message (*2, par. 4)
 	//
 	// This message will also restart the server which taken approx. 3 ms.
+	// Byte 0:		Prtocol Version
+	// Byte 1-2:	Arbritary Token Value
+	// Byte 3:		PULL_DATA ident ==0x02
+	// Byte 4-7:	Gateway EUI
+	//
 	nowSeconds = now();
     if ((nowSeconds - pullTime) >= _PULL_INTERVAL) {		// Wake up every xx seconds
 
@@ -827,8 +828,8 @@ void loop ()
 		pullTime = nowSeconds;
 		
 #		if _MONITOR>=1
-		if ((debug>=2) && (pdebug & P_RX)) {
-			String response = "UP ESP-sc-gway:: PKT_PULL_DATA message sent: micr=";
+		if ((debug>=3) && (pdebug & P_RX)) {
+			String response = "^ PULL_DATA:: ESP-sc-gway: message micr=";
 			printInt(micros(), response);
 			mPrint(response);
 		}
@@ -848,7 +849,7 @@ void loop ()
 		
 #		if _MONITOR>=1
 		if ((debug>=2) && (pdebug & P_MAIN)) {
-			String response = "UP ESP-sc-gway:: RST_DATA message sent: micr=";
+			String response = "^ ESP-sc-gway:: RST_DATA message sent: micr=";
 			printInt(micros(), response);
 			mPrint(response);
 		}
@@ -860,7 +861,7 @@ void loop ()
 	// We do not use the timer interrupt but use the timing
 	// of the loop() itself which is better for SPI
 #	if NTP_INTR==0
-		// Set the time in a manual way. Do not use setSyncProvider
+		// Set the time in a manual way. v not use setSyncProvider
 		//  as this function may collide with SPI and other interrupts
 		// Note: It can be that we do not receive a time this loop (no worries)
 		yield();

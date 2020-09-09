@@ -25,8 +25,8 @@
 // The function printInt prints a number with Thousands seperator
 // Paraneters:
 //	i:			Integer containing Microseconds
-//	response:	String & value containig the converted number
-// Retur:
+//	response:	String & value containing the converted number
+// Return:
 //	<none>
 // --------------------------------------------------------------------------------
 void printInt (uint32_t i, String & response)
@@ -35,9 +35,13 @@ void printInt (uint32_t i, String & response)
 }
 
 // --------------------------------------------------------------------------------
-// PRINT Dwn
-// IN a uniform way, this function prints the timstamp, the current time and the 
+// PRINT Down
+// In a uniform way, this function prints the timstamp, the current time and the 
 // time the function must wait to execute. It will print all Downstream data
+// Parameters:
+//
+// Returns:
+//	<none>
 // --------------------------------------------------------------------------------
 void printDwn(struct LoraDown *LoraDown, String & response)
 {
@@ -57,8 +61,25 @@ void printDwn(struct LoraDown *LoraDown, String & response)
 		response += ")";
 	}
 
-	response += ", SF="		+String(LoraDown->sfTx);
-	response += ", Freq="	+String(LoraDown->freq);
+	//inval	=int(LoraDown->freq);
+	//response += ", freq="	+String(intval) +".";
+	//fraqval	=int((LoraDown->freq-intval)*10000);
+	//response += String(fraqval);
+
+	char cfreq[12] = {0};
+	ftoa(LoraDown->freq, cfreq, 3);
+	response += ", freq="	+String(cfreq);
+	response += ", sf="		+String(LoraDown->sf);
+	response += ", bw="		+String(LoraDown->bw);
+	response += ", powe="	+String(LoraDown->powe);
+	response += ", crc="	+String(LoraDown->crc);
+	response += ", imme="	+String(LoraDown->imme);
+	response += ", iiq="	+String(LoraDown->iiq, HEX);
+	response += ", prea="	+String(LoraDown->prea);
+	response += ", rfch="	+String(LoraDown->rfch);
+	response += ", ncrc="	+String(LoraDown->ncrc);
+	response += ", size="	+String(LoraDown->size);
+	response += ", strict="	+String(_STRICT_1CH);
 
 	response += ", a=";
 	uint8_t DevAddr [4];

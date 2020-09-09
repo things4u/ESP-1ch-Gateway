@@ -87,7 +87,7 @@ vector freqs [] =
 	{ 867700000, 125, 7, 12, 867700000, 125, 7, 12},			// Channel 6, 867.7 MHz/125 Optional 
 	{ 867900000, 125, 7, 12, 867900000, 125, 7, 12},			// Channel 7, 867.9 MHz/125 Optional 
 	{ 868800000, 125, 7, 12, 868800000, 125, 7, 12},			// Channel 8, 868.9 MHz/125 FSK Only										
-	{ 0,         0  , 0,  0, 869525000, 125, 9, 9}				// Channel 9, 869.5 MHz/125 for RX2 responses SF9(10%)
+	{ 0,         0  , 0,  0, 869525000, 125, 9, 9}				// Channel 9, 869.525 MHz/125 for RX2 responses SF9(10%)
 	// TTN defines an additional channel at 869.525 MHz using SF9 for class B. Not used
 };
 
@@ -321,12 +321,13 @@ struct stat_c {
 	uint32_t msg_down;
 	uint32_t msg_sens;
 
+	// Of statistics == 2 we add spreading factor data to the statistics
 #if _STATISTICS >= 2						// Only if we explicitly set it higher	
 	uint32_t sf7, sf8, sf9;					// Spreading factor 7, 8, 9 statistics/Count
 	uint32_t sf10, sf11, sf12;				// Spreading factor 10, 11, 12
 	
 	// If _STATISTICS is 3, we add statistics about the channel 
-	// When only one channel is used, we normally know the spread of
+	// When only one channel is used, we normally know the spread of these
 	// statistics, but when HOP mode is selected we migth want to add this info
 #if _STATISTICS >=3
 	uint32_t msg_ok_0,   msg_ok_1,   msg_ok_2;
@@ -349,43 +350,69 @@ struct stat_c {
 } stat_c;
 struct stat_c statc;
 
-
-
 // History of received uplink and downlink messages from nodes
 struct stat_t * statr;
-
-
 
 
 #else //_STATISTICS==0
 struct stat_t	statr[1];					// Always have at least one element to store in
 #endif
 
+
 // Define the payload structure used to separate interrupt and SPI
 // processing from the loop() part
 uint8_t payLoad[128];						// Payload i
+
+
+
+// ====================================================================
+// PACKET FORWARDER
+// Smetech Specification
+// https://github.com/Lora-net/packet_forwarder/blob/master/PROTOCOL.TXT
+// Some parts are included both at Upstram and Downstream since
+// the gateway can also be used as a repeater
+// ====================================================================
 struct LoraDown {
-	uint32_t	tmst;						//
-	uint32_t	freq;
-	uint8_t		payLength;
-	uint8_t		sfTx;
-	uint8_t		powe;
+	uint32_t	tmst;						// Timestamp (will ignore time)
+	uint32_t	tmms;						// Timestamp according to GPS (sync required)
+	uint32_t	time;
+	double_t	freq;						// Frequency
+	uint8_t		size;
+	//			chan = <NOT USED>
+	bool		ipol;
+	uint8_t		powe;						// transmit power, normally 14, except when using special channel
 	uint8_t		crc;
-	uint8_t		iiq;
-	uint8_t		imme;
+	uint8_t		iiq;						// message inverted or not for node-node communiction
+	uint8_t		imme;						// Immediate transfer execution
+	uint8_t		sf;							// through datr
+	uint8_t		bw;							// through datr
+	uint8_t		ncrc;						// no CRC check
+	uint8_t		prea;						// preamble
+	uint8_t		rfch;						// Concentrator "RF chain" used for TX (unsigned integer)
+	char *		modu;						//	"LORA" os "FSCK"
+	char *		datr;						// = "SF12BW125", contains both .sf and .bw parts
+	char *		codr;
+	
+
+	
 	uint8_t	* 	payLoad;
 } LoraDown;
-
 // Up buffer (from Lora sensor to UDP)
 // This struct contains all data of the buffer received from devices to gateway
 
 struct LoraUp {
+	uint32_t	tmst;						// Timestamp of message
+	uint32_t	tmms;						// <not used at the moment>
+	uint32_t	time;						// <not used at the moment>
+	double_t	freq;						// frequency used in HZ
+	uint8_t		size;						// Length of the message Payload
+	uint8_t		chan;						// Channel "IF" used for RX
+	uint8_t		sf;							// Spreading Factor
+	//			modu not used
+	//			datr = "SF12BW125", contains both .sf and .bw parts
 	int32_t		snr;
-	uint32_t	tmst;
 	int16_t		prssi; 
 	int16_t		rssicorr;
-	uint8_t		payLength;
-	uint8_t		sf;
 	uint8_t		payLoad[128];
 } LoraUp;
 
@@ -399,8 +426,8 @@ struct LoraUp {
 // need to set in the program.
 
 #define REG_FIFO                    0x00		// rw FIFO address
-#define REG_OPMODE                  0x01
-// Register 2 to 5 are unused for LoRa
+#define REG_OPMODE                  0x01		// Operation Mode Register (Page 108)
+												// Register 2 to 5 are unused for LoRa
 #define REG_FRF_MSB					0x06
 #define REG_FRF_MID					0x07
 #define REG_FRF_LSB					0x08
@@ -419,14 +446,14 @@ struct LoraUp {
 #define REG_PKT_RSSI				0x1A		// latest package
 #define REG_RSSI					0x1B		// Current RSSI, section 6.4, or  5.5.5
 #define REG_HOP_CHANNEL				0x1C
-#define REG_MODEM_CONFIG1           0x1D
-#define REG_MODEM_CONFIG2           0x1E
+#define REG_MODEM_CONFIG1           0x1D		// LoRa: Modem PHY config 1
+#define REG_MODEM_CONFIG2           0x1E		// LoRa: Modem PHY config 2
 #define REG_SYMB_TIMEOUT_LSB  		0x1F
 
 #define REG_PAYLOAD_LENGTH          0x22
 #define REG_MAX_PAYLOAD_LENGTH 		0x23
 #define REG_HOP_PERIOD              0x24
-#define REG_MODEM_CONFIG3           0x26
+#define REG_MODEM_CONFIG3           0x26		// Modem PHY config 3
 #define REG_RSSI_WIDEBAND			0x2C
 
 #define REG_INVERTIQ				0x33
@@ -434,9 +461,9 @@ struct LoraUp {
 #define REG_SYNC_WORD				0x39
 #define REG_TEMP					0x3C
 
-#define REG_DIO_MAPPING_1           0x40
-#define REG_DIO_MAPPING_2           0x41
-#define REG_VERSION	  				0x42
+#define REG_DIO_MAPPING_1           0x40		// Mapping of pins DIO0 to DIO3
+#define REG_DIO_MAPPING_2           0x41		// Mapping of pins DIO4 and DIO5, ClkOut frequency
+#define REG_VERSION	  				0x42		// 0x12? Semtech def
 
 #define REG_PADAC					0x5A
 #define REG_PADAC_SX1272			0x5A
@@ -454,7 +481,10 @@ struct LoraUp {
 // ----------------------------------------
 // LMIC Constants for radio registers
 #define OPMODE_LORA      			0x80
-#define OPMODE_MASK      			0x07
+#define OPMODE_MASK      			0x0F		// Select LSB 8 bits 0, ignore LoRa bit for example
+
+#define OPMODE_LOWFREQ				0x08		// Should be - for 868.1 MHZ operation
+
 #define OPMODE_SLEEP     			0x00
 #define OPMODE_STANDBY   			0x01
 #define OPMODE_FSTX      			0x02
@@ -545,7 +575,7 @@ struct LoraUp {
 #define IRQ_LORA_RXDONE_MASK 		0x40	// RXDONE after receiving the header and CRC, we receive payload part
 #define IRQ_LORA_CRCERR_MASK 		0x20	// CRC error detected. Note that RXDONE will also be set
 #define IRQ_LORA_HEADER_MASK 		0x10	// valid HEADER mask. This interrupt is first when receiving a message
-#define IRQ_LORA_TXDONE_MASK 		0x08	// End of TRansmission
+#define IRQ_LORA_TXDONE_MASK 		0x08	// End of Transmission
 #define IRQ_LORA_CDDONE_MASK 		0x04	// CDDONE
 #define IRQ_LORA_FHSSCH_MASK 		0x02
 #define IRQ_LORA_CDDETD_MASK 		0x01	// Detect preamble channel
@@ -553,13 +583,14 @@ struct LoraUp {
 
 // ----------------------------------------
 // Definitions for UDP message arriving from server
-#define PROTOCOL_VERSION			0x01
-#define PKT_PUSH_DATA				0x00
-#define PKT_PUSH_ACK				0x01
-#define PKT_PULL_DATA				0x02
-#define PKT_PULL_RESP				0x03
-#define PKT_PULL_ACK				0x04
-#define PKT_TX_ACK                  0x05
+#define PROTOCOL_VERSION			0x02
+
+#define PUSH_DATA					0x00
+#define PUSH_ACK					0x01
+#define PULL_DATA					0x02
+#define PULL_RESP					0x03
+#define PULL_ACK					0x04
+#define TX_ACK						0x05
 
 #define MGT_RESET					0x15		// Not a LoRa Gateway Spec message
 #define MGT_SET_SF					0x16

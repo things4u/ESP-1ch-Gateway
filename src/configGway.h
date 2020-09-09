@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP32 and ESP8266
 // Copyright (c) Maarten Westenberg 2016-2020 
 
-#define VERSION "V.6.2.5.EU868; PlatformIO 200524i"
+#define VERSION "V.6.2.6.EU868; PlatformIO 200908 d"
 
 //
 // Based on work done by Thomas Telkamp for Raspberry PI 1ch gateway and many others.
@@ -104,6 +104,10 @@
 //#define _TTNROUTER 1
 
 
+#if !defined _CHANNEL
+#	define _CHANNEL 0
+#endif
+
 // The spreading factor is the most important parameter to set for a single channel
 // gateway. It specifies the speed/datarate in which the gateway and node communicate.
 // As the name says, in principle the single channel gateway listens to one channel/frequency
@@ -111,8 +115,9 @@
 // This parameters contains the default value of SF, the actual version can be set with
 // the webserver and it will be stored in SPIFF
 // NOTE: The frequency is set in the loraModem.h file and is default 868.100000 MHz.
-#define _SPREADING SF9
-
+#if !defined _SPREADING
+#	define _SPREADING SF9
+#endif
 
 // Channel Activity Detection
 // This function will scan for valid LoRa headers and determine the Spreading 
@@ -180,13 +185,18 @@
 #endif
 
 
+// Extra Microseconds delay added by the Up receiver from the sensor to the server.
+// As the tmst is also corrected, this will add to the downlink messages also.
+// The server will use this value to compute the receive window.
+#if !defined _RXDELAY1
+//#	define _RXDELAY1 1000
+#	define _RXDELAY1 0
+#endif
+
+
 //
 // Also, normally the server will respond with SF12 in the RX2 timeslot.
 // For TTN, the RX2 timeslot is SF9, so we should use that one for TTN
-#if !defined _RXDELAY1
-#	define _RXDELAY1 1000
-#endif
-
 #if !defined _RX2_SF
 #	define _RX2_SF 9
 #endif
@@ -323,13 +333,13 @@
 
 
 // Timing
-#define _PULL_INTERVAL 20					// PULL_DATA messages to server to get downstream in seconds
+#define _PULL_INTERVAL 16					// PULL_DATA messages to server to get downstream in seconds
 #define _STAT_INTERVAL 120					// Send a 'stat' message to server
 #define _NTP_INTERVAL 3600					// How often do we want time NTP synchronization
 #define _WWW_INTERVAL 60					// Number of seconds before we refresh the WWW page
 #define _FILE_INTERVAL 30					// Number of timer (in secs) before writing to files
 #define _MSG_INTERVAL 31					// Message timeout timer in seconds
-#define _RST_INTERVAL 90					// Reset interval in seconds, total chip reset
+#define _RST_INTERVAL 97					// Reset interval in seconds, total chip reset
 
 
 // Define the correct radio type that you are using
@@ -347,6 +357,9 @@
 
 
 // MQTT definitions, these settings should be standard for TTN
-// and need no changing
-#define _TTNSERVER "router.eu.thethings.network"
-#define _TTNPORT 1700							// Standard port for TTN
+// and need no changing. When _REPEATER function is selected, we do not
+// use the backend function to send message to server over MQTT.
+#if _REPEATER==0
+#	define _TTNSERVER "router.eu.thethings.network"
+#	define _TTNPORT 1700							// Standard port for TTN
+#endif

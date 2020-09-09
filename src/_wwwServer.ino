@@ -34,7 +34,7 @@
 
 
 //
-// The remainder of the file ONLY works is _SERVER=1 is set.
+// The remainder of the file ONLY works if _SERVER=1 is set.
 //
 #if _SERVER==1
 
@@ -450,7 +450,7 @@ static void openWebPage()
 
 	response += "<style>.thead {background-color:green; color:white;} ";
 	response += ".cell {border: 1px solid black;}";
-	response += ".config_table {max_width:100%; min-width:400px; width:98%; border:1px solid black; border-collapse:collapse;}";
+	response += ".config_table {max_width:100%; min-width:300px; width:98%; border:1px solid black; border-collapse:collapse;}";
 	response += "</style></HEAD><BODY>";
 	
 	response +="<h1>ESP Gateway Config</h1>";
@@ -488,20 +488,20 @@ static void openWebPage()
 // allowing the user to set CAD, HOP, Debug and several other operating parameters
 //
 // --------------------------------------------------------------------------------
-static void gatewaySettings() 
+static void gatewaySettings()
 {
 	String response="";
 	String bg="";
-	
+
 	response +="<h2>Gateway Settings</h2>";
-	
+
 	response +="<table class=\"config_table\">";
 	response +="<tr>";
 	response +="<th class=\"thead\">Setting</th>";
 	response +="<th colspan=\"2\" style=\"background-color: green; color: white; width:120px;\">Value</th>";
 	response +="<th colspan=\"2\" style=\"background-color: green; color: white; width:100px;\">Set</th>";
 	response +="</tr>";
-	
+
 	bg = " background-color: ";
 	bg += ( gwayConfig.cad ? "LightGreen" : "orange" );
 	response +="<tr><td class=\"cell\">CAD</td>";
@@ -510,7 +510,7 @@ static void gatewaySettings()
 	response +="<td style=\"border: 1px solid black; width:40px;\"><a href=\"CAD=0\"><button>OFF</button></a></td>";
 	response +="<td style=\"border: 1px solid black; width:40px;\"><a href=\"CAD=1\"><button>ON</button></a></td>";
 	response +="</tr>";
-	
+
 	bg = " background-color: ";
 	bg += ( gwayConfig.hop ? "LightGreen" : "orange" );
 	response +="<tr><td class=\"cell\">HOP</td>";
@@ -519,7 +519,8 @@ static void gatewaySettings()
 	response +="<td style=\"border: 1px solid black; width:40px;\"><a href=\"HOP=0\"><button>OFF</button></a></td>";
 	response +="<td style=\"border: 1px solid black; width:40px;\"><a href=\"HOP=1\"><button>ON</button></a></td>";
 	response +="</tr>";
-	
+
+
 	response +="<tr><td class=\"cell\">SF Setting</td><td class=\"cell\" colspan=\"2\">";
 	if (gwayConfig.cad) {
 		response += "AUTO</td>";
@@ -530,7 +531,7 @@ static void gatewaySettings()
 		response +="<td class=\"cell\"><a href=\"SF=1\"><button>+</button></a></td>";
 	}
 	response +="</tr>";
-	
+
 	// Channel
 	response +="<tr><td class=\"cell\">Channel</td>";
 	response +="<td class=\"cell\" colspan=\"2\">"; 
@@ -564,16 +565,16 @@ static void gatewaySettings()
 	response +="<td class=\"cell\"><a href=\"DEBUG=-1\"><button>-</button></a></td>";
 	response +="<td class=\"cell\"><a href=\"DEBUG=1\"><button>+</button></a></td>";
 	response +="</tr>";
-	
+
 	// Debug Pattern
 	response +="<tr><td class=\"cell\">Debug pattern</td>"; 
-	
+
 	bg = ( (pdebug & P_SCAN) ? "LightGreen" : "orange" ); 
 	response +="<td class=\"cell\" style=\"border: 1px solid black; width:20px; background-color: ";
 	response += bg;	response += "\">";
 	response +="<a href=\"PDEBUG=SCAN\">";
 	response +="<button>SCN</button></a></td>";
-	
+
 	bg = ( (pdebug & P_CAD) ? "LightGreen" : "orange" ); 
 	response +="<td class=\"cell\" style=\"border: 1px solid black; width:20px; background-color: ";
 	response += bg;	response += "\">";
@@ -592,7 +593,7 @@ static void gatewaySettings()
 	response +="<a href=\"PDEBUG=TX\">";
 	response +="<button>TX</button></a></td>";
 	response += "</tr>";
-	
+
 	// Use a second Line
 	response +="<tr><td class=\"cell\"></td>";
 	bg = ( (pdebug & P_PRE) ? "LightGreen" : "orange" ); 
@@ -606,7 +607,7 @@ static void gatewaySettings()
 	response += bg;	response += "\">";
 	response +="<a href=\"PDEBUG=MAIN\">";
 	response +="<button>MAI</button></a></td>";
-	
+
 	bg = ( (pdebug & P_GUI) ? "LightGreen" : "orange" ); 
 	response +="<td class=\"cell\" style=\"border: 1px solid black; width:20px; background-color: ";
 	response += bg;	response += "\">";
@@ -643,7 +644,7 @@ static void gatewaySettings()
 	response +="<td style=\"border: 1px solid black; width:40px;\"><a href=\"REFR=1\"><button>ON</button></a></td>";
 	response +="</tr>";
 #endif
-	
+
 #if _GATEWAYNODE==1
 	response +="<tr><td class=\"cell\">Framecounter Internal Sensor</td>";
 	response +="<td class=\"cell\" colspan=\"2\">";
@@ -651,7 +652,7 @@ static void gatewaySettings()
 	response +="</td><td colspan=\"2\" style=\"border: 1px solid black;\">";
 	response +="<button><a href=\"/FCNT\">RESET   </a></button></td>";
 	response +="</tr>";
-	
+
 	bg = " background-color: ";
 	bg += ( (gwayConfig.isNode == 1) ? "LightGreen" : "orange" );
 	response +="<tr><td class=\"cell\">Gateway Node</td>";
@@ -659,6 +660,17 @@ static void gatewaySettings()
 	response += ( (gwayConfig.isNode == true) ? "ON" : "OFF" );
 	response +="<td style=\"border: 1px solid black; width:40px;\"><a href=\"NODE=1\"><button>ON</button></a></td>";
 	response +="<td style=\"border: 1px solid black; width:40px;\"><a href=\"NODE=0\"><button>OFF</button></a></td>";
+	response +="</tr>";
+#endif
+
+#if _REPEATER>=0
+	bg = " background-color: ";
+	bg += ( _REPEATER==1 ? "LightGreen" : "orange" );
+	response +="<tr><td class=\"cell\">REPEATER</td>";
+	response +="<td colspan=\"2\" style=\"border: 1px solid black;"; response += bg; response += "\">";
+	response += ( _REPEATER==1 ? "ON" : "OFF" );
+	//response +="<td style=\"border: 1px solid black; width:40px;\"><a href=\"REPT=0\"><button>OFF</button></a></td>";
+	//response +="<td style=\"border: 1px solid black; width:40px;\"><a href=\"REPT=1\"><button>ON</button></a></td>";
 	response +="</tr>";
 #endif
 
@@ -678,10 +690,9 @@ static void gatewaySettings()
 	response +=String() + "<td class=\"cell\" colspan=\"2\" >"+gwayConfig.boots+"</td>";
 	response +="<td style=\"width:30px;\" colspan=\"2\" class=\"cell\" ><input type=\"button\" value=\"BOOT    \" onclick=\"ynDialog(\'Do you want to reset boots?\',\'BOOT\')\" /></td></tr>";
 #endif //_STATISTICS
-	
+
 	response +="</table>";
-	
-	
+
 	server.sendContent(response);
 }
 
@@ -1124,18 +1135,20 @@ static void wifiConfig()
 		response +="<tr><td class=\"cell\">IP Gateway</td><td class=\"cell\">"; 
 		printIP((IPAddress)WiFi.gatewayIP(),'.',response); 
 		response +="</tr>";
+#ifdef _TTNSERVER
 		response +="<tr><td class=\"cell\">NTP Server</td><td class=\"cell\">"; response+=NTP_TIMESERVER; response+="</tr>";
 		response +="<tr><td class=\"cell\">LoRa Router</td><td class=\"cell\">"; response+=_TTNSERVER; response+="</tr>";
 		response +="<tr><td class=\"cell\">LoRa Router IP</td><td class=\"cell\">"; 
 		printIP((IPAddress)ttnServer,'.',response); 
 		response +="</tr>";
+#endif //_TTNSERVER
 #ifdef _THINGSERVER
 		response +="<tr><td class=\"cell\">LoRa Router 2</td><td class=\"cell\">"; response+=_THINGSERVER; 
 		response += String() + ":" + _THINGPORT + "</tr>";
 		response +="<tr><td class=\"cell\">LoRa Router 2 IP</td><td class=\"cell\">"; 
 		printIP((IPAddress)thingServer,'.',response);
 		response +="</tr>";
-#endif
+#endif //_THINGSERVER
 
 		response +="</table>";
 
@@ -1353,14 +1366,14 @@ void setupWWW()
 		server.send( 302, "text/plain", "");
 	});
 
-#if _MONITOR>=1
+#	if _MONITOR>=1
 	// Display Monitor Console or not
 	server.on("/MONITOR", []() {
 		server.sendHeader("Location", String("/"), true);
 		gwayConfig.monitor = bool(1 - (int) gwayConfig.monitor) ;
 		server.send( 302, "text/plain", "");
 	});
-#endif //_MONITOR
+#	endif //_MONITOR
 	
 	// Display the SEEN statistics
 	server.on("/SEEN", []() {
@@ -1512,11 +1525,11 @@ void setupWWW()
 		gwayConfig.reents = 0;					// Re-entrance
 		
 		writeGwayCfg(_CONFIGFILE, &gwayConfig );
-#if _MONITOR>=1
+#if		_MONITOR>=1
 		if ((debug>=2) && (pdebug & P_GUI)) {
 			mPrint("wwwServer:: BOOT: config written");
 		}
-#endif
+#		endif //_MONITOR
 		server.sendHeader("Location", String("/"), true);
 		server.send( 302, "text/plain", "");
 	});
@@ -1769,9 +1782,9 @@ void setupWWW()
 	// Display LOGging information
 	server.on("/LOG", []() {
 		server.sendHeader("Location", String("/"), true);
-#if _MONITOR>=1
-		mPrint("LOG button");
-#endif //_MONITOR
+#		if _MONITOR>=1
+			mPrint("LOG button");
+#		endif //_MONITOR
 		buttonLog();
 		server.send( 302, "text/plain", "");
 	});
