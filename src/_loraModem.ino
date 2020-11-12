@@ -111,14 +111,13 @@ SPISettings readSettings(SPISPEED, MSBFIRST, SPI_MODE0);
 
 uint8_t readRegister(uint8_t addr)
 {
-
 	SPI.beginTransaction(readSettings);				
     digitalWrite(pins.ss, LOW);					// Select Receiver
-	SPI.transfer(addr & 0x7F);					// First address bit 0x00 is read
-	uint8_t res = (uint8_t) SPI.transfer(0x00);
+	SPI.transfer(addr & 0x7F);					// First address bit means read
+	uint8_t res = (uint8_t) SPI.transfer(0x00); // Read address
     digitalWrite(pins.ss, HIGH);				// Unselect Receiver
 	SPI.endTransaction();
-    return((uint8_t) res);
+    return((uint8_t) res) & 0xFF;
 }
 
 
@@ -161,17 +160,18 @@ void writeRegister(uint8_t addr, uint8_t value)
 
 void writeBuffer(uint8_t addr, uint8_t *buf, uint8_t len)
 {
-	//noInterrupts();							// XXX
+	//noInterrupts();								// MMM
 
 	SPI.beginTransaction(writeSettings);
-	digitalWrite(pins.ss, LOW);					// Select Receiver
+	digitalWrite(pins.ss, LOW);					// put SPI slave on
 
 	SPI.transfer((addr | 0x80) & 0xFF);			// write buffer address
 	for (uint8_t i=0; i<len; i++) {				// write all bytes of buffer
 		SPI.transfer(buf[i] & 0xFF);
 	}
 
-    digitalWrite(pins.ss, HIGH);				// Unselect Receiver
+    digitalWrite(pins.ss, HIGH);				// Unselect SPI slave
+	
 	SPI.endTransaction();
 
 	//interrupts();
@@ -207,7 +207,7 @@ void setRate(uint8_t sf, uint8_t crc)
 
 	// Set rate based on Spreading Factor etc
     if (sx1272) {
-		mc1= 0x0A;						// SX1276_MC1_BW_250 0x80 | SX1276_MC1_CR_4_5 0x02 (MMM define BW)
+		mc1= 0x0A;							// SX1276_MC1_BW_250 0x80 | SX1276_MC1_CR_4_5 0x02 (MMM define BW)
 		mc2= ((sf<<4) | crc) % 0xFF;
 		// SX1276_MC1_BW_250 0x80 | SX1276_MC1_CR_4_5 0x02 | SX1276_MC1_IMPLICIT_HEADER_MODE_ON 0x01
         if (sf == SF11 || sf == SF12) { 
@@ -217,22 +217,19 @@ void setRate(uint8_t sf, uint8_t crc)
 	
 	// For sx1276 chips is the CRC is either ON for receive or OFF for transmit
 	else {
-		
-		//if (sf==SF8) {
-		//	mc1= 0x78;					// SX1276_MC1_BW_125==0x70 | SX1276_MC1_CR_4_8==0x08
-		//}
-		//else {
-			mc1= 0x72;					// SX1276_MC1_BW_125==0x70 | SX1276_MC1_CR_4_5==0x02 (4/5)
-										// MMM Read this from the freq table
-		//
-		mc2= ((sf<<4) | crc) & 0xFF;	// crc is 0x00 or 0x04==SX1276_MC2_RX_PAYLOAD_CRCON
-		mc3= 0x04;						// 0x04; SX1276_MC3_AGCAUTO
-        if (sf == SF11 || sf == SF12) { mc3|= 0x08; }		// 0x08 | 0x04
+
+		mc1= 0x72;							// SX1276_MC1_BW_125==0x70 | SX1276_MC1_CR_4_5==0x02 (4/5)
+
+		mc2= ((sf<<4) | crc) & 0xFF;		// crc is 0x00 or 0x04==SX1276_MC2_RX_PAYLOAD_CRCON
+		//mc3= 0x04;						// 0x04; SX1276_MC3_AGCAUTO
+        if (sf == SF11 || sf == SF12) { 
+			mc3|= 0x08; 					// 0x08 | 0x04
+		}
     }
-	
+
 	// Implicit Header (IH), for CLASS B beacons (&& SF6)
 	//if (getIh(LMIC.rps)) {
-    //   mc1 |= SX1276_MC1_IMPLICIT_HEADER_MODE_ON;
+    //   mc1 |= SX1276_MC1_IMPLICIT_HEADER_MODE_ON;		// SF6, Not Supported
     //    writeRegister(REG_PAYLOAD_LENGTH, getIh(LMIC.rps)); // required length
     //}
 	
@@ -243,7 +240,8 @@ void setRate(uint8_t sf, uint8_t crc)
 	// Symbol timeout settings
     if (sf == SF10 || sf == SF11 || sf == SF12) {
         writeRegister(REG_SYMB_TIMEOUT_LSB, (uint8_t) 0x05);
-    } else {
+    } 
+	else {
         writeRegister(REG_SYMB_TIMEOUT_LSB, (uint8_t) 0x08);
     }
 	return;
@@ -259,30 +257,39 @@ void setRate(uint8_t sf, uint8_t crc)
 void  setFreq(uint32_t freq)
 {
     // set frequency
-    uint64_t frf = ((uint64_t)freq << 19) / 32000000;
-    writeRegister(REG_FRF_MSB, (uint8_t)(frf>>16) );
-    writeRegister(REG_FRF_MID, (uint8_t)(frf>> 8) );
-    writeRegister(REG_FRF_LSB, (uint8_t)(frf>> 0) );
-	
+    uint32_t frf = (((uint64_t)freq << 19) / 32000000) & 0xFFFFFFFF;
+	//uint32_t frf = (((uint64_t)(freq << 8)) / 15265) & 0xFFFFFFFF;
+
+    writeRegister(REG_FRF_MSB, ((uint8_t)(frf>>16)) & 0xFF );
+    writeRegister(REG_FRF_MID, ((uint8_t)(frf>> 8)) & 0xFF );
+    writeRegister(REG_FRF_LSB, ((uint8_t)(frf>> 0)) & 0xFF );
 	return;
 }
 
 
 // ----------------------------------------------------------------------------------------
-//	Set Power for our gateway
+//	Set Power for our gateway	
+// Note: Power settings for CFG_sx1272 are different
 // ----------------------------------------------------------------------------------------
-void setPow(uint8_t powe)
+void setPow(uint8_t pow)
 {
-	if (powe > 15) powe = 15;
-	else if (powe < 2) powe = 2;
+	uint8_t pac = 0x00;
 	
-	ASSERT((powe>=2)&&(powe<=15));
-	
-	uint8_t pac = (0x80 | (powe & 0xF)) & 0xFF;
-	writeRegister(REG_PAC, (uint8_t)pac);								// set 0x09 to pac
-	
-	// Note: Power settings for CFG_sx1272 are different
-	
+	if (pow > 17) {	
+		pac = 0x8F;
+	}
+	else if (pow < 2) {
+		pac = 2;
+	}
+	else if (pow<=12) {
+		pac=0x20+pow+3;
+	}
+	else {
+		//pac = 0x40 | pow;
+		pac=0x80+pow-2;
+	}
+	ASSERT(((pac&0x0F)>=2) &&((pac&0x0F)<=20));
+	writeRegister(REG_PAC, (uint8_t) pac);								// set register 0x09 to pac
 	return;
 }
 
@@ -299,10 +306,11 @@ void opmode(uint8_t mode)
 #		ifdef CFG_sx1276_radio
 		//mode |= 0x08;   											// TBD: sx1276 high freq
 #		endif
-		writeRegister(REG_OPMODE, (uint8_t) mode);
+		writeRegister(REG_OPMODE, 0xFF & (uint8_t) mode );
 	}
 	else {
-		writeRegister(REG_OPMODE, (uint8_t)((readRegister(REG_OPMODE) & ~OPMODE_MASK) | mode));
+		// If in OPMODE_LORA, leave it is (0x80)
+		writeRegister(REG_OPMODE, 0xFF & (uint8_t)((readRegister(REG_OPMODE) & 0x80) | mode));
 	}
 }
 
@@ -339,7 +347,7 @@ void hop()
 	writeRegister(REG_MAX_PAYLOAD_LENGTH,MAX_PAYLOAD_LENGTH);	// set 0x23 to 0x80==128 bytes
 	writeRegister(REG_PAYLOAD_LENGTH,PAYLOAD_LENGTH);			// 0x22, 0x40==64Byte long
 	
-	writeRegister(REG_FIFO_ADDR_PTR, (uint8_t) readRegister(REG_FIFO_RX_BASE_AD));	// set reg 0x0D to 0x0F
+	writeRegister(REG_FIFO_ADDR_PTR,(uint8_t)readRegister(REG_FIFO_RX_BASE_AD));	// set reg 0x0D to reg 0x0F(==0x00)
 	writeRegister(REG_HOP_PERIOD,0x00);							// reg 0x24, set to 0x00
 
 	// 5. Config PA Ramp up time								// set reg 0x0A  
@@ -366,7 +374,8 @@ void hop()
 #	endif //_MONITOR
 	// Remember the last time we hop
 	hopTime = micros();									// At what time did we hop
-}
+	
+} //hop
 	
 
 // ------------------------------------- UP -----------------------------------------------
@@ -408,7 +417,7 @@ uint8_t receivePkt(uint8_t *payload)
     statc.msg_ttl++;													// Receive statistics counter
 
     uint8_t irqflags = readRegister(REG_IRQ_FLAGS);						// 0x12; read back flags											
-	uint8_t crcUsed = readRegister(REG_HOP_CHANNEL);					// Is CRC used? (Register 0x1C)
+	uint8_t crcUsed  = readRegister(REG_HOP_CHANNEL);					// Is CRC used? (Register 0x1C)
 	if (crcUsed & 0x40) {
 #		if _DUSB>=1
 		if (( debug>=2) && (pdebug & P_RX )) {
@@ -416,7 +425,7 @@ uint8_t receivePkt(uint8_t *payload)
 		}
 #		endif //_DUSB
 	}
-	
+
     //  Check for payload IRQ_LORA_CRCERR_MASK=0x20 set
     if (irqflags & IRQ_LORA_CRCERR_MASK)								// Is CRC error?
     {
@@ -429,7 +438,7 @@ uint8_t receivePkt(uint8_t *payload)
 #		endif //_MONITOR
 		return 0;
     }
-	
+
 	// Is header OK?
 	// Please note that if we reset the HEADER interrupt in RX,
 	// that we would here conclude that there is no HEADER
@@ -444,7 +453,7 @@ uint8_t receivePkt(uint8_t *payload)
         writeRegister(REG_IRQ_FLAGS, (uint8_t)(IRQ_LORA_HEADER_MASK  | IRQ_LORA_RXDONE_MASK));	// 0x12; clear HEADER (== 0x10) flag
         return 0;
     }
-	
+
 	// If there are no error messages, read the buffer from the FIFO
 	// This means "Set FifoAddrPtr to FifoRxBaseAddr"
 	else {
@@ -456,16 +465,16 @@ uint8_t receivePkt(uint8_t *payload)
 		}
 
 		if (readRegister(REG_FIFO_RX_CURRENT_ADDR) != readRegister(REG_FIFO_RX_BASE_AD)) {
-#		if _MONITOR>=1
+#			if _MONITOR>=1
 			if ((debug>=1) && (pdebug & P_RADIO)) {
 				mPrint("RX BASE <" + String(readRegister(REG_FIFO_RX_BASE_AD)) + "> != RX CURRENT <" + String(readRegister(REG_FIFO_RX_CURRENT_ADDR)) + ">"	);
 			}
 #			endif //_MONITOR
 		}
-		
+
         //uint8_t currentAddr = readRegister(REG_FIFO_RX_CURRENT_ADDR);	// 0x10
-		uint8_t currentAddr = readRegister(REG_FIFO_RX_BASE_AD);		// 0x0F
-        uint8_t receivedCount = readRegister(REG_RX_NB_BYTES);			// 0x13; How many bytes were read
+		uint8_t currentAddr   = readRegister(REG_FIFO_RX_BASE_AD);		// 0x0F
+        uint8_t receivedCount = readRegister(REG_RX_BYTES_NB);			// 0x13; How many bytes were read
 #		if _MONITOR>=1
 			if ((debug>=1) && (currentAddr > 64)) {						// More than 64 read?
 				mPrint("rxPkt:: ERROR Rx addr>64"+String(currentAddr));
@@ -487,17 +496,15 @@ uint8_t receivePkt(uint8_t *payload)
             payload[i] = readRegister(REG_FIFO);						// 0x00, FIFO will auto shift register
         }
 
-		writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);					// Reset ALL interrupts
-		
 		// As long as _MONITOR is enabled, and P_RX debug messages are selected,
 		// the received packet is displayed on the output.
-#		if _MONITOR>=1
+#	if _MONITOR>=1
 		if ((debug>=1) && (pdebug & P_RX)) {
-		
+
 			String response = "^ receivePkt:: rxPkt: t=";
 			stringTime(now(), response);
 			response += ", f=" + String(gwayConfig.ch) + ", sf=" + String(sf);
-			
+
 			response += ", a=";
 			uint8_t DevAddr [4];
 					DevAddr[0] = payload[4];
@@ -505,14 +512,14 @@ uint8_t receivePkt(uint8_t *payload)
 					DevAddr[2] = payload[2];
 					DevAddr[3] = payload[1];
 			printHex((IPAddress)DevAddr, ':', response);
-			
+
 			response += ", flags=" + String(irqflags,HEX);
 			response += ", addr=" + String(currentAddr);
 			response += ", len=" + String(receivedCount);
 
 			// If debug level 1 is specified, we display the content of the message as well
 			// We need to decode the message as well will it make any sense
-#			if _TRUSTED_DECODE>=2
+#			if _LOCALSERVER>=1
 			if (debug>=1)  {							// Must be 1 for operational use
 
 				int index;								// The index of the codex struct to decode
@@ -527,23 +534,30 @@ uint8_t receivePkt(uint8_t *payload)
 				}	
 
 				// ------------------------------
-				
+
 				Serial.print(F(", data="));
 
 				for (int i=0; i<receivedCount; i++) { 			// Copy array
-					data[i] = payload[i]; 
+					data[i]= payload[i]; 
 				}
 
-				uint16_t frameCount=payload[7]*256 + payload[6];
-				
-				// The message received has a length, but data starts at byte 9, and stops 4 bytes
-				// before the end since those are MIC bytes
-				uint8_t CodeLength = encodePacket((uint8_t *)(data + 9), receivedCount-9-4, (uint16_t)frameCount, DevAddr, decodes[index].appKey, 0);
+				uint16_t frameCount= payload[7]*256 + payload[6];
+
+				// The message received has a length, but data starts at byte 9, 
+				// and stops 4 bytes before the end since those are MIC bytes
+				uint8_t CodeLength= encodePacket(
+					(uint8_t *)(data + 9),
+					receivedCount-9-4,
+					(uint16_t)frameCount,
+					DevAddr,
+					decodes[index].appKey,
+					0
+				);
 
 				Serial.print(F("- NEW fc="));
 				Serial.print(frameCount);
 				Serial.print(F(", addr="));
-				
+
 				for (int i=0; i<4; i++) {
 					if (DevAddr[i]<=0xF) {
 						Serial.print('0');
@@ -551,15 +565,13 @@ uint8_t receivePkt(uint8_t *payload)
 					Serial.print(DevAddr[i], HEX);
 					Serial.print(' ');
 				}
-				
 				Serial.print(F(", len="));
 				Serial.print(CodeLength);
-
 			}
-#			endif //_TRUSTED_DECODE
+#			endif //_LOCALSERVER
 
 			mPrint(response);							// Print response for Serial or mPrint
-			
+
 			// ONLY on USB
 			Serial.print(F(", paylength="));
 			Serial.print(receivedCount);
@@ -571,10 +583,12 @@ uint8_t receivePkt(uint8_t *payload)
 			}
 			Serial.println();
 		}
-#		endif //_MONITOR
+#	endif //_MONITOR
+
 		return(receivedCount);
     }
 
+	// Reset all relevant interrupts
 	writeRegister(REG_IRQ_FLAGS, (uint8_t) (
 		IRQ_LORA_RXDONE_MASK | 
 		IRQ_LORA_RXTOUT_MASK |
@@ -582,7 +596,7 @@ uint8_t receivePkt(uint8_t *payload)
 		IRQ_LORA_CRCERR_MASK));							// 0x12; Clear RxDone IRQ_LORA_RXDONE_MASK
 
 	return 0;
-	
+
 } //receivePkt UP
 	
 	
@@ -604,20 +618,27 @@ bool sendPkt(uint8_t *payLoad, uint8_t payLength)
 {
 #	if _MONITOR>=1
 	if (payLength>=128) {
-		if (debug>=2) {
+		if ((debug>=2) && (pdebug & P_TX)) {
 			mPrint("V sendPkt:: len="+String(payLength));
 		}
 		return false;
 	}
 #	endif //_MONITOR
 
+	payLoad[payLength] = 0x00;											// terminate buffer
+	
 	// MMM?
 	writeRegister(REG_FIFO_ADDR_PTR, (uint8_t) readRegister(REG_FIFO_TX_BASE_AD));	// 0x0D, 0x0E
-	
-	writeRegister(REG_PAYLOAD_LENGTH, (uint8_t) payLength);				// 0x22
-	payLoad[payLength] = 0x00;											// terminate buffer
+	writeRegister(REG_PAYLOAD_LENGTH, (uint8_t) payLength);				// 0x22	
+
 	writeBuffer(REG_FIFO, (uint8_t *) payLoad, payLength);
-	
+
+#	if _MONITOR>=1
+	if ((debug >=1) && (pdebug & P_TX)) {
+		mPrint("sendPkt:: payLength="+String(payLength)+", REG_FIFO=0x"+String(readRegister(REG_FIFO),HEX) );
+	}
+#	endif
+
 	return true;
 } // sendPkt()
 
@@ -658,14 +679,14 @@ int loraWait(struct LoraDown *LoraDown)
 		return(1);
 	}
 	
-	int32_t delayTmst = (int32_t)(LoraDown->tmst - micros()) + gwayConfig.txDelay;
+	int32_t delayTmst = (int32_t)(LoraDown->tmst - micros()) -1000 + gwayConfig.txDelay;
 												// delayTmst based on txDelay and spreading factor
 	
-	if ((delayTmst > 8000000) || (delayTmst < 0)) {		// Delay is  > 8 secs or less than 0
+	if ((delayTmst > 8000000) || (delayTmst < -1000)) {		// Delay is  > 8 secs or less than 0
 #		if _MONITOR>=1
 		if (delayTmst > 8000000) {
 			String response= "v loraWait:: ERROR: ";
-			printDwn(LoraDown,response);
+			printDwn(LoraDown, response);
 			mPrint(response);
 		}
 		else {
@@ -712,8 +733,8 @@ int loraWait(struct LoraDown *LoraDown)
 //	6. config Power
 //	7. RegLoRaSyncWord LORA_MAC_PREAMBLE
 //	8. write REG dio mapping (dio0)
-//	9. write REG IRQ flags
-// 10. write REG IRQ mask
+//	9. write REG IRQ mask
+// 10. write REG IRQ flags
 // 11. write REG LoRa Fifo Base Address
 // 12. write REG LoRa Fifo Addr Ptr
 // 13. write REG LoRa Payload Length
@@ -729,80 +750,73 @@ void txLoraModem(struct LoraDown *LoraDown)
 	_state = S_TX;
 		
 	// 1. Select LoRa modem from sleep mode
-	//opmode(OPMODE_SLEEP);
-	//opmode(OPMODE_LORA);									// set register 0x01 to 0x80
+	//opmode(OPMODE_SLEEP);											// set 0x01
+	//opmode(OPMODE_LORA);											// set 0x01 to 0x80
 	
 	// Assert the value of the current mode
 	ASSERT((readRegister(REG_OPMODE) & OPMODE_LORA) != 0);
 	
 	// 2. enter standby mode (required for FIFO loading))
-	opmode(OPMODE_STANDBY);									// set 0x01 to 0x01
+	opmode(OPMODE_STANDBY);											// set 0x01 to 0x01
 	
 	// 3. Init spreading factor and other Modem setting
 	setRate(LoraDown->sf, LoraDown->crc);
 	
 	// Frequency hopping
-	//writeRegister(REG_HOP_PERIOD, (uint8_t) 0x00);		// set 0x24 to 0x00 only for receivers
+	//writeRegister(REG_HOP_PERIOD, (uint8_t) 0x00);				// set 0x24 to 0x00 only for receivers
 	
 	// 4. Init Frequency, config channel
 	setFreq(LoraDown->freq);
 
+	writeRegister(REG_SYNC_WORD, (uint8_t) 0x34);					// set 0x39 to 0x34==LORA_MAC_PREAMBLE
+	writeRegister(REG_PREAMBLE_LSB, (uint8_t) LoraDown->prea & 0xFF);
+	writeRegister(REG_PARAMP, (readRegister(REG_PARAMP) & 0xF0) | 0x08); // set 0x0A  ramp-up time 50 uSec
+	writeRegister(REG_PADAC_SX1276,  0x84); 						// set 0x4D (PADAC) to 0x84
+	writeRegister(REG_DET_TRESH, 0x0A);								// Detection Treshhold
+	writeRegister(REG_LNA, (uint8_t) LNA_MAX_GAIN);  				// set reg 0x0C to 0x23
+	
 	// 6. Set power level, REG_PAC
 	setPow(LoraDown->powe);
 	
 	// 7. prevent node to node communication
-	writeRegister(REG_INVERTIQ, readRegister(REG_INVERTIQ) | (uint8_t)(LoraDown->iiq));	// 0x33, (0x27 up or |0x40 down)
+	//writeRegister(REG_INVERTIQ, readRegister(REG_INVERTIQ) | (uint8_t)(LoraDown->iiq));	// set 0x33, (0x27 up or |0x40 down)
+	writeRegister(REG_INVERTIQ, readRegister(REG_INVERTIQ) | (uint8_t)(LoraDown->iiq)); // set 0x33 to (0x27 (reserved) | 0x40) for downstream
 	
 	// 8. set the IRQ mapping DIO0=TxDone DIO1=NOP DIO2=NOP (or less for 1ch gateway)
     writeRegister(REG_DIO_MAPPING_1, (uint8_t)(
 		MAP_DIO0_LORA_TXDONE | 
 		MAP_DIO1_LORA_NOP | 
 		MAP_DIO2_LORA_NOP |
-		MAP_DIO3_LORA_NOP));								// was MAP_DIO3_LORA_CRC
-	
-	// 9. clear all radio IRQ flags
-    writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);
-	
-	// 10. mask all IRQs but TxDone
+		MAP_DIO3_LORA_NOP));										// was MAP_DIO3_LORA_CRC
+
+	// 9. mask all IRQs but TxDone
     writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) ~IRQ_LORA_TXDONE_MASK);
 	
-	// txLora
-	opmode(OPMODE_FSTX);													// set reg 0x01 to 0x02 (actual value becomes 0x82)
-	
+	// 10. clear all radio IRQ flags
+    writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);
+	//writeRegister(REG_IRQ_FLAGS, (uint8_t) IRQ_LORA_TXDONE_MASK);	// set reg 0x12 to 0x08, clear TXDONE
+
+	// FSTX setting
+	opmode(OPMODE_FSTX);											// set reg 0x01 to 0x02 (actual value becomes 0x82)
+	delay(1);														// MMM
+
+	//Set the base addres of the transmit buffer in FIFO
+	writeRegister(REG_FIFO_ADDR_PTR, (uint8_t) readRegister(REG_FIFO_TX_BASE_AD));	// set 0x0D to 0x0F (contains 0x80);	
+
+	//For TX we have to set the PAYLOAD_LENGTH
+	writeRegister(REG_PAYLOAD_LENGTH, (uint8_t) LoraDown->size);	// set reg 0x22 to  0x40==64Byte long
+
+	//For TX we have to set the MAX_PAYLOAD_LENGTH
+	writeRegister(REG_MAX_PAYLOAD_LENGTH, (uint8_t) MAX_PAYLOAD_LENGTH);	// set reg 0x22, max 0x40==64Byte long
+
 	// 11, 12, 13, 14. write the buffer to the FiFo
 	sendPkt(LoraDown->payLoad, LoraDown->size);
 	
-	//Set the base addres of the transmit buffer in FIFO
-	writeRegister(REG_FIFO_ADDR_PTR, (uint8_t) readRegister(REG_FIFO_TX_BASE_AD));	// set 0x0D to 0x0F (contains 0x80);	
-	
-	//For TX we have to set the PAYLOAD_LENGTH
-	writeRegister(REG_PAYLOAD_LENGTH, (uint8_t) LoraDown->size);			// set reg 0x22 to  0x40==64Byte long
-	
-	//For TX we have to set the MAX_PAYLOAD_LENGTH
-	writeRegister(REG_MAX_PAYLOAD_LENGTH, (uint8_t) MAX_PAYLOAD_LENGTH);	// set reg 0x22, max 0x40==64Byte long
-	
-	// Reset the IRQ register
-	writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) 0x00);						// Clear the mask
-//	writeRegister(REG_IRQ_FLAGS, (uint8_t) IRQ_LORA_TXDONE_MASK);			// set reg 0x12 to 0x08, clear TXDONE
-	writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);							// set reg 0x12 to 0xFF, clear TXDONE and others
-	
-	// 16. Initiate actual transmission of FiFo
-	opmode(OPMODE_TX);														// set reg 0x01 to 0x03 (actual value becomes 0x83)
+	// 16. Initiate actual transmission of FiFo, after opmode TX it switches to standby mode
+	delay(5);														// MMM works
+	opmode(OPMODE_TX);												// set reg 0x01 to 0x03 (actual value becomes 0x83)
 
 	// After message transmitted the sender switches to STANDBY state, and issues TXDONE
-
-#	if _MONITOR>=1
-	if ((debug>=1) && (pdebug & P_TX)) {
-		String response = "v txLoraModem:: end=";
-		printDwn(LoraDown, response);
-		response += ", size=" + String(LoraDown->size);
-		response += ", data=";
-		for(int i=0; i<LoraDown->size; i++) {
-			response += String(LoraDown->payLoad[i],HEX) + " ";
-		}
-		mPrint(response);
-	}
-#	endif //_MONITOR
 
 }// txLoraModem
 
@@ -858,9 +872,9 @@ void rxLoraModem()
 	
 	// 5. Accept no interrupts except RXDONE, RXTOUT en RXCRC
 	writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) ~(
-		IRQ_LORA_RXDONE_MASK | 
-		IRQ_LORA_RXTOUT_MASK | 
-		IRQ_LORA_HEADER_MASK | 
+		IRQ_LORA_RXDONE_MASK |
+		IRQ_LORA_RXTOUT_MASK |
+		IRQ_LORA_HEADER_MASK |
 		IRQ_LORA_CRCERR_MASK));
 
 	// set frequency hopping
@@ -1011,20 +1025,23 @@ void initLoraModem()
 
 	// 5. Set chip type/version
     uint8_t version = readRegister(REG_VERSION);				// read reg 0x34 the LoRa chip version id
-    if (version == 0x22) {										// sx1272==0x22
-#		if _DUSB>=2
-			Serial.println(F("WARNING:: SX1272 detected"));
+	if (version == 0x12) {									// sx1276==0x12
+#		if _DUSB>=1
+           if ((debug>=2) && (pdebug & P_MAIN)) {
+			Serial.println(F("SX1276 starting"));
+		}
 #		endif
-        sx1272 = true;
+		sx1272= false;
+	}
+    else if (version == 0x22) {										// sx1272==0x22
+#		if _DUSB>=1
+            if ((debug>=1) && (pdebug & P_MAIN)) {
+				Serial.println(F("WARNING:: SX1272 detected"));
+			}
+#		endif
+        sx1272= true;
     } 
 	
-	else if (version == 0x12) {									// sx1276==0x12
-#			if _DUSB>=2
-            if (debug >=1) 
-				Serial.println(F("SX1276 starting"));
-#			endif
-            sx1272 = false;
-	}
 	else {
 		// Normally this means that we connected the wrong type of board and
 		// therefore specified the wrong type of wiring/pins to the software
@@ -1066,7 +1083,7 @@ void initLoraModem()
 	// Set 0x4D PADAC for SX1276 ; XXX register is 0x5a for sx1272
 	//Semtech rev. 5, Aug 2016, para 
 	writeRegister(REG_PADAC_SX1276,  0x84); 					// set reg 0x4D (PADAC) to 0x84
-	//writeRegister(REG_PADAC, readRegister(REG_PADAC) | 0x4);
+	//writeRegister(REG_PADAC_SX1276, readRegister(REG_PADAC_SX1276) | 0x4);
 
 	// Set treshold according to sx1276 specs
 	writeRegister(REG_DET_TRESH, 0x0A);

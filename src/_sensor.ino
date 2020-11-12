@@ -442,7 +442,7 @@ void checkMic(uint8_t *buf, uint8_t len, uint8_t *key)
 	uint8_t NwkSKey[16] = _NWKSKEY;
 
 #	if _MONITOR>=1
-	if (debug>=2) {
+	if ((debug>=2) && (pdebug & P_RX)) {
 		String response = "";
 		for (int i=0; i<len; i++) { 
 			printHexDigit(buf[i], response); 
@@ -460,7 +460,7 @@ void checkMic(uint8_t *buf, uint8_t len, uint8_t *key)
 	uint16_t FrameCount = ( cBuf[7] * 256 ) + cBuf[6];
 	len += micPacket(cBuf, len, FrameCount, NwkSKey, 0);
 	
-	if (debug>=2) {
+	if ((debug>=2) && (pdebug & P_RX)) {
 		String response = "";
 
 		for (int i=0; i<len; i++) { 
@@ -503,7 +503,7 @@ int sensorPacket() {
 
 	uint8_t buff_up[512];								// Declare buffer here to avoid exceptions
 	uint8_t message[64]={ 0 };							// Payload, init to 0
-	uint8_t mlength = 0;
+	//uint8_t mlength = 0;
 	uint8_t NwkSKey[16] = _NWKSKEY;
 	uint8_t AppSKey[16] = _APPSKEY;
 	uint8_t DevAddr[4]  = _DEVADDR;
@@ -529,7 +529,7 @@ int sensorPacket() {
 	
 	// -------------------------------
 	// FHDR consists of 4 bytes addr, 1 byte Fctrl, 2 byte FCnt, 0-15 byte FOpts
-	// We support ABP addresses only for Gateways
+	// We support ABP addresses only for Gateway sensors
 	LUP.payLoad[1] = DevAddr[3];						// Last byte[3] of address
 	LUP.payLoad[2] = DevAddr[2];
 	LUP.payLoad[3] = DevAddr[1];
@@ -566,7 +566,13 @@ int sensorPacket() {
 #endif	//_DUSB
 	
 	// we have to include the AES functions at this stage in order to generate LoRa Payload.
-	uint8_t CodeLength = encodePacket((uint8_t *)(LUP.payLoad + LUP.size), PayLength, (uint16_t)frameCount, DevAddr, AppSKey, 0);
+	uint8_t CodeLength = encodePacket(
+		(uint8_t *)(LUP.payLoad + LUP.size), 
+		PayLength, (uint16_t)frameCount, 
+		DevAddr, 
+		AppSKey, 
+		0
+	);
 
 #if _DUSB>=1
 	if ((debug>=2) && (pdebug & P_RADIO)) {
@@ -645,7 +651,15 @@ int sensorPacket() {
 	// If all is right, we should after decoding (which is the same as encoding) get
 	// the original message back again.
 	if ((debug>=2) && (pdebug & P_RADIO)) {
-		CodeLength = encodePacket((uint8_t *)(LUP.payLoad + 9), PayLength, (uint16_t)frameCount-1, DevAddr, AppSKey, 0);
+		CodeLength = encodePacket(
+			(uint8_t *)(LUP.payLoad + 9), 
+			PayLength, 
+			(uint16_t)frameCount-1, 
+			DevAddr, 
+			AppSKey, 
+			0
+		);
+		
 		Serial.print(F("rev: "));
 		for (int i=0; i<CodeLength; i++) {
 			Serial.print(LUP.payLoad[i],HEX);
@@ -678,7 +692,7 @@ int sensorPacket() {
 #endif //_GATEWAYNODE==1
 
 
-#if (_GATEWAYNODE==1) || (_LOCALSERVER==1)
+#if (_GATEWAYNODE==1) || (_LOCALSERVER>=1)
 // ----------------------------------------------------------------------------
 // ENCODEPACKET
 // In Sensor mode, we have to encode the user payload before sending.
@@ -702,6 +716,14 @@ int sensorPacket() {
 //  but not part of this code.
 //
 // cmac = aes128_encrypt(K, Block_A[i])
+//
+// Parameters:
+//	Data:		Data to encoide
+//	DataLength:	Length of the data field
+//	FrameCount:	xx
+//	DevAddr:	Device ID
+//	AppSKey:	Device specific
+//	Direction:	Uplink==0, e.g. receivePakt(), semsorPacket(),
 // ----------------------------------------------------------------------------
 uint8_t encodePacket(uint8_t *Data, uint8_t DataLength, uint16_t FrameCount, uint8_t *DevAddr, uint8_t *AppSKey, uint8_t Direction)
 {
@@ -709,9 +731,11 @@ uint8_t encodePacket(uint8_t *Data, uint8_t DataLength, uint16_t FrameCount, uin
 #if _MONITOR>=1
 	if ((debug>=2) && (pdebug & P_MAIN)) {
 		String response="encodePacket:: DevAddr=";
-		for (int i=0; i<4; i++ ) { response+=(String(DevAddr[i],HEX)+(' ')); }
-		response+=", encodePacket:: AppSKey=";
-		for (int i=0; i<16; i++ ) { response+=(String(AppSKey[i],HEX)+(' ')); }
+		for (int i=0; i<4; i++ ) { response += (String(DevAddr[i],HEX)+(' ')); }
+		response += ", fcnt=" + String(FrameCount);
+		response += ", encodePacket:: AppSKey=";
+		for (int i=0; i<16; i++ ) { response += (String(AppSKey[i],HEX)+(' ')); }
+		response += ", direction=" + String(Direction);
 		mPrint(response);
 	}
 #endif //_MONITOR

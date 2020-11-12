@@ -16,6 +16,11 @@ Maintained by Maarten Westenberg (mw12554@hotmail.com)
 
 # Release Notes
 
+Features  release 6.2.7 (October 30, 2020)
+- Further repair timing
+- Make interrupt handling simplier
+- improve website of gateway, making data dynamic
+
 Features release 6.2.6 (September 08, 2020)
 - Better timing for downstream
 - Other display of statistics

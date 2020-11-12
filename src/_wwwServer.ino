@@ -554,7 +554,7 @@ static void gatewaySettings()
 	response +="<td class=\"cell\"><a href=\"TRUSTED=-1\"><button>-</button></a></td>";
 	response +="<td class=\"cell\"><a href=\"TRUSTED=1\"><button>+</button></a></td>";
 	response +="</tr>";
-#endif
+#endif //_TRUSTED_NODES
 
 	// Debugging options, only when _DUSB or _MONITOR is set, otherwise no
 	// serial or minotoring activity
@@ -633,6 +633,20 @@ static void gatewaySettings()
 	response +="<td style=\"border: 1px solid black; width:40px;\"><a href=\"DUSB=1\"><button>ON</button></a></td>";
 	response +="</tr>";
 
+#if _LOCALSERVER>=1
+	// Show Node Data
+	bg = " background-color: ";
+	bg += ( (gwayConfig.showdata == 1) ? "LightGreen" : "orange" );
+	response +="<tr><td class=\"cell\">Show Node Data</td>";
+	response +="<td class=\"cell\" colspan=\"2\" style=\"border: 1px solid black; " + bg + "\">";
+	response += ( (gwayConfig.showdata == true) ? "ON" : "OFF" );
+	response +="</td>";
+	response +="<td style=\"border: 1px solid black; width:40px;\"><a href=\"SHOWDATA=0\"><button>OFF</button></a></td>";
+	response +="<td style=\"border: 1px solid black; width:40px;\"><a href=\"SHOWDATA=1\"><button>ON</button></a></td>";
+	response +="</tr>";
+
+#endif //_LOCALSERVER
+
 	/// WWW Refresh
 #if _REFRESH==1
 	bg = " background-color: ";
@@ -664,9 +678,10 @@ static void gatewaySettings()
 #endif
 
 #if _REPEATER>=0
+	// Show repeater setting
 	bg = " background-color: ";
 	bg += ( _REPEATER==1 ? "LightGreen" : "orange" );
-	response +="<tr><td class=\"cell\">REPEATER</td>";
+	response +="<tr><td class=\"cell\">Repeater</td>";
 	response +="<td colspan=\"2\" style=\"border: 1px solid black;"; response += bg; response += "\">";
 	response += ( _REPEATER==1 ? "ON" : "OFF" );
 	//response +="<td style=\"border: 1px solid black; width:40px;\"><a href=\"REPT=0\"><button>OFF</button></a></td>";
@@ -883,19 +898,24 @@ static void messageHistory()
 	response += "<table class=\"config_table\">";
 	response += "<tr>";
 	response += "<th class=\"thead\">Time</th>";
+	response += "<th class=\"thead\" style=\"width: 20px;\">Up/Dwn</th>";
 	response += "<th class=\"thead\">Node</th>";
-#if _LOCALSERVER==1
-	response += "<th class=\"thead\">Data</th>";
-#endif
+#if _LOCALSERVER>=1
+	if (gwayConfig.showdata) {
+		response += "<th class=\"thead\">Data</th>";
+	}
+#endif //_LOCALSERVER
 	response += "<th class=\"thead\" style=\"width: 20px;\">C</th>";
 	response += "<th class=\"thead\">Freq</th>";
 	response += "<th class=\"thead\" style=\"width: 40px;\">SF</th>";
 	response += "<th class=\"thead\" style=\"width: 50px;\">pRSSI</th>";
 #if RSSI==1
-	if (debug > 1) {
+	if (debug => 1) {
 		response += "<th class=\"thead\" style=\"width: 50px;\">RSSI</th>";
 	}
 #endif
+
+	// Print of Heads is ober.Now print all the rows
 	response += "</tr>";
 	server.sendContent(response);
 
@@ -903,12 +923,16 @@ static void messageHistory()
 	for (int i=0; i< gwayConfig.maxStat; i++) {								// For every Node in the list
 		if (statr[i].sf == 0) break;
 		
-		response = "";
+		response = "" + String();
 		
-		response += String() + "<tr><td class=\"cell\">";					// Tmst
-		stringTime((statr[i].time), response);								// XXX Change tmst not to be millis() dependent
+		response += "<tr><td class=\"cell\">";								// Tmst
+		stringTime(statr[i].time, response);								// XXX Change tmst not to be millis() dependent
 		response += "</td>";
-		
+
+		response += String() + "<td class=\"cell\">"; 						// Up or Downlink
+		response += String(statr[i].upDown ? "v" : "^");
+		response += "</td>";
+
 		response += String() + "<td class=\"cell\">"; 						// Node
 		
 #ifdef  _TRUSTED_NODES														// DO nothing with TRUSTED NODES
@@ -940,14 +964,17 @@ static void messageHistory()
 
 		response += "</td>";
 		
-#if _LOCALSERVER==1
+#if _LOCALSERVER>=1
+	if (gwayConfig.showdata) {
 		response += String() + "<td class=\"cell\">";						// Data
+		if (statr[i].datal>24) statr[i].datal=24;							
 		for (int j=0; j<statr[i].datal; j++) {
 			if (statr[i].data[j] <0x10) response+= "0";
 			response += String(statr[i].data[j],HEX) + " ";
 		}
 		response += "</td>";
-#endif
+	}
+#endif //_LOCALSERVER
 
 
 		response += String() + "<td class=\"cell\">" + statr[i].ch + "</td>";
@@ -990,7 +1017,8 @@ static void nodeHistory()
 		response += "<h2>Node Last Seen History</h2>";
 		response += "<table class=\"config_table\">";
 		response += "<tr>";
-		response += "<th class=\"thead\" style=\"width: 220px;\">Time</th>";
+		response += "<th class=\"thead\" style=\"width: 215px;\">Time</th>";
+		response += "<th class=\"thead\" style=\"width: 20px;\">Up/Dwn</th>";
 		response += "<th class=\"thead\">Node</th>";
 		response += "<th class=\"thead\">Pkgs</th>";
 		response += "<th class=\"thead\" style=\"width: 20px;\">C</th>";
@@ -1002,6 +1030,7 @@ static void nodeHistory()
 		// Now start the contents
 		
 		for (int i=0; i<gwayConfig.maxSeen; i++) {
+		
 			if (listSeen[i].idSeen == 0)
 			{
 #				if _MONITOR>=1
@@ -1016,9 +1045,18 @@ static void nodeHistory()
 			response += String("<tr><td class=\"cell\">");						// Tmst
 			stringTime((listSeen[i].timSeen), response);
 			response += "</td>";
+			
+			response += String("<td class=\"cell\">");							// upDown
+			switch (listSeen[i].upDown) 
+			{
+				case 0: response += String("^"); break;
+				case 1: response += String("v"); break;
+				default: mPrint("wwwServer.ino:: ERROR upDown");
+			}
+			response += "</td>";
 		
 			response += String() + "<td class=\"cell\">"; 						// Node
-#			ifdef  _TRUSTED_NODES												// DO nothing with TRUSTED NODES
+#			ifdef  _TRUSTED_NODES												// Do nothing with TRUSTED NODES
 				switch (gwayConfig.trusted) {
 					case 0: 	
 						printHex(listSeen[i].idSeen,' ',response);
@@ -1441,7 +1479,7 @@ void setupWWW()
 		initConfig(&gwayConfig);					// Well known values
 		gwayConfig.formatCntr++;
 		writeConfig(_CONFIGFILE, &gwayConfig);
-		writeSeen( _SEENFILE, listSeen);			// Write the last time record  is Seen
+		printSeen( _SEENFILE, listSeen);			// Write the last time record  is Seen
 #		if _MONITOR>=1
 		if ((debug>=1) && (pdebug & P_MAIN )) {
 			mPrint("www:: manual Format DONE");
@@ -1743,6 +1781,21 @@ void setupWWW()
 		server.sendHeader("Location", String("/"), true);
 		server.send( 302, "text/plain", "");
 	});
+
+	// SHOWDATA, write node trusted value 
+	server.on("/SHOWDATA=1", []() {					// WWW page Serial Print ON
+		gwayConfig.showdata =1;
+		writeGwayCfg(_CONFIGFILE, &gwayConfig );	// Save configuration to file
+		server.sendHeader("Location", String("/"), true);
+		server.send( 302, "text/plain", "");
+	});
+	server.on("/SHOWDATA=0", []() {					// WWW page Serial Print OFF
+		gwayConfig.showdata =0;
+		writeGwayCfg(_CONFIGFILE, &gwayConfig );	// Save configuration to file
+		server.sendHeader("Location", String("/"), true);
+		server.send( 302, "text/plain", "");
+	});
+
 	
 	// Switch off/on the HOP functions
 	server.on("/HOP=1", []() {

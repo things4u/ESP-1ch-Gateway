@@ -59,12 +59,12 @@
 //	channel gateway to work according to spec. 
 struct vector {
 	// Upstream messages
-	uint32_t upFreq;							// 4 bytes
+	uint32_t upFreq;							// 4 bytes unsigned int32 Frequency
 	uint16_t upBW;								// 2 bytes
 	uint8_t  upLo;								// 1 bytes
 	uint8_t  upHi;								// 1 bytes
 	// Downstream messages
-	uint32_t dwnFreq;							// 4 bytes Unsigned ubt Frequency
+	uint32_t dwnFreq;							// 4 bytes unsigned int32 Frequency
 	uint16_t dwnBW;								// 2 bytes BW Specification
 	uint8_t  dwnLo;								// 1 bytes Spreading Factor
 	uint8_t  dwnHi;								// 1 bytes
@@ -298,11 +298,12 @@ struct stat_t {
 	uint8_t ch;								// Channel index to freqs array
 	uint8_t sf;
 #if RSSI==1
-	int8_t		rssi;						// XXX Can be < -128
+	int8_t	rssi;						// XXX Can be < -128
 #endif
-	int8_t		prssi;						// XXX Can be < -128
-#if _LOCALSERVER==1
-	uint8_t data[23];						// For memory purposes, only 23 chars
+	int8_t	prssi;						// XXX Can be < -128
+	uint8_t upDown;							// 0==up, 1==down
+#if _LOCALSERVER>=1
+	uint8_t data[24];						// For memory purposes, only 24 chars
 	uint8_t datal;							// Length of decoded message 1 char
 #endif
 } stat_t;
@@ -376,27 +377,33 @@ struct LoraDown {
 	uint32_t	tmst;						// Timestamp (will ignore time)
 	uint32_t	tmms;						// Timestamp according to GPS (sync required)
 	uint32_t	time;
-	double_t	freq;						// Frequency
+	uint32_t	freq;						// Frequency
+	
+	uint16_t	fcnt;						// Framecount of the requesting LoraUp message
+
 	uint8_t		size;
-	//			chan = <NOT USED>
+	uint8_t		chan;						// = <NOT USED>
+	uint8_t		sf;							// through datr
+	uint8_t		bw;							// through datr
+	
 	bool		ipol;
 	uint8_t		powe;						// transmit power, normally 14, except when using special channel
 	uint8_t		crc;
 	uint8_t		iiq;						// message inverted or not for node-node communiction
 	uint8_t		imme;						// Immediate transfer execution
-	uint8_t		sf;							// through datr
-	uint8_t		bw;							// through datr
 	uint8_t		ncrc;						// no CRC check
 	uint8_t		prea;						// preamble
-	uint8_t		rfch;						// Concentrator "RF chain" used for TX (unsigned integer)
+	uint8_t		rfch;						// Antenna "RF chain" used for TX (unsigned integer)
+
 	char *		modu;						//	"LORA" os "FSCK"
 	char *		datr;						// = "SF12BW125", contains both .sf and .bw parts
 	char *		codr;
-	
 
-	
 	uint8_t	* 	payLoad;
 } LoraDown;
+
+
+
 // Up buffer (from Lora sensor to UDP)
 // This struct contains all data of the buffer received from devices to gateway
 
@@ -404,15 +411,17 @@ struct LoraUp {
 	uint32_t	tmst;						// Timestamp of message
 	uint32_t	tmms;						// <not used at the moment>
 	uint32_t	time;						// <not used at the moment>
-	double_t	freq;						// frequency used in HZ
+	uint32_t	freq;						// MMM frequency used in HZ
 	uint8_t		size;						// Length of the message Payload
 	uint8_t		chan;						// Channel "IF" used for RX
 	uint8_t		sf;							// Spreading Factor
-	//			modu not used
-	//			datr = "SF12BW125", contains both .sf and .bw parts
+
 	int32_t		snr;
 	int16_t		prssi; 
 	int16_t		rssicorr;
+
+	char *		modu;						//	"LORA" os "FSCK"
+
 	uint8_t		payLoad[128];
 } LoraUp;
 
@@ -427,21 +436,30 @@ struct LoraUp {
 
 #define REG_FIFO                    0x00		// rw FIFO address
 #define REG_OPMODE                  0x01		// Operation Mode Register (Page 108)
-												// Register 2 to 5 are unused for LoRa
+// 0x02	 reserved
+// 0x03
+// 0x04
+// 0x05											// Register 2 to 5 are unused for LoRa
 #define REG_FRF_MSB					0x06
 #define REG_FRF_MID					0x07
 #define REG_FRF_LSB					0x08
 #define REG_PAC                     0x09
 #define REG_PARAMP                  0x0A
+#define REG_OCP						0x0B		// 200927 Not used yet
 #define REG_LNA                     0x0C
 #define REG_FIFO_ADDR_PTR           0x0D		// rw SPI interface address pointer in FIFO data buffer
 #define REG_FIFO_TX_BASE_AD         0x0E		// rw write base address in FIFO data buffer for TX modulator
 #define REG_FIFO_RX_BASE_AD         0x0F		// rw read base address in FIFO data buffer for RX demodulator (0x00)
 
-#define REG_FIFO_RX_CURRENT_ADDR    0x10		// r  Address of last packet received
-#define REG_IRQ_FLAGS_MASK          0x11
-#define REG_IRQ_FLAGS               0x12
-#define REG_RX_NB_BYTES             0x13
+#define REG_FIFO_RX_CURRENT_ADDR	0x10		// r  Address of last packet received
+#define REG_IRQ_FLAGS_MASK			0x11
+#define REG_IRQ_FLAGS				0x12
+#define REG_RX_BYTES_NB				0x13
+// 0x14
+// 0x15
+// 0x16
+// 0x17
+// 0x18
 #define REG_PKT_SNR_VALUE			0x19
 #define REG_PKT_RSSI				0x1A		// latest package
 #define REG_RSSI					0x1B		// Current RSSI, section 6.4, or  5.5.5
@@ -450,14 +468,32 @@ struct LoraUp {
 #define REG_MODEM_CONFIG2           0x1E		// LoRa: Modem PHY config 2
 #define REG_SYMB_TIMEOUT_LSB  		0x1F
 
+#define REG_PREAMBLE_MSB			0x20
+#define REG_PREAMBLE_LSB			0x21		// MMM 200930: set to 0x08
 #define REG_PAYLOAD_LENGTH          0x22
 #define REG_MAX_PAYLOAD_LENGTH 		0x23
 #define REG_HOP_PERIOD              0x24
-#define REG_MODEM_CONFIG3           0x26		// Modem PHY config 3
+#define REG_FIFO_RX_BYTE_ADDR_PTR	0x25		// 200927 Not used yet
+#define REG_MODEM_CONFIG3           0x26		// Modem PHY config 3, bit 2 AgcAutoOn and 3 LowDataRateOptimize used
+#define REG_PPM_CORRECTION			0x27
+#define REG_FREQ_ERROR_MSB			0x28 (r)
+#define REG_FREQ_ERROR_MID			0x29 (r)
+#define REG_FREQ_ERROR_LSB			0x2A (r)
+// 0x2B reserved
 #define REG_RSSI_WIDEBAND			0x2C
+// 0x2D reserved
+// 0x2E reserved
+// 0x2F reserved
 
-#define REG_INVERTIQ				0x33
+// 0x30 reserved
+#define REG_DETECT_OPTIMIZE			0x31
+// 0x32 reserved
+#define REG_INVERTIQ				0x33		// 0x27 for normal and 0x40 for inverted IIQ
+// 0x34 reserved
+// 0x35 reserved
+// 0x36 reserved
 #define REG_DET_TRESH				0x37		// SF6
+// 0x38 reserved
 #define REG_SYNC_WORD				0x39
 #define REG_TEMP					0x3C
 
@@ -480,7 +516,7 @@ struct LoraUp {
 
 // ----------------------------------------
 // LMIC Constants for radio registers
-#define OPMODE_LORA      			0x80
+#define OPMODE_LORA      			0x80		// bit 6 is AccessSharing Reg. Bits 4 and 5 are 0x00
 #define OPMODE_MASK      			0x0F		// Select LSB 8 bits 0, ignore LoRa bit for example
 
 #define OPMODE_LOWFREQ				0x08		// Should be - for 868.1 MHZ operation
@@ -583,7 +619,7 @@ struct LoraUp {
 
 // ----------------------------------------
 // Definitions for UDP message arriving from server
-#define PROTOCOL_VERSION			0x02
+#define PROTOCOL_VERSION			0x01
 
 #define PUSH_DATA					0x00
 #define PUSH_ACK					0x01

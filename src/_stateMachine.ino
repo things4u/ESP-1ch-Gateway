@@ -16,7 +16,6 @@
 // This file contains the state machine code enabling to receive
 // and transmit packages/messages.
 // ============================================================================================
-//
 
 
 // --------------------------------------------------------------------------------------------
@@ -77,7 +76,7 @@ void stateMachine()
 	uint8_t intr  = flags & ( ~ mask );							// Only react on non masked interrupts
 	uint8_t rssi;
 	_event=0;													// Reset the interrupt detector	
-	
+
 #	if _MONITOR>=1
 	if (intr != flags) {
 		String response = "stateMachine:: Error: flags="+String(flags,HEX)+", ";
@@ -99,14 +98,13 @@ void stateMachine()
 		if ((_state == S_SCAN) || (_state == S_CAD)) {
 
 			_event=0;
-		
+
 			uint32_t eventWait = EVENT_WAIT;
 			switch (_state) {
 				case S_INIT:	eventWait = 0; break;
 				// Next two are most important
 				case S_SCAN:	eventWait = EVENT_WAIT * 1; break;
 				case S_CAD:		eventWait = EVENT_WAIT * 1; break;
-				
 				case S_RX:		eventWait = EVENT_WAIT * 8; break;
 				case S_TX:		eventWait = EVENT_WAIT * 1; break;
 				case S_TXDONE:	eventWait = EVENT_WAIT * 4; break;
@@ -118,7 +116,7 @@ void stateMachine()
 						mPrint(response);
 #					endif //_MONITOR
 			}
-			
+
 			// doneWait is the time that we received CDDONE interrupt
 			// So we init the wait time for RXDONE based on the current SF.
 			// As for highter CF it takes longer to receive symbols
@@ -184,8 +182,8 @@ void stateMachine()
 				doneTime=micros();								// reset the timer on timeout
 				return;
 			}
-			
-		
+
+
 			// If we are here, NO timeout has occurred 
 			// So we need to return to the main State Machine
 			// as there was NO interrupt
@@ -201,19 +199,19 @@ void stateMachine()
 			}
 #			endif //_MONITOR
 		} // if SCAN or CAD
-		
+
 		// else, S_RX of S_TX for example
 		else {
 			//
 		} // else S_RX or S_TX, TXDONE
-		
+
 		yield();										// if hopping is enabled
-		
+
 	}// intr==0 && gwayConfig.hop
 
-	
 
-	// ========================================================================================
+
+	// ==========================================================================================
 	// This is the actual state machine of the gateway
 	// and its next actions are depending on the state we are in.
 	// For hop situations we do not get interrupts, so we have to
@@ -233,11 +231,11 @@ void stateMachine()
 #		endif //_MONITOR
 		// new state, needed to startup the radio (to S_SCAN)
 		writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF );				// Clear ALL interrupts
-		writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) 0x00 );			// Clear ALL interrupts
+		writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) 0x00 );			// Accept ALL interrupts
 		_event=0;
 	  break;
 
-	  
+
 	  // ----------------------------------------------------------------------------------------
 	  // In S_SCAN we measure a high RSSI this means that there (probably) is a message
 	  // coming in at that freq. But not necessarily on the current SF.
@@ -259,7 +257,7 @@ void stateMachine()
 				MAP_DIO1_LORA_RXTOUT | 
 				MAP_DIO2_LORA_NOP | 
 				MAP_DIO3_LORA_CRC));
-			
+
 			// Since new state is S_RX, accept no interrupts except RXDONE or RXTOUT
 			// HEADER and CRCERR
 			writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) ~(
@@ -267,19 +265,19 @@ void stateMachine()
 				IRQ_LORA_RXTOUT_MASK | 
 				IRQ_LORA_HEADER_MASK | 
 				IRQ_LORA_CRCERR_MASK));
-			
+
 			// Starting with version 5.0.1 the waittime is dependent on the SF
 			// So for SF12 we wait longer (2^7 == 128 uSec) and for SF7 4 uSec.
 			//delayMicroseconds( (0x01 << ((uint8_t)sf - 5 )) );
 			//if (gwayConfig.cad) 									// XXX 180520 make sure we start reading asap in hop
 			//	delayMicroseconds( RSSI_WAIT );						// Wait some microseconds less
-			
+
 			rssi = readRegister(REG_RSSI);							// Read the RSSI
 			_rssi = rssi;											// Read the RSSI in the state variable
 
 			_event=0;												// Make 0, as soon as we have an interrupt
 			detTime=micros();										// mark time that preamble detected
-			
+
 #			if _MONITOR>=1
 			if ((debug>=1) && (pdebug & P_PRE)) {
 				String response = "SCAN:: ";
@@ -329,7 +327,7 @@ void stateMachine()
 				_state = S_CAD;										// promote to next level
 				_event=0;
 			}
-			
+
 			// If the RSSI is not big enough we skip the CDDONE
 			// and go back to scanning
 			else {
@@ -351,7 +349,7 @@ void stateMachine()
 			doneTime = micros();									// Need CDDONE or other intr to reset timeout			
 
 		}//SCAN CDDONE 
-		
+
 		// So if we are here then we are in S_SCAN and the interrupt is not
 		// CDDECT or CDDONE. it is probably soft interrupt _event==1
 		// So if gwayConfig.hop we change the frequency and restart the
@@ -371,7 +369,7 @@ void stateMachine()
 		{
 			_event=0;												// XXX 26/12/2017 !!! NEED
 		}
-		
+
 		// Unkown Interrupt, so we have an error
 		//
 		else {
@@ -387,10 +385,10 @@ void stateMachine()
 			writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) 0x00);
 			writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);
 		}
-		
+
 	  break; // S_SCAN
 
-	  
+
 	  // ----------------------------------------------------------------------------------------
 	  // S_CAD: In CAD mode we scan every SF for high RSSI until we have a DETECT.
 	  // Reason is the we received a CADDONE interrupt so we know a message is received
@@ -416,28 +414,28 @@ void stateMachine()
 				MAP_DIO1_LORA_RXTOUT | 
 				MAP_DIO2_LORA_NOP |
 				MAP_DIO3_LORA_CRC ));
-			
+
 			// Accept no interrupts except RXDONE or RXTOUT
 			_event=0;								
-			
+
 			// if CDECT, make state S_RX so we wait for RXDONE intr
-			
+
 			writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) ~(
 				IRQ_LORA_RXDONE_MASK | 
 				IRQ_LORA_RXTOUT_MASK |
 				IRQ_LORA_HEADER_MASK |
 				IRQ_LORA_CRCERR_MASK ));
-				
+
 			// Reset all interrupts as soon as possible
 			// But listen ONLY to RXDONE and RXTOUT interrupts 
 			//writeRegister(REG_IRQ_FLAGS, IRQ_LORA_CDDETD_MASK | IRQ_LORA_RXDONE_MASK);
 
 			// If we want to reset CRC, HEADER and RXTOUT flags as well
 			writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF );			// XXX 180326, reset all CAD Detect interrupt flags
-			
+
 			//_state = S_RX;										// XXX 180521 Set state to start receiving
 			opmode(OPMODE_RX_SINGLE);								// set reg 0x01 to 0x06, initiate READ
-			
+
 			delayMicroseconds( RSSI_WAIT );							// Wait some microseconds less
 			//delayMicroseconds( (0x01 << ((uint8_t)sf - 5 )) );
 			rssi = readRegister(REG_RSSI);							// Read the RSSI
@@ -452,9 +450,9 @@ void stateMachine()
 			}
 #			endif //_MONITOR
 			_state = S_RX;											// Set state to start receiving
-			
+
 		}// CDDETD
-		
+
 		// Intr == CADDONE
 		// So we scan this SF and if not high enough ... next
 		//
@@ -464,18 +462,12 @@ void stateMachine()
 			// We expect on other SF get CDDETD
 			//
 			if (((uint8_t)sf) < freqs[gwayConfig.ch].upHi) {
-			
+
 				sf = (sf_t)((uint8_t)sf+1);							// Increment sf
 				setRate(sf, 0x04);									// Set SF with CRC==on
-				
-				// reset interrupt flags for CAD Done
-				_event=0;											// XXX 180324, when increasing SF loop, ws 0x00
-				writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) 0x00);	// Reset the interrupt mask
-				//writeRegister(REG_IRQ_FLAGS, IRQ_LORA_CDDONE_MASK | IRQ_LORA_CDDETD_MASK);
-				writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF );		// This will prevent the CDDETD from being read
 
 				opmode(OPMODE_CAD);									// Scanning mode
-				
+
 				delayMicroseconds(RSSI_WAIT);
 				rssi = readRegister(REG_RSSI);						// Read the RSSI
 
@@ -483,6 +475,13 @@ void stateMachine()
 				if ((debug>=3) && (pdebug & P_CAD)) {
 					mPrint("S_CAD:: CDONE, SF=" + String(sf) );
 				}
+
+				// reset interrupt flags for CAD Done
+				_event=0;											// XXX 180324, when increasing SF loop, ws 0x00
+				writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) 0x00);	// Accept all
+				//writeRegister(REG_IRQ_FLAGS, IRQ_LORA_CDDONE_MASK | IRQ_LORA_CDDETD_MASK);
+				writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF );		// Clear all
+
 #				endif //_MONITOR
 			}
 
@@ -495,7 +494,7 @@ void stateMachine()
 				_event=1;											// reset soft intr, to state machine again
 				writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) 0x00);	// Reset the interrupt mask
 				writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF );		// or IRQ_LORA_CDDONE_MASK
-				
+
 				_state = S_SCAN;									// As soon as we reach SF12 do something
 				sf = (sf_t) freqs[gwayConfig.ch].upLo;
 				cadScanner();										// Which will reset SF to lowest SF
@@ -507,7 +506,7 @@ void stateMachine()
 #				endif //_MONITOR
 			}
 			doneTime = micros();									// We need CDDONE or other intr to reset timeout
-			
+
 		} //CAD CDDONE
 
 		// if this interrupt is not CDECT or CDDONE then probably is 0x00
@@ -524,7 +523,7 @@ void stateMachine()
 #			endif //_MONITOR
 			//_event=1;												// Stay in CAD _state until real interrupt
 		}
-		
+
 		// else we do not recognize the interrupt. We print an error
 		// and restart scanning. If hop we start at gwayConfig.ch==0
 		//
@@ -555,9 +554,9 @@ void stateMachine()
 	  //	Go back to SCAN
 	  //
 	  case S_RX:
-		
+
 		if (intr & IRQ_LORA_RXDONE_MASK) {
-		
+
 #			if _CRCCHECK>=1
 			// We have to check for CRC error which will be visible AFTER RXDONE is set.
 			// CRC errors might indicate that the reception is not OK.
@@ -585,7 +584,7 @@ void stateMachine()
 				// Reset interrupts
 				_event=0;												// CRC error
 				writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) 0x00);		// Reset the interrupt mask
-				writeRegister(REG_IRQ_FLAGS, (uint8_t)(
+				writeRegister(REG_IRQ_FLAGS, (uint8_t) (
 					IRQ_LORA_RXDONE_MASK | 
 					IRQ_LORA_RXTOUT_MASK | 
 					IRQ_LORA_HEADER_MASK | 
@@ -595,12 +594,11 @@ void stateMachine()
 			}// RX-CRC mask
 #			endif //_CRCCHECK
 
-			
 			// If we are here, no CRC error occurred, start timer
 #			if _DUSB>=1 || _MONITOR>=1
 				uint32_t rxDoneTime = micros();	
 #			endif	
-		
+
 			// There should not be an error in the message
 			LoraUp.payLoad[0]= 0x00;								// Empty the message
 
@@ -611,7 +609,7 @@ void stateMachine()
 			// - Reset the interrupts
 			// - break
 			// NOTE: receivePacket also increases .ok0 - .ok2 counter
-			
+
 			if((LoraUp.size = receivePkt(LoraUp.payLoad)) <= 0) {
 #				if _MONITOR>=1
 				if ((debug>=0) && (pdebug & P_RX)) {
@@ -623,11 +621,11 @@ void stateMachine()
 				_event=1;
 				writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) 0x00);	// Reset the interrupt mask
 				writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);
-				
+
 				_state = S_SCAN;
 				break;
 			}
-			
+
 #			if _MONITOR>=1
 			if ((debug >=2) && (pdebug & P_RX)) {
 				String response  = "RXDONE:: dT=";
@@ -636,7 +634,7 @@ void stateMachine()
 				mPrint(response);
 			}
 #			endif //_MONITOR
-				
+
 			// Do all register processing in this section
 			uint8_t value = readRegister(REG_PKT_SNR_VALUE);		// 0x19; 
 			if ( value & 0x80 ) {									// The SNR sign bit is 1
@@ -651,14 +649,14 @@ void stateMachine()
 
 			// Packet RSSI
 			LoraUp.prssi = readRegister(REG_PKT_RSSI);				// read register 0x1A, packet rssi
-    
+
 			// Correction of RSSI value based on chip used.	
 			if (sx1272) {											// Is it a sx1272 radio?
 				LoraUp.rssicorr = 139;
 			} else {												// Probably SX1276 or RFM95
 				LoraUp.rssicorr = 157;
 			}
-				
+
 			LoraUp.sf = readRegister(REG_MODEM_CONFIG2) >> 4;
 
 			// If read was successful, read the package from the LoRa bus
@@ -682,13 +680,13 @@ void stateMachine()
 				_state = S_RX;
 				rxLoraModem();
 			}
-			
+
 			writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) 0x00);
 			writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);			// Reset the interrupt mask
 			eventTime=micros();										// There was an event for receive
 			_event=0;
 		}// RXDONE
-		
+
 		// RXOUT: 
 		// We did receive message receive timeout
 		// This is the most common event in hop mode, possibly due to the fact
@@ -697,13 +695,13 @@ void stateMachine()
 		// immediately without delay.
 		//
 		else if (intr & IRQ_LORA_RXTOUT_MASK) {
-			
+
 			// Make sure we reset all interrupts
 			// and get back to scanning
 			_event=0;												// Is set by interrupt handlers
 			writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) 0x00 );
 			writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);			// reset all interrupts
-			
+
 			// If RXTOUT we put the modem in cad state and reset to SF7
 			// If a timeout occurs here we reset the cadscanner
 			//
@@ -719,21 +717,20 @@ void stateMachine()
 				sf = SF7;
 				cadScanner();										// Start the scanner after RXTOUT
 				_state = S_SCAN;									// New state is scan
-
 			}
-			
+
 			// If not in cad mode we are in single channel single sf mode.
 			//
 			else {
 				_state = S_RX;										// Receive when interrupted
 				rxLoraModem();
 			}
-			
+
 			eventTime=micros();										//There was an event for receive
 			doneTime = micros();									// We need CDDONE or other intr to reset timeout
-			
+
 		}// RXTOUT
-		
+
 		else if (intr & IRQ_LORA_HEADER_MASK) {
 			// This interrupt means we received an header successfully
 			// which is normall an indication of RXDONE
@@ -757,7 +754,7 @@ void stateMachine()
 			}
 #			endif //_MONITOR
 		}
-		
+
 		// The interrupt received is not RXDONE, RXTOUT or HEADER
 		// therefore we wait. Make sure to clear the interrupt
 		// as HEADER interrupt comes just before RXDONE
@@ -770,10 +767,10 @@ void stateMachine()
 			//writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) 0x00 );
 			//writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);
 		}// int not RXDONE or RXTOUT
-		
+
 	  break; // S_RX
 
-	  
+
 	  // ----------------------------------------------------------------------------------------
 	  // Start the transmission of a message in state S-TX (DOWN)
 	  // This is not an interrupt state, we use this state to start transmission
@@ -795,25 +792,6 @@ void stateMachine()
 			_event= 1;
 		}
 
-#		if _MONITOR>=1
-		//if ((debug>=1) && (pdebug & P_MAIN)) {
-		//	mPrint("TX stateMachine:: calling loraWait");
-		//}
-#		endif
-
-		//loraWait(&LoraDown);
-	
-		// Set state to transmit
-		// Clear interrupt flags and masks
-		//writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) 0x00);
-		//writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);				// reset interrupt flags
-		
-	  	// Initiate the transmission of the buffer (in User space)
-		// We react on ALL interrupts if we are in TX state.
-		//txLoraModem(&LoraDown);
-		
-		// After filling the buffer we only react on TXDONE interrupt
-		// So, more or less start at the "case TXDONE:" below 
 		_state=S_TXDONE;
 		_event=1;													// Or remove the break below
 
@@ -827,7 +805,7 @@ void stateMachine()
 
 	  break; // S_TX
 
-	  
+
 	  // ----------------------------------------------------------------------------------------
 	  // After the transmission is completed by the hardware, 
 	  // the interrupt TXDONE is raised telling us that the tranmission
@@ -856,7 +834,7 @@ void stateMachine()
 #			endif //_MONITOR
 
 			// After transmission reset to receiver
-			if ((gwayConfig.cad) || (gwayConfig.hop)) {									// XXX 26/02
+			if ((gwayConfig.cad) || (gwayConfig.hop)) {				// XXX 26/02
 				// Set the state to CAD scanning
 				_state = S_SCAN;
 				sf = SF7;
@@ -866,17 +844,70 @@ void stateMachine()
 				_state = S_RX;
 				rxLoraModem();		
 			}
-			
+
 			_event=0;
-			writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) 0x00);
-			writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);			// reset interrupt flags
+
+			if (protocol == 1) {							// Got from the downstream message
+#				if _MONITOR>=1
+				if ((debug>=2) && (pdebug & P_TX)) {
+					mPrint("^ TX_ACK:: readUdp: protocol version 1");
+				}
+#				endif
+				break;										// return
+			}
+
+#			if _MONITOR>=1
+			if ((debug>=2) && (pdebug & P_TX)) {
+				mPrint("^ TX_ACK:: readUDP: protocol version 2+");
+			}
+#			endif //_MONITOR
+
+			// UP: Now respond with an TX_ACK
+			// Byte 3 is 0x05; see para 5.2.6 of spec
+			buff[0]= buff_down[0];							// As read from the Network Server
+			buff[1]= buff_down[1];							// Token 1, copied from downstream
+			buff[2]= buff_down[2];							// Token 2
+			buff[3]= TX_ACK;								// ident == 0x05;
+			buff[4]= 0;										// Not error means "\0"
+			// If it is an error, please look at para 6.1.2
+
+			yield();
+
+			// Only send the PULL_ACK to the UDP socket that just sent the data!!!
+			Udp.beginPacket(remoteIpNo, remotePortNo);
+
+			// XXX We should format the message before sending up with UDP
+
+			if (Udp.write((unsigned char *)buff, 12) != 12) {
+#				if _MONITOR>=1
+				if (debug>=0) {
+					mPrint("^ readUdp:: ERROR: PULL_ACK write");
+				}
+#				endif //_MONITOR
+			}
+			else {
+#				if _MONITOR>=1
+				if ((debug>=2) && (pdebug & P_TX)) {
+					mPrint("^ readUdp:: TX_ACK: micros="+String(micros()));
+				}
+#				endif //_MONITOR
+			}
+
+			if (!Udp.endPacket()) {
+#				if _MONITOR>=1
+				if ((debug>=0) && (pdebug & P_TX)) {
+					mPrint("^ readUdp:: PULL_ACK: ERROR Udp.endPacket");
+				}
+#				endif //_MONITOR
+			}
+			yield();
 		}
-		
+
 		// If a soft _event==0 interrupt and no transmission finished:
 		else if ( intr != 0 ) {
 #			if _MONITOR>=1
 			if ((debug>=0) && (pdebug & P_TX)) {
-				String response =  "TXDONE:: Error unknown intr=";
+				String response =  "TXDONE:: ERROR unknown intr=";
 				mStat(intr, response);
 				mPrint(response);
 			} //_MONITOR
@@ -886,24 +917,44 @@ void stateMachine()
 			_event=0;
 			_state=S_SCAN;
 		}
-		
+
 		// intr == 0
+		// TX_DONE interrupt is not received in time
 		else {
 
 			// Increase timer. If timer exceeds certain value (7 seconds!), reset
 			// After sending a message with S_TX, we have to receive a TXDONE interrupt
-			// within 7 seconds according to spec, of here is a problem.
-			if ( sendTime > micros() ) sendTime = 0;				// This could be omitted for usigned ints
-			if (( _state == S_TXDONE ) && (( micros() - sendTime) > 7000000 )) {
+			// within 7 seconds according to spec, or there is a problem.
+			if ( sendTime > micros() ) {
+				sendTime = 0;				// This could be omitted for usigned ints
 #				if _MONITOR>=1
 				if ((debug>=1) && (pdebug & P_TX)) {
-					mPrint("TXDONE:: reset TX");
+					mPrint("v Warning:: intr=0 received, sendTime=0");
+				}
+#				endif //_MONITOR
+			}
+			if (( _state == S_TXDONE ) && (( micros() - sendTime) > 8000000 )) {
+#				if _MONITOR>=1
+				if ((debug>=1) && (pdebug & P_TX)) {
+					mPrint("v Warning:: TXDONE not received, reset receiver");
 				}
 #				endif //_MONITOR
 				startReceiver();
 			}
 		}
-	
+
+		// ONLY NOW WE START TO MONITOR THE PULL_RESP MESSAGE.
+#		if _MONITOR>=1
+		if ((debug>=1) && (pdebug & P_TX)) {
+			//uint8_t * data = buff_down + 4;
+			//data[packetSize-4] = 0;
+			//mPrint("v TXDONE:: PULL_RESP: size="+String(packetSize)+", data="+String((char *)data)); 
+		}
+#		endif //_MONITOR
+
+		// The interrupts should be set by the _loramodem.ino functions
+		//writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) 0x00);		// receive all
+		//writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);				// reset interrupt flags
 
 	  break; // S_TXDONE	  
 

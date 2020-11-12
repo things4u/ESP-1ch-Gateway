@@ -97,8 +97,6 @@ bool connectUdp()
 // ----------------------------------------------------------------------------
 int readUdp(int packetSize)
 { 
-	uint8_t buff[64]; 						// General buffer to use for UDP, set to 64 characters
-	uint8_t buff_down[TX_BUFF_SIZE];		// Buffer for downstream
 
 	// Make sure we are connected over WiFI
 	if (WlanConnect(10) < 0) {
@@ -129,11 +127,11 @@ int readUdp(int packetSize)
 	yield();								// MMM 200406
 
 	// Remote Address should be known
-	IPAddress remoteIpNo = Udp.remoteIP();
+	remoteIpNo = Udp.remoteIP();
 
 	// Remote port is either of the remote TTN server or from NTP server (=123)
+	remotePortNo = Udp.remotePort();
 	
-	unsigned int remotePortNo = Udp.remotePort();
 	if (remotePortNo == 123) {				// NTP message arriving, not expected
 		// This is an NTP message arriving
 #		if _MONITOR>=1
@@ -143,7 +141,7 @@ int readUdp(int packetSize)
 #		endif //_MONITOR
 		gwayConfig.ntpErr++;
 		gwayConfig.ntpErrTime = now();
-		Udp.flush();						// MMM 200326 Clear buffer when time response arrives (error)
+		Udp.flush();						// 200326 Clear buffer when time response arrives (error)
 		return(0);
 	}
 	
@@ -152,11 +150,11 @@ int readUdp(int packetSize)
 	else {
 		// First 4 butes are very important, rest is data
 		// Especially the 2 token bytes should be watched.
-		uint8_t *data = (uint8_t *) ((uint8_t *)buff_down + 4);
-		uint8_t protocol= buff_down[0];
+		protocol= buff_down[0];
 		uint16_t token= buff_down[2]*256 + buff_down[1];			// LSB first [1], MSB [2] comes after
 		uint8_t ident= buff_down[3];
-
+		// uint8_t *data = (uint8_t *) ((uint8_t *)buff_down + 4);
+		
 #		if _MONITOR>=1
 		if ((debug>=3) && (pdebug & P_TX)) {
 			mPrint("v readUdp:: message ident="+String(ident));
@@ -177,7 +175,7 @@ int readUdp(int packetSize)
 		//	Byte 4-11:	Gateway EUI
 		//	Byte 12-n:	JSON data
 		//
-		case PUSH_DATA: 								// 0x00 UP
+		case PUSH_DATA: 								// 0x00 UP, never activated
 #			if _MONITOR>=1
 			if ((debug>=1) && (pdebug & P_RX)) {
 				mPrint("v PUSH_DATA:: size "+String(packetSize)+" From "+String(remoteIpNo.toString()));
@@ -195,9 +193,9 @@ int readUdp(int packetSize)
 		//	byte 1+2:	Token copied from requestor
 		//	byte 3:		ident = 0x01, ack PUSH_ACK
 		//
-		case PUSH_ACK:								// 0x01 DOWN
+		case PUSH_ACK:									// 0x01 DOWN
 #			if _MONITOR>=1
-			if ((debug>=1) && (pdebug & P_TX)) {
+			if ((debug>=2) && (pdebug & P_TX)) {
 				char res[128];				
 				sprintf(res, "v PUSH_ACK:: token=%u, size=%u, IP=%d.%d.%d.%d, port=%d, protocol=%u ", 
 					(buff_down[2]*256+buff_down[1]),
@@ -212,8 +210,8 @@ int readUdp(int packetSize)
 		break;
 
 
-		// PULL DATA message (Up)
-		// This is a request/UP message and will not be executed by this function.
+		// PULL DATA message (Up)						// UP, never activated
+		// This is a request/UP message and is never executed by this function.
 		// We have it here as a description only. 
 		//	Para 5.2.3, Semtech Gateway to Server Interface document
 		//
@@ -222,17 +220,17 @@ int readUdp(int packetSize)
 		// Byte 3		PULL_DATA ident == 0x02
 		// Byte 4-11	Gateway EUI
 		//
-		case PULL_DATA:								// 0x02 UP
+		case PULL_DATA:									// 0x02 UP
 #			if _MONITOR>=1
 			if ((debug>=1) && (pdebug & P_RX)) {
 				mPrint("v PULL_DATA");
 			}
 #			endif //_MONITOR
-			Udp.flush();								// MMM 200419 Added
+			Udp.flush();								// 200419 Added, probably never executed
 		break;
 
 
-		// PULL_ACK message (Down)
+		// PULL_ACK message (Down)						// Called to confirm receipt of pull-data
 		// This is the (immediate!) response to PULL_DATA message
 		// Para 5.2.4, Semtech Gateway to Server Interface document
 		// With this ACK, the server confirms the gateway that the route is open
@@ -246,7 +244,7 @@ int readUdp(int packetSize)
 		//
 		case PULL_ACK:									// 0x04 DOWN
 #			if _MONITOR>=1
-			if ((debug>=1) && (pdebug & P_TX)) {
+			if ((debug>=2) && (pdebug & P_TX)) {
 				char res[128];				
 				sprintf(res, "v PULL_ACK:: token=%u, size=%u, IP=%d.%d.%d.%d, port=%d, protocol=%u ", 
 					(buff_down[2]*256+buff_down[1]),
@@ -259,7 +257,7 @@ int readUdp(int packetSize)
 #			endif //_MONITOR
 			
 			yield();				
-			Udp.flush();								// MMM 200419
+			Udp.flush();								// 200419
 			// No response is needed
 		break;
 
@@ -267,14 +265,15 @@ int readUdp(int packetSize)
 		// PULL_RESP (Down)
 		// This message type is used to confirm OTAA message to the node,
 		// but this message format will also be used for other downstream communication
-		// It's length shall not exceed 1000 Octets. This is:
+		// It's length shall not exceed 1000 Octets. (TTN 51 octets) 
+		// This is:
 		//	RECEIVE_DELAY1		1 s 
 		//	RECEIVE_DELAY2		2 s (is RECEIVE_DELAY1+1)
 		//	JOIN_ACCEPT_DELAY1	5 s
 		//	JOIN_ACCEPT_DELAY2	6 s
 		//
 		// buff_down[0]:		Version number (==PROTOCOL_VERSION)
-		// buff_down[1-2]:		Token: If Protocol version==0, make 0. If version==2 arbitrary?
+		// buff_down[1-2]:		Token: If Protocol version==0, make 0. If version==1 arbitrary?
 		// buff_down[3]:		PULL_RESP: ident = 0x03
 		// buff_down[4-n]:		payLoad data
 		//
@@ -307,10 +306,10 @@ int readUdp(int packetSize)
 #			endif//_PROFILER
 
 			// Send to the LoRa Node first (timing) and then do reporting to _Monitor
-			_state=S_TX;
+			//_state=S_TX;
 			sendTime = micros();						// record when we started sending the message
-// XXX
-			// Send the package DOWN to the sensor
+
+			// Prepare to send the package DOWN to the sensor
 			// We just read the packet from the Network Server and it is formatted
 			// as described in the specs. This function fills LoraDown struct.
 			if (sendPacket(buff_down, packetSize) < 0) {
@@ -328,77 +327,176 @@ int readUdp(int packetSize)
 			// another package receiving/sending
 
 			if (loraWait(&LoraDown) == 0) {
-				_state=S_CAD;							// Maybe call TXDONE and wait 1 sec
+				_state=S_CAD;										// Maybe call TXDONE and wait 1 sec
 				_event=1;
 				break;
 			}
-
-			// Clear interrupt flags and masks
-			writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) 0x00);			// MMM 200407 Reset
-			writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);				// reset interrupt flags
 			
 			// Initiate the transmission of the buffer
 			// (We normally react on ALL interrupts if we are in TX state)
-			txLoraModem(&LoraDown);										// Calling sendPkt() in turn
+			txLoraModem(&LoraDown);									// Calling sendPkt() in turn
 
+			// Copy the lastSeen data down
+			for (int m=( gwayConfig.maxStat -1); m>0; m--) statr[m]= statr[m-1];
+			
+			// If transmission is finished, print statistics
 #			if _MONITOR>=1
-			if ((debug>=2) && (pdebug & P_TX)) {
-				uint8_t flags = readRegister(REG_IRQ_FLAGS);
-				uint8_t mask  = readRegister(REG_IRQ_FLAGS_MASK);
-				uint8_t intr  = flags & ( ~ mask );
 
+				//DecodePayload: para 4.3.1 of Lora 1.1 Spec
+				// MHDR
+				//	1 byte			Payload[0]
+				// FHDR
+				// 	4 byte Dev Addr Payload[1-4]
+				// 	1 byte FCtrl  	Payload[5]
+				// 	2 bytes FCnt	Payload[6-7]				
+				// 		= Optional 0 to 15 bytes Options
+				// FPort
+				//	1 bytes, 0x00	Payload[8]
+				// ------------
+				// +=9 BYTES HEADER
+				//
+				// FRMPayload
+				//	N bytes			(Payload )
+				//
+				// 4 bytes MIC trailer
+				
+#			  if _LOCALSERVER>=2				
+				uint8_t DevAddr[4];
+				uint16_t frameCount;
+				int index;
+				
+				if ((index = inDecodes((char *)(LoraDown.payLoad+1))) >=0 ) {
+#	ifdef _FCNT
+					frameCount= LoraDown.fcnt;
+#	else
+					frameCount= LoraDown.payLoad[7]*256 + LoraDown.payLoad[6];
+#	endif
+					// Only if _LOCALSERVER >= 2 for downstream
+					strncpy ((char *)statr[0].data, (char *)LoraDown.payLoad,  LoraDown.size);
 
-				String response = "v readUdp:: PULL_RESP from IP="+String(remoteIpNo.toString())
-					+", micros=" + String(micros())
-					+", wait=";
-				if (sendTime < micros()) {
-					response += String(micros() - sendTime) ;
+					DevAddr[0]= LoraDown.payLoad[4];
+					DevAddr[1]= LoraDown.payLoad[3];
+					DevAddr[2]= LoraDown.payLoad[2];
+					DevAddr[3]= LoraDown.payLoad[1];
+
+					statr[0].datal = encodePacket((uint8_t *)(statr[0].data + 9), 
+						LoraDown.size -9 -4, 
+						(uint16_t)frameCount, 
+						DevAddr, 
+						decodes[index].appKey, 
+						1
+					);													// Down
 				}
 				else {
-					response += "-" + String(sendTime - micros()) ;
-				};
+#					if _MONITOR >= 1				
+						//
+#					endif //_MONITOR
+				}
+#			  elif _LOCALSERVER==1
+				// If we should not print data for downlink
+				statr[0].datal = 0;
+#			  endif //_LOCALSERVER
+			
+			// If _MONITOR set print the statistics
+			if ((debug>=1) && (pdebug & P_TX)) {
 
+				String response ="v txLoraModem hi:: ";
+				printDwn(&LoraDown, response);
+				mPrint(response);
 
-				response+=", stat:: ";
-				mStat(intr, response);
-				mPrint(response); 
+				response = "v txLoraModem reg:: ";
+				printRegs(&LoraDown, response);
+				mPrint(response);
+			
+				delay(1);
+				response = "v txLoraModem lo:: ";
 
+#				if _LOCALSERVER>=2
+
+					if (statr[0].datal>24) {
+						response+= ", statr[0].datal=" + String(statr[0].datal);
+						statr[0].datal=24;
+					}
+					
+					response+= "coded=<";
+					
+					if (statr[0].datal < 0) {
+						mPrint("ERROR datal=0");
+						statr[0].datal=0;
+					}
+					for (int i=0; i<statr[0].datal; i++) {
+						response += String(statr[0].data[i],HEX) + " ";
+					}
+					response += ">";
+					
+					response += ", addr=";
+					printHex((IPAddress)DevAddr, ':', response);
+					
+					response+= ", fcnt=" + String(frameCount);
+#				endif //_LOCALSERVER
+
+				response += ", size=" + String(LoraDown.size);
+				response += ", load=<";
+				for(int i=0; i<LoraDown.size; i++) {
+					response += String(LoraDown.payLoad[i],HEX) + " ";
+				}
+				response += ">";				
+				mPrint(response);
 			}
+
 #			endif //_MONITOR
+
+			statr[0].time	= now();
+			statr[0].ch		= gwayConfig.ch;
+			statr[0].sf		= LoraDown.sf;
+			statr[0].upDown	= 1;							// Down
+			statr[0].node	= ( 
+					LoraDown.payLoad[1]<<24 | 
+					LoraDown.payLoad[2]<<16 | 
+					LoraDown.payLoad[3]<<8 | 
+					LoraDown.payLoad[4] 
+			);
+
+			addSeen(listSeen, statr[0]);
+			
+#			if RSSI==1
+				statr[0].rssi	= _rssi - rssicorr;
+#			endif // RSSI
+
+			//statr[0].datal	= 3;
+			//statr[0].data[0]	= 0x86;
+			//statr[0].data[1]	= 0xC4;
+			//statr[0].data[2]	= 0x0A;
+			//statr[0].data[3]	= 0x00;
+			//strncpy((char *)statr[0].data, "Down", 4);	// MMMM
 
 			// After filling the buffer we only react on TXDONE interrupt
 			// So, more or less start at the "case TXDONE:"  
 			_state=S_TXDONE;
 			_event=1;										// Or remove the break below
 
-//			Udp.flush();									// MMM 200509 flush UDP buffer
+			yield();										// MMM 200925
 
-			// No break!! so next secton will be executed
-
-#			ifdef _PROFILER
-			// measure the total time for transmissioon here
-			if ((debug>=2) && (pdebug & P_TX)) {
-				mPrint("v PULL_RESP:: finit: micros="+String(micros() ));
-			}
-#			endif //_PROFILER
+		break;
 
 
-		// TX_ACK (Up)
-		// This is the response to the PULL_RESP message by the sensor device (above)
+		// TX_ACK (Up)										// Never activated by this function
+		// This is the response to the PULL_RESP message by the sensor device
 		// it is sent by the gateway UP to the server to confirm the PULL_RESP message.
 		//	byte 0:		Protocol version (0x01 or 0x02)
 		//	byte 1+2:	Token number of UP sender
 		//	byte 3:		Message ID TX_ACK == 0x05
 		//	byte 4-n:	Optional Error Data, {"errno":xxxx}
 		//
-		case TX_ACK:									// Message id: 0x05 UP
+		case TX_ACK:										// Message id: 0x05 UP
 
 			if (protocol == 1) {							// Got from the downstream message
 #				if _MONITOR>=1
 				if ((debug>=1) && (pdebug & P_TX)) {
 					mPrint("^ TX_ACK:: readUdp: protocol version 1");
-					//data = buff_down + 4;
-					//data[packetSize-4] = 0;
+//					uint8_t *data;
+//					data = buff_down + 4;
+//					data[packetSize-4] = 0;
 				}
 #				endif
 				break;										// return
@@ -409,59 +507,8 @@ int readUdp(int packetSize)
 				mPrint("^ TX_ACK:: readUDP: protocol version 2+");
 			}
 #			endif //_MONITOR
-
-
-			// UP: Now respond with an TX_ACK
-			// Byte 3 is 0x05; see para 5.2.6 of spec
-			buff[0]= buff_down[0];							// As read from the Network Server
-			buff[1]= buff_down[1];							// Token 1, copied from downstream
-			buff[2]= buff_down[2];							// Token 2
-			buff[3]= TX_ACK;								// ident == 0x05;
-			buff[4]= 0;										// Not error means "\0"
-			// If it is an error, please look at para 6.1.2
-
-			yield();
-
-			// Only send the PULL_ACK to the UDP socket that just sent the data!!!
-			Udp.beginPacket(remoteIpNo, remotePortNo);
-			
-			// XXX We should format the message before sending up with UDP
-			
-			if (Udp.write((unsigned char *)buff, 12) != 12) {
-#				if _MONITOR>=1
-				if (debug>=0) {
-					mPrint("^ readUdp:: ERROR: PULL_ACK write");
-				}
-#				endif //_MONITOR
-			}
-			else {
-#				if _MONITOR>=1
-				if ((debug>=2) && (pdebug & P_TX)) {
-					mPrint("^ readUdp:: TX_ACK: micros="+String(micros()));
-				}
-#				endif //_MONITOR
-			}
-
-			if (!Udp.endPacket()) {
-#				if _MONITOR>=1
-				if ((debug>=0) && (pdebug & P_TX)) {
-					mPrint("^ readUdp:: PULL_ACK: ERROR Udp.endPacket");
-				}
-#				endif //_MONITOR
-			}
-			
-			yield();
-
-			// ONLY NOW WE START TO MONITOR THE PULL_RESP MESSAGE.
-#			if _MONITOR>=1
-			if ((debug>=1) && (pdebug & P_TX)) {
-				data = buff_down + 4;
-				data[packetSize-4] = 0;
-				mPrint("v readUdp:: PULL_RESP: size="+String(packetSize)+", data="+String((char *)data)); 
-			}
-#			endif //_MONITOR
-
 		break;
+
 
 		default:
 #			if _GATEWAYMGT==1

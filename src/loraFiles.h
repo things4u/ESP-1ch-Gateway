@@ -92,6 +92,7 @@ struct espGwayConfig {
 	bool seen;
 	bool expert;
 	bool monitor;
+	bool showdata;				// If set, code and deconde know data
 	bool dusbStat;				// Status of _DUSB
 	
 } gwayConfig;
@@ -121,6 +122,7 @@ struct espGwayConfig {
 // define the Seen functon as when we have seen seen nodes last time
 struct nodeSeen {
 	time_t timSeen;
+	uint8_t	upDown;
 	uint32_t idSeen;
 	uint32_t cntSeen;
 	uint8_t chnSeen;

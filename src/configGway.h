@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP32 and ESP8266
 // Copyright (c) Maarten Westenberg 2016-2020 
 
-#define VERSION "V.6.2.6.EU868; PlatformIO 200908 d"
+#define VERSION "V.6.2.7.EU868; PlatformIO 201030 d"
 
 //
 // Based on work done by Thomas Telkamp for Raspberry PI 1ch gateway and many others.
@@ -114,7 +114,7 @@
 // and to one spreading factor only.
 // This parameters contains the default value of SF, the actual version can be set with
 // the webserver and it will be stored in SPIFF
-// NOTE: The frequency is set in the loraModem.h file and is default 868.100000 MHz.
+// NOTE: The frequency is set in the loraModem.h file and is default 868100000 Hz.
 #if !defined _SPREADING
 #	define _SPREADING SF9
 #endif
@@ -254,10 +254,11 @@
 
 // This defines whether or not we would use the gateway as 
 // as sort of backend decoding system for local sensors which decodes (such as TTGO T-Beam)
-// 1: _LOCALSERVER is used
-// 0: Do not use _LOCALSERVER 
+// 0: Do not use _LOCALSERVER
+// 1: _LOCALSERVER is used for received messages
+// 2: Also transmittes messages are encoded
 #if !defined _LOCALSERVER
-#	define _LOCALSERVER 0					// See server definitions for decodes
+#	define _LOCALSERVER 1					// See server definitions for decodes
 #endif
 
 
@@ -290,7 +291,6 @@
 // 2: Same as 1, but is nodes NOT in the nodes list below they are NOT shown
 // NOTE: We probably will make this list dynamic!
 #define _TRUSTED_NODES 1
-#define _TRUSTED_DECODE 1
 
 
 // ========================================================================
@@ -339,7 +339,7 @@
 #define _WWW_INTERVAL 60					// Number of seconds before we refresh the WWW page
 #define _FILE_INTERVAL 30					// Number of timer (in secs) before writing to files
 #define _MSG_INTERVAL 31					// Message timeout timer in seconds
-#define _RST_INTERVAL 97					// Reset interval in seconds, total chip reset
+#define _RST_INTERVAL 125					// Reset interval in seconds, total chip reset
 
 
 // Define the correct radio type that you are using

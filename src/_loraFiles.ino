@@ -92,11 +92,13 @@ void initConfig(struct espGwayConfig *c)
 	// Declarations that are dependent on the init settings
 	// The structure definitions below make it possible to dynamically size and resize the
 	// information in the GUI
-	free(statr); delay(10);
+	free(statr); 
+	delay(5);
+
 	statr = (struct stat_t *) malloc((*c).maxStat * sizeof(struct stat_t));
 	for (int i=0; i<(*c).maxStat; i++) {
-		//statr[i].data=0;
-		statr[i].time=0;						// Time since 1970 in seconds		
+		statr[i].time=0;						// Time since 1970 in seconds
+		statr[i].upDown=0;						// Init for Down traffic
 		statr[i].node=0;						// 4-byte DEVaddr (the only one known to gateway)
 		statr[i].ch=0;							// Channel index to freqs array
 		statr[i].sf=0;							// Init Spreading Factor
@@ -104,7 +106,7 @@ void initConfig(struct espGwayConfig *c)
 
 	free(listSeen); delay(50);
 	listSeen = (struct nodeSeen *) malloc((*c).maxSeen * sizeof(struct nodeSeen));
-	for (int i=0; i<(*c).maxSeen; i+=1) {
+	for (int i=0; i<(*c).maxSeen; i +=1 ) {
 		listSeen[i].idSeen=0;
 	}
 
@@ -132,11 +134,11 @@ int readGwayCfg(const char *fn, struct espGwayConfig *c)
 
 #	if _GATEWAYNODE==1
 		if (gwayConfig.fcnt != (uint8_t) 0) {
-			frameCount = gwayConfig.fcnt+10;
+			frameCount = gwayConfig.fcnt+10;			// Assume he is only 10 off
 		}
 #	endif
 
-	writeGwayCfg(_CONFIGFILE, &gwayConfig );				// And writeback the configuration, not to miss a boot
+	writeGwayCfg(_CONFIGFILE, &gwayConfig );			// And writeback the configuration, not to miss a boot
 
 	return 1;
 	
@@ -199,49 +201,49 @@ int readConfig(const char *fn, struct espGwayConfig *c)
 			id_print(id, val);
 			(*c).monitor = (bool) val.toInt();
 		}
-		else if (id == "CH") { 									// Frequency Channel
-			id_print(id,val); 
-			(*c).ch = (uint8_t) val.toInt();
-		}
-		else if (id == "SF") { 									// Spreading Factor
+		else if (id == "BOOTS") {								// BOOTS setting
 			id_print(id, val);
-			(*c).sf = (uint8_t) val.toInt();
-		}
-		else if (id == "FCNT") {								// Frame Counter
-			id_print(id, val);
-			(*c).fcnt = (uint16_t) val.toInt();
-		}
-		else if (id == "DEBUG") {								// Debug Level
-			id_print(id, val);
-			(*c).debug = (uint8_t) val.toInt();
-		}
-		else if (id == "PDEBUG") {								// pDebug Pattern
-			id_print(id, val);
-			(*c).pdebug = (uint8_t) val.toInt();
+			(*c).boots = (uint16_t) val.toInt();
 		}
 		else if (id == "CAD") {									// CAD setting
 			id_print(id, val);
 			(*c).cad = (bool) val.toInt();
 		}
+		else if (id == "CH") { 									// Frequency Channel
+			id_print(id,val); 
+			(*c).ch = (uint8_t) val.toInt();
+		}
+		else if (id == "DEBUG") {								// Debug Level
+			id_print(id, val);
+			(*c).debug = (uint8_t) val.toInt();
+		}
+		else if (id == "DELAY") {								// DELAY setting
+			id_print(id, val);
+			(*c).txDelay = (int32_t) val.toInt();
+		}
+		else if (id == "EXPERT") {								// EXPERT button setting
+			id_print(id, val);
+			(*c).expert = (bool) val.toInt();
+		}
+		else if (id == "FCNT") {								// Frame Counter
+			id_print(id, val);
+			(*c).fcnt = (uint16_t) val.toInt();
+		}
+		else if (id == "FILENO") {								// FILENO setting
+			id_print(id, val);
+			(*c).logFileNo = (uint16_t) val.toInt();
+		}
+		else if (id == "FILEREC") {								// FILEREC setting
+			id_print(id, val);
+			(*c).logFileRec = (uint16_t) val.toInt();
+		}
+		else if (id == "FORMAT") {								// FORMAT setting
+			id_print(id, val);
+			(*c).formatCntr= (int8_t) val.toInt();
+		}
 		else if (id == "HOP") {									// HOP setting
 			id_print(id, val);
 			(*c).hop = (bool) val.toInt();
-		}
-		else if (id == "BOOTS") {								// BOOTS setting
-			id_print(id, val);
-			(*c).boots = (uint16_t) val.toInt();
-		}
-		else if (id == "RESETS") {								// RESET setting
-			id_print(id, val);
-			(*c).resets = (uint16_t) val.toInt();
-		}
-		else if (id == "WIFIS") {								// WIFIS setting
-			id_print(id, val);
-			(*c).wifis = (uint16_t) val.toInt();
-		}
-		else if (id == "VIEWS") {								// VIEWS setting
-			id_print(id, val);
-			(*c).views = (uint16_t) val.toInt();
 		}
 		else if (id == "NODE") {								// NODE setting
 			id_print(id, val);
@@ -255,17 +257,13 @@ int readConfig(const char *fn, struct espGwayConfig *c)
 			id_print(id, val);
 			(*c).reents = (uint16_t) val.toInt();
 		}
+		else if (id == "RESETS") {								// RESET setting
+			id_print(id, val);
+			(*c).resets = (uint16_t) val.toInt();
+		}
 		else if (id == "NTPERR") {								// NTPERR setting
 			id_print(id, val);
 			(*c).ntpErr = (uint16_t) val.toInt();
-		}
-		else if (id == "WAITERR") {								// WAITERR setting
-			id_print(id, val);
-			(*c).waitErr = (uint16_t) val.toInt();
-		}
-		else if (id == "WAITOK") {								// WAITOK setting
-			id_print(id, val);
-			(*c).waitOk = (uint16_t) val.toInt();
 		}
 		else if (id == "NTPETIM") {								// NTPERR setting
 			id_print(id, val);
@@ -275,33 +273,41 @@ int readConfig(const char *fn, struct espGwayConfig *c)
 			id_print(id, val);
 			(*c).ntps = (uint16_t) val.toInt();
 		}
-		else if (id == "FILENO") {								// FILENO setting
+		else if (id == "PDEBUG") {								// pDebug Pattern
 			id_print(id, val);
-			(*c).logFileNo = (uint16_t) val.toInt();
-		}
-		else if (id == "FILEREC") {								// FILEREC setting
-			id_print(id, val);
-			(*c).logFileRec = (uint16_t) val.toInt();
-		}
-		else if (id == "EXPERT") {								// EXPERT button setting
-			id_print(id, val);
-			(*c).expert = (bool) val.toInt();
+			(*c).pdebug = (uint8_t) val.toInt();
 		}
 		else if (id == "SEEN") {								// SEEN button setting
 			id_print(id, val);
 			(*c).seen = (bool) val.toInt();
 		}
-		else if (id == "DELAY") {								// DELAY setting
+		else if (id == "SF") { 									// Spreading Factor
 			id_print(id, val);
-			(*c).txDelay = (int32_t) val.toInt();
+			(*c).sf = (uint8_t) val.toInt();
+		}
+		else if (id == "SHOWDATA") { 							// Show data of node Factor
+			id_print(id, val);
+			(*c).showdata = (uint8_t) val.toInt();
 		}
 		else if (id == "TRUSTED") {								// TRUSTED setting
 			id_print(id, val);
 			(*c).trusted= (int8_t) val.toInt();
 		}
-		else if (id == "FORMAT") {								// TRUSTED setting
+		else if (id == "VIEWS") {								// VIEWS setting
 			id_print(id, val);
-			(*c).formatCntr= (int8_t) val.toInt();
+			(*c).views = (uint16_t) val.toInt();
+		}
+		else if (id == "WAITERR") {								// WAITERR setting
+			id_print(id, val);
+			(*c).waitErr = (uint16_t) val.toInt();
+		}
+		else if (id == "WAITOK") {								// WAITOK setting
+			id_print(id, val);
+			(*c).waitOk = (uint16_t) val.toInt();
+		}
+		else if (id == "WIFIS") {								// WIFIS setting
+			id_print(id, val);
+			(*c).wifis = (uint16_t) val.toInt();
 		}
 		else {
 #			if _MONITOR>=1
@@ -384,6 +390,7 @@ int writeConfig(const char *fn, struct espGwayConfig *c)
 	f.print("FILENO");	f.print('='); f.print((*c).logFileNo);	f.print('\n');
 	f.print("FORMAT");	f.print('='); f.print((*c).formatCntr); f.print('\n');
 	f.print("DELAY");	f.print('='); f.print((*c).txDelay); 	f.print('\n');
+	f.print("SHOWDATA");f.print('='); f.print((*c).showdata); 	f.print('\n');
 	f.print("TRUSTED");	f.print('='); f.print((*c).trusted); 	f.print('\n');
 	f.print("EXPERT");	f.print('='); f.print((*c).expert); 	f.print('\n');
 	f.print("SEEN");	f.print('='); f.print((*c).seen);		f.print('\n');
@@ -470,7 +477,7 @@ int addLog(const unsigned char * line, int cnt)
 #	if _MONITOR>=1
 	if ((debug>=2) && (pdebug & P_RX)) {
 		char s[256];
-		i+=12;									// First 12 chars are non printable
+		i += 12;								// First 12 chars are non printable
 		sprintf(s, "addLog:: fileno=%d, rec=%d : %s",gwayConfig.logFileNo,gwayConfig.logFileRec,&line[i]);
 		mPrint(s);
 	}
@@ -514,6 +521,7 @@ int initSeen(struct nodeSeen *listSeen)
 #if _MAXSEEN>=1
 	for (int i=0; i< gwayConfig.maxSeen; i++) {
 		listSeen[i].idSeen=0;
+		listSeen[i].upDown=0;
 		listSeen[i].sfSeen=0;
 		listSeen[i].cntSeen=0;
 		listSeen[i].chnSeen=0;
@@ -528,7 +536,7 @@ int initSeen(struct nodeSeen *listSeen)
 
 // ----------------------------------------------------------------------------
 // readSeen
-// This function read the information stored by writeSeen from the file.
+// This function read the information stored by printSeen from the file.
 // The file is read as String() values and converted to int after.
 // Parameters:
 //	fn:			Filename
@@ -571,6 +579,7 @@ int readSeen(const char *fn, struct nodeSeen *listSeen)
 			break;
 		}
 		val=f.readStringUntil('\t'); listSeen[i].timSeen = (time_t) val.toInt();
+		val=f.readStringUntil('\t'); listSeen[i].upDown = (uint8_t) val.toInt();
 		val=f.readStringUntil('\t'); listSeen[i].idSeen = (int64_t) val.toInt();
 		val=f.readStringUntil('\t'); listSeen[i].cntSeen = (uint32_t) val.toInt();
 		val=f.readStringUntil('\t'); listSeen[i].chnSeen = (uint8_t) val.toInt();
@@ -581,6 +590,7 @@ int readSeen(const char *fn, struct nodeSeen *listSeen)
 		}
 
 #		if _MONITOR>=1
+
 		if ((debug>=2) && (pdebug & P_MAIN)) {
 				mPrint(" readSeen:: idSeen ="+String(listSeen[i].idSeen,HEX)+", i="+String(i));
 		}
@@ -598,7 +608,7 @@ int readSeen(const char *fn, struct nodeSeen *listSeen)
 
 
 // ----------------------------------------------------------------------------
-// writeSeen
+// printSeen
 // Once every few messages, update the SPIFFS file and write the array.
 // Parameters:
 // - fn contains the filename to write
@@ -606,13 +616,13 @@ int readSeen(const char *fn, struct nodeSeen *listSeen)
 // Return values:
 // - return 1 on success
 // ----------------------------------------------------------------------------
-int writeSeen(const char *fn, struct nodeSeen *listSeen)
+int printSeen(const char *fn, struct nodeSeen *listSeen)
 {
 #if _MAXSEEN>=1
 	int i;
 	if (!SPIFFS.exists(fn)) {
 #		if _MONITOR>=1
-			mPrint("WARNING:: writeSeen, file not exists="+String(fn));
+			mPrint("WARNING:: printSeen, file not exists="+String(fn));
 #		endif //_MONITOR
 		//initSeen(listSeen);		// XXX make all initial declarations here if config vars need to have a value
 	}
@@ -620,7 +630,7 @@ int writeSeen(const char *fn, struct nodeSeen *listSeen)
 	File f = SPIFFS.open(fn, "w");
 	if (!f) {
 #		if _MONITOR>=1
-			mPrint("writeSeen:: ERROR open file="+String(fn)+" for writing");
+			mPrint("printSeen:: ERROR open file="+String(fn)+" for writing");
 #		endif //_MONITOR
 		return(-1);
 	}
@@ -628,13 +638,24 @@ int writeSeen(const char *fn, struct nodeSeen *listSeen)
 
 	for (i=0; i<iSeen; i++) {							// For all records indexed
 		if ((int32_t)listSeen[i].idSeen == 0) break;
+		
 		f.print((time_t)listSeen[i].timSeen);	f.print('\t');
+		f.print((uint8_t)listSeen[i].upDown);	f.print('\t');
 		f.print((int32_t)listSeen[i].idSeen);	f.print('\t'); // Typecast to avoid errors in unsigned conversion!
 		f.print((uint32_t)listSeen[i].cntSeen);	f.print('\t');
 		f.print((uint8_t)listSeen[i].chnSeen);	f.print('\t');
-		f.print((uint8_t)listSeen[i].sfSeen);	f.print('\n');			
+		f.print((uint8_t)listSeen[i].sfSeen);	f.print('\n');
+
+		// MMM
+#		if _MONITOR>=1
+		if ((debug >= 2) && (pdebug & P_TX)) {
+			if (listSeen[i].upDown == 1) {
+				mPrint("printSeen:: ERROR f.print, upDown="+String(listSeen[i].upDown)+", i="+String(i) );
+			}
+		}
+#		endif //_MONITOR
 	}
-	
+
 	f.close();
 #endif //_MAXSEEN
 	return(1);
@@ -666,14 +687,16 @@ int addSeen(struct nodeSeen *listSeen, struct stat_t stat)
 
 		// If the record node is equal, we found the record already.
 		// So increment cntSeen
-		if (listSeen[i].idSeen==stat.node) {
-		
-			listSeen[i].timSeen = (time_t)stat.time;
+		if ((listSeen[i].idSeen==stat.node)	&&
+			(listSeen[i].upDown==stat.upDown))
+		{
+			//listSeen[i].upDown	= stat.upDown;		// Not necessary, is the same
+			//listSeen[i].idSeen	= stat.node;		// Not necessary, is the same
+			listSeen[i].timSeen		= (time_t)stat.time;
+			listSeen[i].chnSeen		= stat.ch;
+			listSeen[i].sfSeen		= stat.sf;			// The SF argument
 			listSeen[i].cntSeen++;					// Not included on function para
-			//listSeen[i].idSeen = stat.node;		// Not necessary, is the same
-			listSeen[i].chnSeen = stat.ch;
-			listSeen[i].sfSeen = stat.sf;			// The SF argument
-//			writeSeen(_SEENFILE, listSeen);
+//			printSeen(_SEENFILE, listSeen);
 			
 #			if _MONITOR>=2
 			if ((debug>=3) && (pdebug & P_MAIN)) {
@@ -687,17 +710,17 @@ int addSeen(struct nodeSeen *listSeen, struct stat_t stat)
 
 	// else: We did not find the current record so make a new listSeen entry
 	if ((i>=iSeen) && (i<gwayConfig.maxSeen)) {
-		mPrint("addSeen:: Adding node i="+String(i) );
-		listSeen[i].idSeen = stat.node;
-		listSeen[i].chnSeen = stat.ch;
-		listSeen[i].sfSeen = stat.sf;				// The SF argument
-		listSeen[i].timSeen = (time_t)stat.time;	// Timestamp correctly
-		listSeen[i].cntSeen = 1;					// We see this for the first time	
+		listSeen[i].upDown	= stat.upDown;
+		listSeen[i].idSeen	= stat.node;
+		listSeen[i].chnSeen	= stat.ch;
+		listSeen[i].sfSeen	= stat.sf;				// The SF argument
+		listSeen[i].timSeen	= (time_t)stat.time;	// Timestamp correctly
+		listSeen[i].cntSeen	= 1;					// We see this for the first time	
 		iSeen++;
 	}
 
 #	if _MONITOR>=1
-	if ((debug>=1) && (pdebug & P_MAIN)) {
+	if ((debug>=2) && (pdebug & P_MAIN)) {
 		String response= "  addSeen:: i=";
 		response += i;
 		response += ", tim=";

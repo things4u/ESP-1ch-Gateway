@@ -70,7 +70,7 @@ extern "C" {
 #	include "lwip/dns.h"
 }
 
-#if (_GATEWAYNODE==1) || (_LOCALSERVER==1)
+#if (_GATEWAYNODE==1) || (_LOCALSERVER>=1)
 #	include "AES-128_V10.h"
 #endif
 
@@ -142,7 +142,7 @@ uint8_t pdebug= P_MAIN ;									// Initially only MAIN and GUI
 
 using namespace std;
 byte 		currentMode = 0x81;
-bool		sx1272 = true;									// Actually we use sx1276/RFM95
+bool		sx1272 = false;									// Actually we use sx1276/RFM95
 uint8_t		MAC_array[6];
 
 // ----------------------------------------------------------------------------
@@ -150,6 +150,9 @@ uint8_t		MAC_array[6];
 // Configure these values only if necessary!
 //
 // ----------------------------------------------------------------------------
+
+
+uint8_t protocol	= PROTOCOL_VERSION;
 
 // Set spreading factor (SF7 - SF12)
 sf_t sf 			= _SPREADING;							// Initial value of SF					
@@ -212,6 +215,12 @@ uint16_t iSens=0;
 // 
 int16_t mutexSPI = 1;
 
+uint8_t buff[64]; 											// Buffer to use for sx1276, set to 64 characters
+uint8_t buff_down[TX_BUFF_SIZE];							// Buffer for downstream
+IPAddress remoteIpNo;
+unsigned int remotePortNo;
+
+
 // ----------------------------------------------------------------------------
 // FORWARD DECLARATIONS
 // These forward declarations are done since other .ino fils are linked by the
@@ -239,7 +248,7 @@ static void stringTime(time_t t, String & response);					// _utils.ino
 
 int initMonitor(struct moniLine *monitor);								// _loraFiles.ino
 void initConfig(struct espGwayConfig *c);								// _loraFiles.ino
-int writeSeen(const char *fn, struct nodeSeen *listSeen);				// _loraFiles.ino
+int printSeen(const char *fn, struct nodeSeen *listSeen);				// _loraFiles.ino
 int readGwayCfg(const char *fn, struct espGwayConfig *c);				// _loraFiles.ino
 
 void init_oLED();														// _oLED.ino
@@ -490,7 +499,7 @@ void setup() {
 		printHexDigit(MAC_array[5], response);
 
 		response += ", Listening at SF" + String(sf) + " on ";
-		response += String((double)freqs[gwayConfig.ch].upFreq/1000000) + " MHz.";
+		response += String(freqs[gwayConfig.ch].upFreq) + " Hz.";
 		mPrint(response);
 	}
 #	endif //_MONITOR
@@ -498,7 +507,7 @@ void setup() {
 	// ---------- TIME -------------------------------------
 	msg_lLED("GET TIME",".");
 	ntpServer = resolveHost(NTP_TIMESERVER, 15);
-	if (ntpServer.toString() == "0:0:0:0")	{					// MMM Experimental
+	if (ntpServer.toString() == "0:0:0:0")	{					// Experimental
 #		if _MONITOR>=1
 			mPrint("setup:: NTP Server not found, found="+ntpServer.toString());
 #		endif
@@ -620,13 +629,16 @@ void setup() {
 	}
 
 	writeConfig(_CONFIGFILE, &gwayConfig);					// Write config
-	writeSeen(_SEENFILE, listSeen);							// Write the last time record  is seen
+	printSeen(_SEENFILE, listSeen);							// Write the last time record  is seen
 
 	// activate Oled display
 #	if _OLED>=1
 		acti_oLED();
 		addr_oLED();
 #	endif //_OLED
+
+	writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) 0x00);	// Allow all
+	writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);		// Reset all interrupt flags
 
 	mPrint(" --- Setup() ended, Starting loop() ---");
 
@@ -666,7 +678,7 @@ void loop ()
 		return;												// Exit loop if no WLAN connected
 	} //WlanConnect()
 
-	yield();												// MMM 200403 to make sure UDP buf filled
+	yield();												// 200403 to make sure UDP buf filled
 
 	// So if we are connected 
 	// Receive UDP PUSH_ACK messages from server. (*2, par. 3.3)
@@ -742,8 +754,7 @@ void loop ()
 			_state = S_RX;
 			rxLoraModem();
 		}
-		writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) 0x00);
-		writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);		// Reset all interrupt flags
+
 		msgTime = nowSeconds;
 	}
 
@@ -775,6 +786,7 @@ void loop ()
 
 
 	// stat PUSH_DATA message (*2, par. 4)
+	// Down send to server
 	//	
     if ((nowSeconds - statTime) >= _STAT_INTERVAL) {		// Wake up every xx seconds
 		yield();											// on 26/12/2017
@@ -824,7 +836,6 @@ void loop ()
 
 		yield();
         pullData();											// Send PULL_DATA message to server
-		//startReceiver();
 		pullTime = nowSeconds;
 		
 #		if _MONITOR>=1
@@ -838,7 +849,7 @@ void loop ()
 
 
 	// send RESET_DATA message (*2, par. 4)
-	//
+	// 				MMM Do we need this as standard?
 	// This message will also restart the server which taken approx. 3 ms.
 	nowSeconds = now();
     if ((nowSeconds - rstTime) >= _RST_INTERVAL) {			// Wake up every xx seconds
@@ -886,7 +897,7 @@ void loop ()
 
 #	if _MAXSEEN>=1
 		if ((nowSeconds - fileTime) >= _FILE_INTERVAL) {
-			writeSeen(_SEENFILE, listSeen);
+			printSeen(_SEENFILE, listSeen);
 			fileTime = nowSeconds;
 		}
 #	endif //_MAXSEEN

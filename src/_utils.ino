@@ -18,7 +18,9 @@
 
 
 
-// ==================== STRING STRING STRING ==============================================
+
+
+// ======================= STRING STRING STRING ===========================================
 
 // --------------------------------------------------------------------------------
 // PRINT INT
@@ -31,13 +33,65 @@
 // --------------------------------------------------------------------------------
 void printInt (uint32_t i, String & response)
 {
-	response+=(String(i/1000000) + "." + String(i%1000000));
+	response +=(String(i/1000000) + "." + String(i%1000000));
 }
+
+
+// --------------------------------------------------------------------------------
+// PRINT REGS
+//  Print the register settings
+// --------------------------------------------------------------------------------
+#define printReg(x) {int i=readRegister(x); if(i<=0x0F) Serial.print('0'); Serial.println(i,HEX);}
+
+void printRegs(struct LoraDown *LoraDown, String & response)
+{
+	response += "v FIFO (0x00)=0x" + String(readRegister(REG_FIFO),HEX);
+	response += "v OPMODE (0x01)=0x" + String(readRegister(REG_OPMODE),HEX);
+	
+#	if _DUSB>=1
+	if (debug>=1) {
+		Serial.print("v FIFO                 (0x00)\t=0x"); printReg(REG_FIFO);
+		Serial.print("v OPMODE               (0x01)\t=0x"); printReg(REG_OPMODE);
+		Serial.print("v FRF                  (0x06)\t=0x"); printReg(REG_FRF_MSB); 
+			Serial.print(' '); printReg(REG_FRF_MID); 
+			Serial.print(' '); printReg(REG_FRF_LSB);
+		Serial.print("v PAC                  (0x09)\t=0x"); printReg(REG_PAC);
+		Serial.print("v PARAMP               (0x0A)\t=0x"); printReg(REG_PARAMP);
+		Serial.print("v REG_OCP              (0x0B)\t=0x"); printReg(REG_OCP);
+		Serial.print("v LNA                  (0x0C)\t=0x"); printReg(REG_LNA);
+		Serial.print("v FIFO_ADDR_PTR        (0x0D)\t=0x"); printReg(REG_FIFO_ADDR_PTR);
+		Serial.print("v FIFO_TX_BASE_AD      (0x0E)\t=0x"); printReg(REG_FIFO_TX_BASE_AD);
+		Serial.print("v FIFO_RX_BASE_AD      (0x0F)\t=0x"); printReg(REG_FIFO_RX_BASE_AD);
+
+		Serial.print("v FIFO_RX_CURRENT_ADDR (0x10)\t=0x"); printReg(REG_FIFO_RX_CURRENT_ADDR);
+		Serial.print("v IRQ_FLAGS_MASK       (0x11)\t=0x"); printReg(REG_IRQ_FLAGS_MASK);
+		Serial.print("v IRQ_FLAGS            (0x12)\t=0x"); printReg(REG_IRQ_FLAGS);
+		Serial.print("v MODEM_CONFIG1        (0x1D)\t=0x"); printReg(REG_MODEM_CONFIG1);
+		Serial.print("v MODEM_CONFIG2        (0x1E)\t=0x"); printReg(REG_MODEM_CONFIG2);
+		Serial.print("v MODEM_CONFIG3        (0x26)\t=0x"); printReg(REG_MODEM_CONFIG3);
+
+		Serial.print("v PREAMBLE_MSB         (0x20)\t=0x"); printReg(REG_PREAMBLE_MSB);
+		Serial.print("v PREAMBLE_LSB         (0x21)\t=0x"); printReg(REG_PREAMBLE_LSB);		
+		Serial.print("v PAYLOAD_LENGTH       (0x22)\t="); Serial.println(readRegister(REG_PAYLOAD_LENGTH));
+		Serial.print("v MAX_PAYLOAD_LENGTH   (0x23)\t="); Serial.println(readRegister(REG_MAX_PAYLOAD_LENGTH));
+		Serial.print("v HOP_PERIOD           (0x24)\t="); Serial.println(readRegister(REG_HOP_PERIOD));
+		Serial.print("v FIFO_RX_BYTE_ADDR_PTR(0x25)\t=0x"); printReg(REG_FIFO_RX_BYTE_ADDR_PTR);
+
+		Serial.println("");
+	}
+#	endif // _DUSB
+
+
+	return;
+}
+
+
 
 // --------------------------------------------------------------------------------
 // PRINT Down
-// In a uniform way, this function prints the timstamp, the current time and the 
-// time the function must wait to execute. It will print all Downstream data
+// In a uniform way, this function prints the LoraDown structure.
+// This includes the timstamp, the current time and the time the function 
+// must wait to execute. It will print all Downstream data
 // Parameters:
 //
 // Returns:
@@ -52,23 +106,16 @@ void printDwn(struct LoraDown *LoraDown, String & response)
 	response += ", tmst=";	printInt(i, response);
 
 	response += ", wait=";
-	if (i>m) {
+	if (i>m) {										// Positive numbers
 		response += String(i-m);
 	}
-	else {
+	else {											// Negative numbers contain (number)
 		response += "(";
 		response += String(m-i);
 		response += ")";
 	}
 
-	//inval	=int(LoraDown->freq);
-	//response += ", freq="	+String(intval) +".";
-	//fraqval	=int((LoraDown->freq-intval)*10000);
-	//response += String(fraqval);
-
-	char cfreq[12] = {0};
-	ftoa(LoraDown->freq, cfreq, 3);
-	response += ", freq="	+String(cfreq);
+	response += ", freq="	+String(LoraDown->freq);
 	response += ", sf="		+String(LoraDown->sf);
 	response += ", bw="		+String(LoraDown->bw);
 	response += ", powe="	+String(LoraDown->powe);
@@ -90,8 +137,9 @@ void printDwn(struct LoraDown *LoraDown, String & response)
 	printHex((IPAddress)DevAddr, ':', response);
 
 	yield();
+
 	return;
-}
+} // printDwn
 
 
 // --------------------------------------------------------------------------------
@@ -107,10 +155,10 @@ void printDwn(struct LoraDown *LoraDown, String & response)
 // --------------------------------------------------------------------------------
 void printIP(IPAddress ipa, const char sep, String & response)
 {
-	response+=(String)ipa[0]; response+=sep;
-	response+=(String)ipa[1]; response+=sep;
-	response+=(String)ipa[2]; response+=sep;
-	response+=(String)ipa[3];
+	response += (String)ipa[0]; response += sep;
+	response += (String)ipa[1]; response += sep;
+	response += (String)ipa[2]; response += sep;
+	response += (String)ipa[3];
 }
 
 // ----------------------------------------------------------------------------------------
@@ -127,10 +175,10 @@ void printHex(uint32_t hexa, const char sep, String & response)
 
 	uint8_t * h = (uint8_t *)(& hexa);
 
-	if (h[0]<016) response+='0'; response += String(h[0], HEX);  response+=sep;
-	if (h[1]<016) response+='0'; response += String(h[1], HEX);  response+=sep;
-	if (h[2]<016) response+='0'; response += String(h[2], HEX);  response+=sep;
-	if (h[3]<016) response+='0'; response += String(h[3], HEX);  response+=sep;
+	if (h[0]<016) response += '0'; response += String(h[0], HEX);  response+=sep;
+	if (h[1]<016) response += '0'; response += String(h[1], HEX);  response+=sep;
+	if (h[2]<016) response += '0'; response += String(h[2], HEX);  response+=sep;
+	if (h[3]<016) response += '0'; response += String(h[3], HEX);  response+=sep;
 }
 
 // ----------------------------------------------------------------------------
@@ -227,6 +275,9 @@ int mStat(uint8_t intr, String & response)
 			
 		response += ", S=";
 		switch (_state) {
+			case S_TXDONE:
+				response += "TXDONE";
+			break;
 			case S_INIT:
 				response += "INIT ";
 			break;
@@ -241,9 +292,6 @@ int mStat(uint8_t intr, String & response)
 			break;
 			case S_TX:
 				response += "TX   ";
-			break;
-			case S_TXDONE:
-				response += "TXDONE";
 			break;
 			default:
 				response += " -- ";
@@ -523,7 +571,7 @@ int SerialName(uint32_t a, String & response)
 } //SerialName
 
 
-#if _LOCALSERVER==1
+#if _LOCALSERVER>=1
 // ----------------------------------------------------------------------------
 // inDecodes(id)
 // Find the id in Decodes array, and return the index of the item
@@ -543,7 +591,9 @@ int inDecodes(char * id) {
 	}
 	return(-1);
 }
-#endif
+#endif //_LOCALSERVER
+
+
 
 
 
@@ -566,7 +616,7 @@ void die(String s)
 	if (debug>=2) Serial.flush();
 #	endif //_DUSB
 
-	delay(50);			
+	delay(50);
 	abort();												// Within a second
 }
 

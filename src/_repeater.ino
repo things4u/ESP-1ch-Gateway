@@ -53,9 +53,9 @@ int repeatLora(struct LoraUp * LUP) {
 	LDWN->freq 		= freqs[(gwayConfig.ch-1)%3].dwnFreq;
 	LDWN->size		= LUP->size;
 	LDWN->sf		= LUP->sf;
-	LDWN->powe		= 15;								// Default for normal frequencies
+	LDWN->powe		= 14;								// Default for normal frequencies
 	LDWN->crc		= 1;
-	LDWN->iiq		= 0x27;								// 0x40 when true or 0x27 when ipol false
+	LDWN->iiq		= 0x27;								// 0x40 when ipol true or 0x27 when false
 	LDWN->imme		= false;
 
 	//strncpy((char *)((* LDWN).payLoad), (char *)((* LUP).payLoad), (int)((* LUP).size));
