@@ -53,8 +53,8 @@ void printRegs(struct LoraDown *LoraDown, String & response)
 		Serial.print("v FIFO                 (0x00)\t=0x"); printReg(REG_FIFO);
 		Serial.print("v OPMODE               (0x01)\t=0x"); printReg(REG_OPMODE);
 		Serial.print("v FRF                  (0x06)\t=0x"); printReg(REG_FRF_MSB); 
-			Serial.print(' '); printReg(REG_FRF_MID); 
-			Serial.print(' '); printReg(REG_FRF_LSB);
+			Serial.print("  "); printReg(REG_FRF_MID); 
+			Serial.print("  "); printReg(REG_FRF_LSB);
 		Serial.print("v PAC                  (0x09)\t=0x"); printReg(REG_PAC);
 		Serial.print("v PARAMP               (0x0A)\t=0x"); printReg(REG_PARAMP);
 		Serial.print("v REG_OCP              (0x0B)\t=0x"); printReg(REG_OCP);

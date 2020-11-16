@@ -58,7 +58,7 @@ int sendPacket(uint8_t *buf, uint8_t len)
 	// datr	: "SF7BW125"
 	// imme : false										// Immediately transfer
 	// fdev	: FSK frequency deviation (unsigned integer, in Hz) // NOT USED
-	// prea	: 8
+	// prea	: 0x08 or 0x0A
 	// ncrc	: 
 	
 	// time Y: Mandatory time
@@ -139,7 +139,6 @@ int sendPacket(uint8_t *buf, uint8_t len)
 
 	//	preamble definition
 	if (LoraDown.prea == 0) LoraDown.prea = 0x0A;		// Change one time, maybe better use 0x0A or so
-//MMM	mPrint("v sendPacket:: time="+String(time)+", ipol="+String(LoraDown.ipol)+", codr="+String(codr)+", prea="+String(LoraDown.prea) );
 	
 	// Compute wait time in microseconds
 	//int32_t w = (int32_t) (LoraDown.tmst - micros());	// Wait Time compute

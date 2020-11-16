@@ -88,7 +88,7 @@ bool connectUdp()
 //	Byte 0: 	Contains Protocol Version
 //	Byte 1+2:	Contain Token
 //	Byte 3:		Contains PULL_RESP or other identifier
-//	Byte 4 >	Contains payload (or Gateway EUI 8 bytes first)
+//	Byte 4-n: 	Contains payload (or Gateway EUI 8 bytes first)
 //
 // Returns:
 //	-1 or false if not read
@@ -309,7 +309,7 @@ int readUdp(int packetSize)
 			//_state=S_TX;
 			sendTime = micros();						// record when we started sending the message
 
-			// Prepare to send the package DOWN to the sensor
+			// Prepare to send the buffre package DOWN to the sensor
 			// We just read the packet from the Network Server and it is formatted
 			// as described in the specs. This function fills LoraDown struct.
 			if (sendPacket(buff_down, packetSize) < 0) {
@@ -336,7 +336,7 @@ int readUdp(int packetSize)
 			// (We normally react on ALL interrupts if we are in TX state)
 			txLoraModem(&LoraDown);									// Calling sendPkt() in turn
 
-			// Copy the lastSeen data down
+			// Copy the lastSeen data down, making room on first entry
 			for (int m=( gwayConfig.maxStat -1); m>0; m--) statr[m]= statr[m-1];
 			
 			// If transmission is finished, print statistics
@@ -364,22 +364,24 @@ int readUdp(int packetSize)
 				uint8_t DevAddr[4];
 				uint16_t frameCount;
 				int index;
-				
-				if ((index = inDecodes((char *)(LoraDown.payLoad+1))) >=0 ) {
+
+				if ((index = inDecodes((char *)(LoraDown.payLoad+1))) >= 0 ) {
 #	ifdef _FCNT
 					frameCount= LoraDown.fcnt;
 #	else
 					frameCount= LoraDown.payLoad[7]*256 + LoraDown.payLoad[6];
 #	endif
+
 					// Only if _LOCALSERVER >= 2 for downstream
-					strncpy ((char *)statr[0].data, (char *)LoraDown.payLoad,  LoraDown.size);
+					strncpy ((char *)statr[0].data, (char *)LoraDown.payLoad+9,  LoraDown.size-9-4);
 
 					DevAddr[0]= LoraDown.payLoad[4];
 					DevAddr[1]= LoraDown.payLoad[3];
 					DevAddr[2]= LoraDown.payLoad[2];
 					DevAddr[3]= LoraDown.payLoad[1];
 
-					statr[0].datal = encodePacket((uint8_t *)(statr[0].data + 9), 
+					statr[0].datal = encodePacket(
+						(uint8_t *)(statr[0].data), 
 						LoraDown.size -9 -4, 
 						(uint16_t)frameCount, 
 						DevAddr, 
@@ -396,7 +398,7 @@ int readUdp(int packetSize)
 				// If we should not print data for downlink
 				statr[0].datal = 0;
 #			  endif //_LOCALSERVER
-			
+
 			// If _MONITOR set print the statistics
 			if ((debug>=1) && (pdebug & P_TX)) {
 
@@ -418,7 +420,7 @@ int readUdp(int packetSize)
 						statr[0].datal=24;
 					}
 					
-					response+= "coded=<";
+					response+= "new=<";
 					
 					if (statr[0].datal < 0) {
 						mPrint("ERROR datal=0");
@@ -436,7 +438,7 @@ int readUdp(int packetSize)
 #				endif //_LOCALSERVER
 
 				response += ", size=" + String(LoraDown.size);
-				response += ", load=<";
+				response += ", old=<";
 				for(int i=0; i<LoraDown.size; i++) {
 					response += String(LoraDown.payLoad[i],HEX) + " ";
 				}

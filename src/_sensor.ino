@@ -568,7 +568,8 @@ int sensorPacket() {
 	// we have to include the AES functions at this stage in order to generate LoRa Payload.
 	uint8_t CodeLength = encodePacket(
 		(uint8_t *)(LUP.payLoad + LUP.size), 
-		PayLength, (uint16_t)frameCount, 
+		PayLength,
+		(uint16_t)frameCount, 
 		DevAddr, 
 		AppSKey, 
 		0
@@ -727,19 +728,6 @@ int sensorPacket() {
 // ----------------------------------------------------------------------------
 uint8_t encodePacket(uint8_t *Data, uint8_t DataLength, uint16_t FrameCount, uint8_t *DevAddr, uint8_t *AppSKey, uint8_t Direction)
 {
-
-#if _MONITOR>=1
-	if ((debug>=2) && (pdebug & P_MAIN)) {
-		String response="encodePacket:: DevAddr=";
-		for (int i=0; i<4; i++ ) { response += (String(DevAddr[i],HEX)+(' ')); }
-		response += ", fcnt=" + String(FrameCount);
-		response += ", encodePacket:: AppSKey=";
-		for (int i=0; i<16; i++ ) { response += (String(AppSKey[i],HEX)+(' ')); }
-		response += ", direction=" + String(Direction);
-		mPrint(response);
-	}
-#endif //_MONITOR
-
 	//unsigned char AppSKey[16] = _APPSKEY ;	// see configGway.h
 	uint8_t i, j;
 	uint8_t Block_A[16];
@@ -784,6 +772,7 @@ uint8_t encodePacket(uint8_t *Data, uint8_t DataLength, uint16_t FrameCount, uin
 			Data++;
 		}
 	}
+
 	//return(numBlocks*16);			// Do we really want to return all 16 bytes in lastblock
 	return(DataLength);				// or only 16*(numBlocks-1)+bLen;
 }
