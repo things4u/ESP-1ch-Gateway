@@ -363,14 +363,14 @@ void setup() {
 	//
 	if (readGwayCfg(_CONFIGFILE, &gwayConfig) > 0) {			// read the Gateway Config
 #		if _MONITOR>=1
-		if (debug>=0) {
+		if (debug>=1) {
 			mPrint("readGwayCfg:: return OK");
 		}
 #		endif
 	}
 	else {
 #		if _MONITOR>=1
-		if (debug>=0) {
+		if (debug>=1) {
 			mPrint("setup:: readGwayCfg: ERROR readGwayCfg Failed");
 		}
 #		endif	
@@ -402,7 +402,7 @@ void setup() {
 	// Setup WiFi UDP connection. Give it some time and retry x times. '0' means try forever
 	while (WlanConnect(0) <= 0) {
 #		if _MONITOR>=1
-		if ((debug>=0) && (pdebug & P_MAIN)) {
+		if ((debug>=1) && (pdebug & P_MAIN)) {
 			mPrint("setup:: Error Wifi network connect(0)");
 		}
 #		endif //_MONITOR
@@ -429,7 +429,7 @@ void setup() {
 #	endif	//ESP32_ARCH
 
 #	if _MONITOR>=1
-	if (debug>=0) {
+	if (debug>=1) {
 		String response = "Host=";
 #		if defined(ESP32_ARCH)
 			response += String(WiFi.getHostname());
@@ -487,7 +487,7 @@ void setup() {
     // display results of getting hardware address
 	//
 #	if _MONITOR>=1
-	if (debug>=0) {
+	if (debug>=1) {
 		String response= "Gateway ID: ";
 		printHexDigit(MAC_array[0], response);
 		printHexDigit(MAC_array[1], response);
@@ -531,7 +531,7 @@ void setup() {
 			time_t newTime;
 			if (getNtpTime(&newTime)<=0) {
 #				if _MONITOR>=1
-				if (debug>=0) {
+				if (debug>=1) {
 					mPrint("setup:: ERROR Time not set (yet). Time="+String(newTime) );
 				}
 #				endif //_MONITOR
@@ -549,7 +549,7 @@ void setup() {
 		// When we are here we succeeded in getting the time
 		startTime = now();										// Time in seconds
 #		if _MONITOR>=1
-		if (debug>=0) {
+		if (debug>=1) {
 			String response= "Time set=";
 			stringTime(now(),response);
 			mPrint(response);
@@ -670,7 +670,7 @@ void loop ()
 	// We will not read Udp in this loop cycle if not connected to Wlan
 	if (WlanConnect(1) < 0) {
 #		if _MONITOR>=1
-		if ((debug>=0) && (pdebug & P_MAIN)) {
+		if ((debug>=1) && (pdebug & P_MAIN)) {
 			mPrint("loop:: ERROR reconnect WLAN");
 		}
 #		endif //_MONITOR
@@ -701,7 +701,7 @@ void loop ()
 		//
 		if (readUdp(packetSize) < 0) {
 #			if _MONITOR>=1
-			if (debug>=0)
+			if (debug>=1)
 				mPrint("v readUdp ERROR, returning < 0");
 #			endif //_MONITOR
 			break;

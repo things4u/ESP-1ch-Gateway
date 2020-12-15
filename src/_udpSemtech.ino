@@ -63,7 +63,7 @@ bool connectUdp()
 	}
 	else{
 #		if _MONITOR>=1
-		if (debug>=0) {
+		if (debug>=1) {
 			mPrint("Connection failed");
 		}
 #		endif //_MONITOR
@@ -135,7 +135,7 @@ int readUdp(int packetSize)
 	if (remotePortNo == 123) {				// NTP message arriving, not expected
 		// This is an NTP message arriving
 #		if _MONITOR>=1
-		if (debug>=0) {
+		if (debug>=1) {
 			mPrint("v readUdp:: NTP msg rcvd");
 		}
 #		endif //_MONITOR
@@ -314,7 +314,7 @@ int readUdp(int packetSize)
 			// as described in the specs. This function fills LoraDown struct.
 			if (sendPacket(buff_down, packetSize) < 0) {
 #				if _MONITOR>=1
-				if (debug>=0) {
+				if (debug>=1) {
 					mPrint("v readUdp:: ERROR: PULL_RESP sendPacket failed");
 				}
 #				endif //_MONITOR
@@ -585,7 +585,7 @@ int sendUdp(IPAddress server, int port, uint8_t *msg, uint16_t length)
 
 	if (!Udp.beginPacket(server, (int) port)) {
 #		if _MONITOR>=1
-		if ( debug>=0 ) {
+		if ( debug>=1 ) {
 			mPrint("M sendUdp:: ERROR Udp.beginPacket");
 		}
 #		endif //_MONITOR
@@ -596,7 +596,7 @@ int sendUdp(IPAddress server, int port, uint8_t *msg, uint16_t length)
 
 	if (Udp.write((unsigned char *)msg, length) != length) {
 #		if _MONITOR>=1
-		if ( debug>=0 ) {
+		if ( debug>=1 ) {
 			mPrint("sendUdp:: ERROR Udp write");
 		}
 #		endif //_MONITOR
@@ -608,7 +608,7 @@ int sendUdp(IPAddress server, int port, uint8_t *msg, uint16_t length)
 	
 	if (!Udp.endPacket()) {
 #	if _MONITOR>=1
-		if (debug>=0) {
+		if (debug>=1) {
 			mPrint("sendUdp:: ERROR Udp.endPacket");
 		}
 #	endif //_MONITOR

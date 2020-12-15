@@ -168,7 +168,7 @@ void printIP(IPAddress ipa, const char sep, String & response)
 void printHex(uint32_t hexa, const char sep, String & response) 
 {
 #	if _MONITOR>=1
-	if ((debug>=0) && (hexa==0)) {
+	if ((debug>=1) && (hexa==0)) {
 		mPrint("printHex:: hexa amount to convert is 0");
 	}
 #	endif
@@ -252,7 +252,7 @@ int mStat(uint8_t intr, String & response)
 {
 #if _MONITOR>=1
 
-	if (debug>=0) {
+	if (debug>=1) {
 	
 		response += "I=";
 
@@ -461,7 +461,7 @@ int getNtpTime(time_t *t)
     if (!sendNtpRequest(ntpServer))							// Send the request for new time
 	{
 #		if _MONITOR>=1
-		if (debug>=0) {
+		if (debug>=1) {
 			mPrint("utils:: ERROR getNtpTime: sendNtpRequest failed");
 		}
 #		endif //_MONITOR
@@ -481,7 +481,7 @@ int getNtpTime(time_t *t)
 		
 			if (Udp.read(packetBuffer, NTP_PACKET_SIZE) < NTP_PACKET_SIZE) {
 #				if _MONITOR>=1
-				if (debug>=0) {
+				if (debug>=1) {
 					mPrint("getNtpTime:: ERROR packetsize too low");
 				}
 #				endif //_MONITOR

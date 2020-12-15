@@ -94,7 +94,7 @@ int sendPacket(uint8_t *buf, uint8_t len)
 	auto error = deserializeJson(jsonBuffer, bufPtr);		
 	if (error) {
 #		if _MONITOR>=1
-		if ((debug>=0) && (pdebug & P_TX)) {
+		if ((debug>=1) && (pdebug & P_TX)) {
 			mPrint("v sendPacket:: ERROR: Json Decode: " + String(bufPtr) );
 		}
 #		endif //_MONITOR
@@ -152,7 +152,7 @@ int sendPacket(uint8_t *buf, uint8_t len)
 	}
 	else {												// There is data!
 #		if _MONITOR>=1
-		if ((debug>=0) && (pdebug & P_TX)) {
+		if ((debug>=1) && (pdebug & P_TX)) {
 			mPrint("v sendPacket:: ERROR: data is NULL");
 		}
 #		endif //_MONITOR
@@ -225,7 +225,7 @@ int sendPacket(uint8_t *buf, uint8_t len)
 
 	if (LoraDown.size != psize) {
 #		if _MONITOR>=1
-		if (debug>=0) {
+		if (debug>=1) {
 			mPrint("v sendPacket:: WARNING size=" + String(LoraDown.size) + ", psize=" + String(psize) );
 		}
 #		endif //_MONITOR
