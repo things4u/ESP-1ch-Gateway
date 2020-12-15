@@ -145,7 +145,9 @@ void wwwFile(String fn)
 
 #	endif //_MONITOR
 
-#endif //_STAT_LOG
+#else //!_STAT_LOG
+    (void)fn;
+#endif //!_STAT_LOG
 
 	return;
 

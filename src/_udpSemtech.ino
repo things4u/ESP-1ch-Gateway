@@ -151,7 +151,9 @@ int readUdp(int packetSize)
 		// First 4 butes are very important, rest is data
 		// Especially the 2 token bytes should be watched.
 		protocol= buff_down[0];
+#		ifdef _PROFILER
 		uint16_t token= buff_down[2]*256 + buff_down[1];			// LSB first [1], MSB [2] comes after
+#		endif //_PROFILER
 		uint8_t ident= buff_down[3];
 		// uint8_t *data = (uint8_t *) ((uint8_t *)buff_down + 4);
 		
@@ -283,7 +285,9 @@ int readUdp(int packetSize)
 		case PULL_RESP:									// 0x03 DOWN
 
 			if (protocol==0x01) {						// If protocol version is 0x01
+#				ifdef _PROFILER
 				token = 0;								// Use token 0 in that case
+#				endif//_PROFILER
 				buff_down[2]=0;
 				buff_down[1]=0;
 			}

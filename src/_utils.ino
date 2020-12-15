@@ -45,6 +45,8 @@ void printInt (uint32_t i, String & response)
 
 void printRegs(struct LoraDown *LoraDown, String & response)
 {
+    (void)LoraDown;
+
 	response += "v FIFO (0x00)=0x" + String(readRegister(REG_FIFO),HEX);
 	response += "v OPMODE (0x01)=0x" + String(readRegister(REG_OPMODE),HEX);
 	

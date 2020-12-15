@@ -494,7 +494,10 @@ int addLog(const unsigned char * line, int cnt)
 	
 	f.close();									// Close the file after appending to it
 
-#endif //_STAT_LOG
+#else //!_STAT_LOG
+    (void)line;
+    (void)cnt;
+#endif //!_STAT_LOG
 
 	gwayConfig.logFileRec++;
 

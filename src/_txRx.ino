@@ -115,7 +115,7 @@ int sendPacket(uint8_t *buf, uint8_t len)
 	const char * datr	= root["txpk"]["datr"];			// eg "SF7BW125"
 	const char * codr	= root["txpk"]["codr"];			// "4/5"
 	const char * modu	= root["txpk"]["modu"];
-	const char * time	= root["txpk"]["time"];			// Time is a string in UTC
+	//const char * time	= root["txpk"]["time"];			// Time is a string in UTC
 	
 	LoraDown.modu		= (char *) modu;				// =="LORA"
 	LoraDown.codr		= (char *) codr;				// e.g. "4/5"
