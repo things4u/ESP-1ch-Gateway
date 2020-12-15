@@ -50,6 +50,10 @@
 #define OLED_SDA 21								// GPIO21 / SDA
 #define OLED_RST 16								// Reset pin (Some OLED displays do not have it)
 
+#elif defined(ARDUINO_ARCH_ESP8266)
+#define OLED_SCL 5								// GPIO5 / D1
+#define OLED_SDA 4								// GPIO4 / D2
+
 #endif
 
 
