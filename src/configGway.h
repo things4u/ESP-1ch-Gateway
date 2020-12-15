@@ -33,6 +33,10 @@
 //
 // ========================================================================================
 
+// esp8266 arduino core is deprecating SPIFFS
+#if !defined _USE_LITTLEFS
+#   define _USE_LITTLEFS 0
+#endif
 
 // Define whether we should do a formatting of SPIFFS when starting the gateway
 // This is usually a good idea if the webserver is interrupted halfway a writing
@@ -362,4 +366,9 @@
 #if _REPEATER==0
 #	define _TTNSERVER "router.eu.thethings.network"
 #	define _TTNPORT 1700							// Standard port for TTN
+#endif
+
+#if _USE_LITTLEFS==1
+#include <LittleFS.h>
+#define SPIFFS LittleFS
 #endif
