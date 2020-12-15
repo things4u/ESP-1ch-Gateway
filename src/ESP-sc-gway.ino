@@ -292,7 +292,7 @@ void setup() {
 
 	char MAC_char[19];										// XXX Unbelievable
 	MAC_char[18] = 0;
-	char hostname[12];										// hostname space
+	char hostname[32];										// hostname space
 
 	initConfig(&gwayConfig);
 		
