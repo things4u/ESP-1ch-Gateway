@@ -277,6 +277,8 @@ void OLEDDisplayUi::drawFrame(){
           x1 = 0;
           y1 = y - 64;
           break;
+        default:
+          return;
        }
 
        // Invert animation if direction is reversed.
