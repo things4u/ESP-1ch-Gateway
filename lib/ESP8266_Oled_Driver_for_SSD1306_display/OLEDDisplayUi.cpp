@@ -384,6 +384,8 @@ void OLEDDisplayUi::drawIndicator() {
           x = 0 - (8 * indicatorFadeProgress);
           y = 32 - frameStartPos + 2 + 12 * i;
           break;
+        default:
+          return;
       }
 
       if (posOfHighlightFrame == i) {
