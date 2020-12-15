@@ -140,7 +140,7 @@ uint8_t pdebug= P_MAIN ;									// Initially only MAIN and GUI
 #	endif //_GPS
 #endif //_GATEWAYNODE
 
-using namespace std;
+//using namespace std;
 byte 		currentMode = 0x81;
 bool		sx1272 = false;									// Actually we use sx1276/RFM95
 uint8_t		MAC_array[6];
