@@ -333,7 +333,7 @@ void OLEDDisplayUi::drawIndicator() {
       return;
     }
 
-    uint8_t posOfHighlightFrame;
+    uint8_t posOfHighlightFrame = 0;
     float indicatorFadeProgress = 0;
 
     // if the indicator needs to be slided in we want to
@@ -384,8 +384,6 @@ void OLEDDisplayUi::drawIndicator() {
           x = 0 - (8 * indicatorFadeProgress);
           y = 32 - frameStartPos + 2 + 12 * i;
           break;
-        default:
-          return;
       }
 
       if (posOfHighlightFrame == i) {
