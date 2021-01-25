@@ -56,9 +56,13 @@ At this moment the src directory contains the PlatformIO source, and therefore w
 The applies to the libraries.
 
 ## PlatformIO
+
 When in PlatformIO, choose <File> and then <Add folder to Workspace...> and select your new LoRa-1ch-ESP-Gateway 
 top directory.
-Then just open the ESP-sc-gway.ino file at src directory and build or upload
+
+Then just open the ESP-sc-gway.ino file at src directory and build or upload.
+
+If you want to set your own settings in PlatformIO's configuration files, put them in `platformio_override.ini`.
 
 ## Arduino IDE
 
