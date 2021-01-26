@@ -19,6 +19,9 @@
 //
 // ------------------------------------------------------------------------------------
 
+#include "user_config_node.h"         // Configuration overrides for configNode.h
+
+
 // It is possible to use the gateway as a normal sensor node also. In this case,
 // substitute the node info below.
 #if _GATEWAYNODE==1
@@ -36,8 +39,12 @@
 
 	// For ESP32 based T_BEAM/TTGO boards these two are normally included
 	// If included make value 1, else if not, make them 0
-#	define _GPS 1
-#	define _BATTERY 1
+#	ifndef _GPS
+#		define _GPS 1
+#	endif
+#	ifndef _BATTERY
+#		define _BATTERY 1
+#	endif
 #endif //_GATEWAYNODE
 
 
@@ -93,21 +100,6 @@ codex decodes[] = {
 };
 #endif //_LOCALSERVER
 
-
-// Wifi definitions
-// WPA is an array with SSID and password records. Set WPA size to number of entries in array
-// When using the WiFiManager, we will overwrite the first entry with the 
-// accesspoint we last connected to with WifiManager
-// NOTE: Structure needs at least one (empty) entry.
-//		So WPASIZE must be >= 1
-struct wpas {
-	char login[32];							// Maximum Buffer Size (and allocated memory)
-	char passw[64];
-};
-
-
-
-
 // If you have a second back-end server defined such as Semtech or loriot.io
 // your can define _THINGPORT and _THINGSERVER with your own value.
 // If not, make sure that you do not define these, which will save CPU time
@@ -126,24 +118,48 @@ struct wpas {
 
 
 // Gateway Ident definitions. Where is the gateway located?
-#define _DESCRIPTION "ESP Gateway"			// Name of the gateway
-#define _EMAIL "mw12554@hotmail.com"		// Owner
-#define _PLATFORM "ESP8266"
-#define _LAT 52.200000
-#define _LON 5.90000
-#define _ALT 1								// Altitude
+#ifndef _DESCRIPTION
+#	define _DESCRIPTION "ESP Gateway"			// Name of the gateway
+#endif
+#ifndef _EMAIL
+#	define _EMAIL "mw12554@hotmail.com"		// Owner
+#endif
+#ifndef _PLATFORM
+#	define _PLATFORM "ESP8266"
+#endif
+#ifndef _LAT
+#	define _LAT 52.200000
+#endif
+#ifndef _LON
+#	define _LON 5.90000
+#endif
+#ifndef _ALT
+#	define _ALT 1								// Altitude
+#endif
 
 
 // For asserting and testing the following defines are used.
 //
 #if !defined(CFG_noassert)
-#define ASSERT(cond) if(!(cond)) gway_failed(__FILE__, __LINE__)
+#ifndef ASSERT(cond)
+#	define ASSERT(cond) if(!(cond)) gway_failed(__FILE__, __LINE__)
+#endif
 #else
-#define ASSERT(cond) /**/
+#ifndef ASSERT(cond)
+#	define ASSERT(cond) /**/
+#endif
 #endif
 
-
-#include "user_config_node.h"         // Configuration overrides for configNode.h
+// Wifi definitions
+// WPA is an array with SSID and password records. Set WPA size to number of entries in array
+// When using the WiFiManager, we will overwrite the first entry with the 
+// accesspoint we last connected to with WifiManager
+// NOTE: Structure needs at least one (empty) entry.
+//		So WPASIZE must be >= 1
+struct wpas {
+	char login[32];							// Maximum Buffer Size (and allocated memory)
+	char passw[64];
+};
 
 #ifndef STA_SSID1
 	#define STA_SSID1             "yourSSID"
@@ -167,5 +183,4 @@ struct wpas {
 wpas wpa[] = {
 	{ STA_SSID1, STA_PASS1 },
 	{ STA_SSID2, STA_PASS2 },
-
 };
