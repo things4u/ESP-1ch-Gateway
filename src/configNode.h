@@ -141,13 +141,9 @@ codex decodes[] = {
 // For asserting and testing the following defines are used.
 //
 #if !defined(CFG_noassert)
-#ifndef ASSERT(cond)
-#	define ASSERT(cond) if(!(cond)) gway_failed(__FILE__, __LINE__)
-#endif
+#define ASSERT(cond) if(!(cond)) gway_failed(__FILE__, __LINE__)
 #else
-#ifndef ASSERT(cond)
-#	define ASSERT(cond) /**/
-#endif
+#define ASSERT(cond) /**/
 #endif
 
 // Wifi definitions
