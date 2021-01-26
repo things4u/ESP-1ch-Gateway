@@ -73,9 +73,8 @@ of the "lib" directory to the Arduino IDE "libraries" directory;
 
 ## testing
 
-The single channel gateway has been tested on a gateway with the Wemos D1 Mini, 
-using a HopeRF RFM95W transceiver.  Tests were done on 868 version of LoRa and some 
-testing on 433 MHz.
+The single channel gateway has been tested on a gateway with the Wemos D1 Mini, using a HopeRF RFM95W transceiver.  Tests were done on 868 version of LoRa and some testing on 433 MHz.
+
 The LoRa nodes tested against this gateway are:
 
 - TeensyLC with HopeRF RFM95 radio
@@ -101,9 +100,7 @@ you will probably see nothing on the Serial Monitor.
 either for a traditional (=Comresult) PCB or configure for a Hallard PCB where the dio0, 
 dio1 and dio2 pins are shared. You HAVE to check this section. In the configGway.h file the 
 most used pin-outs are documented so it might be that you use a standard pin-out
-4. Edit the configNode.h file and adapt the "wpas" structure. Make sure that the first line of 
-this structure remains empty and put the SSID and Password of your router on the second 
-line of the array.
+4. Rename `user_config_node.example.h` to `user_config_node.h` and set the wireless settings. `STA_SSID1` and `STA_PASS1` (or `STA_SSID2/STA_PASS2`) are the network the gateway will connect to.
 5. In the preferences part of the IDE, set the location of your sketch to the place where 
 you put the sketch on your computer. This will make sure that for example the required 
 libraries that are shipped with this sketch in the libraries folder can be found by the 
@@ -112,7 +109,6 @@ compiler.
 7. Load the other necessary libraries that are not shipped with this sketch in your IDE. 
 Goto <Sketch><Include Library><Manage Libraries...> in the IDE to do so. Most of the include files 
 can be loaded through this library section. Some cannot and are shipped with the Gateway.
-
 
 - LoRaCode (Version 1.0.0, see library shipped)
 - gBase64 (changed name from Adam Rudd's Base64 version)
@@ -148,15 +144,17 @@ coming in on the Serial monitor.
 
 There are two ways of changing the configuration of the single channel gateway:
 
-1. Changing the configGway.h and the configNode.h file at compile-time
+1. Changing the `configGway.h` and the `configNode.h` file at compile-time, or adding entries to `user_config_node.h` and `user_config_gateway.h` respectively.
 2. Run the http://<gateway-IP> web interface to change settings at run time.
 
 Where you have a choice, option 2 is far more friendly and useful.
 
 ## Editing the configGway.h file
 
-The configGway.h file contains the user configurable gateway settings. 
+The `configGway.h` file contains the user configurable gateway settings, which can be set in `user_config_gateway.h`.
+
 All have their definitions set through #define statements. 
+
 In general, setting a #define to 1 will enable the function and setting it to 0 will disable it. 
 
 Also, some settings can be initialised by setting their value with a #define but can be changed at runtime in the web interface.
@@ -169,8 +167,10 @@ If the heap drops below 18 KBytes some functions may not behave as expected (in 
 
 ## Editing the configNode.h file
 
-The configNode.h file is used to set teh WiFi access point and the structure of known 
-sensors to the 1-channel gateway.
+The `configNode.h` file contains the user configurable gateway settings, which can be set in `user_config_node.h`.
+
+The configNode.h file is used to set the WiFi access point and the structure of known sensors to the 1-channel gateway.
+
 Setting the known WiFi access points (SSID and password) must be done at compile time.
 
 When the gateway is not just used as a gateway but also for debugging purposes, the used can specify not only
@@ -182,7 +182,7 @@ The user can determine whether or not the USB console is used for output message
 When setting _DUSB to 0 all output by Serial is disabled 
 (actually the Serial statements are not included in the code).
 
- \#define _DUSB 1
+    #define _DUSB 1
 
 ### Selecting Class mode of operation
 
@@ -200,8 +200,10 @@ until the next transmission window. In fact, only transmissions will make the de
 listening as long as this tranmission lasts. 
 Class C devices cannot do Class B operation.
 
- \#define _CLASS "A"
- 
+```c++
+#define _CLASS "A"
+```
+
  All devices will start as class A devices, and may decide to "upgrade" to class B or C.
 Also the gateway may or may not support Class B, which is a superset of class A.
  NOTE: Only class A is supported
@@ -217,24 +219,29 @@ If your pin definitions are different, update the loraModem.h and oLED.h file to
 	4: ESP32/TTGO based ESP32 boarda
 	5: ESP32/Heltec Wifi LoRA 32(V2)
 
- \#define _PIN_OUT 1
-
+```c++
+#define _PIN_OUT 1
+```
 
 ### Forcing a SPIFF format at startup
 
 The following parameter shoudl be set to 0 under normal circumstances.
 It does allow the system to foce formatting of the SPIFFS filesystem.
 
- \#define SPIFF_FORMAT 0  
- 
+```c++
+#define SPIFF_FORMAT 0  
+```
+
 ### Setting Spreading Factor
 
 Set the _SPREADING factor to the desired SF7, SF8 - SF12 value. 
 Please note that this value is closely related to the value used for _CAD. 
 If _CAD is enabled, the value of _SPREADING is not used by the gateway as it has all sreading factors enabled.
 
- \#define _SPREADING SF9
- 
+```c++
+#define _SPREADING SF9
+```
+
 Please note that the default frequency used is 868.1 MHz which can be changed in the loraModem.h file. 
 The user is advised NOT to change this etting and only use the default 868.1 MHz frequency.
 
@@ -253,8 +260,9 @@ the CAD function will use the RSSI register setting of the chip to determine whe
 signal (or just noise). As a result, very weak signals are not received which means that the range of the 
 gateway will be reduced in CAD mode.
 
- \#define _CAD 1
-
+```c++
+#define _CAD 1
+```
  
 ### Over the Air Updates (OTA)
 
@@ -271,8 +279,9 @@ gateway to use mDNS to resolve the gateway ID set by OTA after which download po
 
 Todo: The OTA software has not (yet) been tested in conjuction with the WiFiManager software.
 
- \#define A_OTA 1  
-
+```c++
+#define A_OTA 1  
+```
 
 
 ### Enable Webserver
@@ -281,14 +290,16 @@ This setting enables the webserver. Although the webserver itself takes a lot of
 to configure the gatewayat run-time and inspects its behaviour. It also provides statistics of last messages received.
 The A_REFRESH parameter defines whether the webserver should renew every X seconds.
 
- \#define A_SERVER 1				// Define local WebServer only if this define is set  
- \#define A_REFRESH 1				// is the webserver enabled to refresh yes/no?  (yes is OK)
- \#define A_SERVERPORT 80			// local webserver port  
- \#define A_MAXBUFSIZE 192			// Must be larger than 128, but small enough to work  
+```c++
+#define A_SERVER 1				// Define local WebServer only if this define is set  
+#define A_REFRESH 1				// is the webserver enabled to refresh yes/no?  (yes is OK)
+#define A_SERVERPORT 80			// local webserver port  
+#define A_MAXBUFSIZE 192			// Must be larger than 128, but small enough to work  
+```
 
- The A_REFRESH parameter defines whether or not we can set the refresh yes/no setting in the webbrowser. 
- The setting in the webbrowser is normally put on "no" as a default, but we can leave the define on
- "1" to enabled that setting in the webbrowser.
+The A_REFRESH parameter defines whether or not we can set the refresh yes/no setting in the web browser. 
+The setting in the web browser is normally put on "no" as a default, but we can leave the define on
+"1" to enabled that setting in the web browser.
  
 ### Strict LoRa behaviour
 
@@ -299,7 +310,9 @@ and spreading factor set by the backend server. And at the moment TTN responds t
 messages for SF9-SF12 in the RX2 timeslot and with frequency 869.525MHz and on SF12 
 (according to the LoRa standard when sending in the RX2 timeslot). 
 
- \#define _STRICT_1CH 0
+```c++
+#define _STRICT_1CH 0
+```
 
 You are advised not to change the default setting of this parameter.
 
@@ -310,7 +323,9 @@ Some panels work by both SPI and I2C where I2c is solwer. However, since SPI is 
 communication you are stronly discouvared using one of these as they will not work with this software.
 Instead choose a OLED solution that works over I2C.
 
- \#define OLED 1
+```c++
+#define OLED 1
+```
 
 The following values are defined for OLED:
 1. 0.9 inch OLED screen for I2C bus
@@ -328,9 +343,9 @@ When selecting the "log" button on top of the GUI screen, all rthe log files are
 Serial device. This way, we can examine far more records than fitting the GUI screen or the Serial
 output.
  
- \#define STAT_LOG 1
- 
-
+```c++
+#define STAT_LOG 1
+```
  
 Setting the I2C SDA/SCL pins is done in the configGway.h file right after the #define of OLED.
 Standard the ESP8266 uses pins D1 and D2 for the I2C bus SCL and SDA lines but these can be changed by the user.
@@ -347,35 +362,41 @@ The gateway allows to connect to 2 servers at the same time (as most LoRa gatewa
 You have to connect to at least one standard LoRa router, in case you use The Things Network (TTN) 
 than make sure that you set:
 
- \#define _TTNSERVER "router.eu.thethings.network"  
- \#define _TTNPORT 1700  
+```c++
+#define _TTNSERVER "router.eu.thethings.network"  
+#define _TTNPORT 1700  
+```
   
 In case you setup your own server, you can specify as follows using your own router URL and your own port:
 
- \#define _THINGSERVER "your_server.com"			// Server URL of the LoRa udp.js server program  
- \#define _THINGPORT 1701							// Your UDP server should listen to this port  
-
+ 
+```c++
+#define _THINGSERVER "your_server.com"			// Server URL of the LoRa udp.js server program  
+#define _THINGPORT 1701							// Your UDP server should listen to this port  
+```
  
 ### Gateway Identity
 Set the identity parameters for your gateway:   
 
-\#define _DESCRIPTION "ESP-Gateway"  
-\#define _EMAIL "your.email@provider.com"  
-\#define _PLATFORM "ESP8266"  
-\#define _LAT 52.00  
-\#define _LON 5.00  
-\#define _ALT 0  
-
+```c++
+#define _DESCRIPTION "ESP-Gateway"  
+#define _EMAIL "your.email@provider.com"  
+#define _PLATFORM "ESP8266"  
+#define _LAT 52.00  
+#define _LON 5.00  
+#define _ALT 0  
+```
 
 ### Using the gateway as a sensor node
 
 It is possible to use the gateway as a node. This way, local/internal sensor values are reported.
 This is a cpu and memory intensive function as making a sensor message involves EAS and CMAC functions.
 
- \#define GATEWAYNODE 0  
+```c++
+#define GATEWAYNODE 0  
+```
 
-Further below in the configNode.h configuration file, it is possible to set the address 
-and other LoRa information of the gateway node.
+Further below in the configNode.h configuration file, it is possible to set the address and other LoRa information of the gateway node.
 
 
 ### Connect to WiFi with WiFiManager
@@ -383,13 +404,17 @@ and other LoRa information of the gateway node.
 The easiest way to configure the Gateway on WiFi is by using the WiFimanager function. This function works out of the box. 
 WiFiManager will put the gateway in accesspoint mode so that you can connect to it as a WiFi accesspoint. 
 
- \#define _WIFIMANAGER 0  
+```c++
+#define _WIFIMANAGER 0  
+```
 
 If Wifi Manager is enabled, make sure to define the name of the accesspoint if the gateway is in accesspoint 
 mode and the password.
 
- \#define AP_NAME "ESP8266-Gway-Things4U"  
- \#define AP_PASSWD "ttnAutoPw"  
+```c++
+#define AP_NAME "ESP8266-Gway-Things4U"  
+#define AP_PASSWD "ttnAutoPw"
+```
 
 The standard access point name used by the gateway is "ESP8266 Gway" and its password is "ttnAutoPw". 
 After binding to the access point with your mobile phone or computer, go to htp://192.168.4.1 in a browser and tell the gateway to which WiFi network you want it to connect, and specify the password.
@@ -401,13 +426,15 @@ If necessary, you can delete the current access point in the webserver and power
 
 ### Specify the gateway node data (as with T-beam)
 
- \#if GATEWAYNODE==1  
- \#define _DEVADDR { 0x26, 0x01, 0x15, 0x3D }  
- \#define _APPSKEY { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }  
- \#define _NWKSKEY { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }  
- \#define _SENSOR_INTERVAL 300  
- \#endif 
- 
+```c++
+#if GATEWAYNODE==1  
+#define _DEVADDR { 0x26, 0x01, 0x15, 0x3D }  
+#define _APPSKEY { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }  
+#define _NWKSKEY { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }  
+#define _SENSOR_INTERVAL 300  
+#endif 
+```
+
 ### Specify a name for known nodes in configNode.h
 
 - In configNode.h It is possible to substitue the address for known nodes with a chosen name. 
@@ -420,13 +447,11 @@ their LORA id with every reboot. So for these nodes this function does not add m
 
 ### Other Settings configNode.h
 
-- static char *wpa[WPASIZE][2] contains the array of known WiFi access points the Gateway will connect to.
+- `static char *wpa[WPASIZE][2]` contains the array of known WiFi access points the Gateway will connect to.
 Make sure that the dimensions of the array are correctly defined in the WPASIZE settings. 
-Note: When the WiFiManager software is enabled (it is by default) there must at least be one entry in the wpa file, wpa[0] is used for storing WiFiManager information.
+Note: When the WiFiManager software is enabled (it is by default) there must at least be one entry in the wpa file, `wpa[0]` is used for storing WiFiManager information.
 - Only the sx1276 (and HopeRF 95) radio modules are supported at this time. The sx1272 code should be 
 working without much work, but as I do not have one of these modules available I cannot test this.
-
-
 
 ## Webserver
 
@@ -483,8 +508,7 @@ The following dependencies are valid for the Single Channel gateway:
 
 The following things are still on my wish list to make to the single channel gateway:  
 
-- Receive downstream message with commands from the server. These can be used to configure
-  the gateway through downlink messages (such as setting the SF)
+- Receive downstream message with commands from the server. These can be used to configure the gateway through downlink messages (such as setting the SF)
 - Support for ESP32 and RFM95 on 433 MHz (seems to work now)
 - Display for each node the last time it was seen
 - Use the SPIFFS for storing .css files
@@ -493,6 +517,4 @@ The following things are still on my wish list to make to the single channel gat
 
 # License
 
-The source files of the gateway sketch in this repository is made available under the MIT
-license. The libraries included in this repository are included for convenience only and all have their own license, 
-and are not part of the ESP 1ch gateway code.
+The source files of the gateway sketch in this repository is made available under the MIT license. The libraries included in this repository are included for convenience only and all have their own license, and are not part of the ESP 1ch gateway code.

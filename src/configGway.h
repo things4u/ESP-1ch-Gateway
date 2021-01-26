@@ -363,3 +363,5 @@
 #	define _TTNSERVER "router.eu.thethings.network"
 #	define _TTNPORT 1700							// Standard port for TTN
 #endif
+
+#include "user_config_gateway.h"         // Configuration overrides for configNode.h

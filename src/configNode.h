@@ -106,13 +106,6 @@ struct wpas {
 };
 
 
-// Please fill in at least ONE valid SSID and password from your own WiFI network
-// below. This is needed to get the gateway working
-//
-wpas wpa[] = {
-	{ "yourSSID", "yourPassword" },
-	{ "Your2SSID", "your2Password" }
-};
 
 
 // If you have a second back-end server defined such as Semtech or loriot.io
@@ -148,3 +141,31 @@ wpas wpa[] = {
 #else
 #define ASSERT(cond) /**/
 #endif
+
+
+#include "user_config_node.h"         // Configuration overrides for configNode.h
+
+#ifndef STA_SSID1
+	#define STA_SSID1             "yourSSID"
+#endif
+
+#ifndef STA_PASS1
+	#define STA_PASS1              "yourPassword"
+#endif
+
+#ifndef STA_SSID2
+	#define STA_SSID2             ""
+#endif
+
+#ifndef STA_PASS2
+	#define STA_PASS2              ""
+#endif
+// Please fill in at least ONE valid SSID and password from your own WiFI network
+// below. This is needed to get the gateway working
+//
+
+wpas wpa[] = {
+	{ STA_SSID1, STA_PASS1 },
+	{ STA_SSID2, STA_PASS2 },
+
+};
