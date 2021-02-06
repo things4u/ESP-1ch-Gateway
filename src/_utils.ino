@@ -211,7 +211,7 @@ void printHexDigit(uint8_t digit, String & response)
 // return:
 //	<None>
 // ----------------------------------------------------------------------------------------
-void mPrint(String txt) 
+void mPrint(const String& txt) 
 {
 
 #	if _DUSB>=1

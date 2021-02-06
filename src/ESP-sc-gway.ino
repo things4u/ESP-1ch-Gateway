@@ -238,7 +238,7 @@ int sendPacket(uint8_t *buf, uint8_t length);							// _txRx.ino forward
 void printIP(IPAddress ipa, const char sep, String & response);			// _wwwServer.ino
 void setupWWW();														// _wwwServer.ino forward
 
-void mPrint(String txt);												// _utils.ino
+void mPrint(const String& txt);												// _utils.ino
 int getNtpTime(time_t *t);												// _utils.ino
 int mStat(uint8_t intr, String & response);								// _utils.ino
 void SerialStat(uint8_t intr);											// _utils.ino
@@ -532,7 +532,7 @@ void setup() {
 			if (getNtpTime(&newTime)<=0) {
 #				if _MONITOR>=1
 				if (debug>=1) {
-					mPrint("setup:: ERROR Time not set (yet). Time="+String(newTime) );
+					mPrint("setup:: ERROR Time not set (yet). Time="+String((int)newTime) );
 				}
 #				endif //_MONITOR
 				response += ".";
@@ -882,7 +882,7 @@ void loop ()
 			if (getNtpTime(&newTime)<=0) {
 #				if _MONITOR>=1
 				if (debug>=2) {
-					mPrint("loop:: WARNING Time not set (yet). Time="+String(newTime) );
+					mPrint("loop:: WARNING Time not set (yet). Time="+String((int)newTime) );
 				}
 #				endif //_MONITOR
 			}
