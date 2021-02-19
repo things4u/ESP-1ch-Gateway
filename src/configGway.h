@@ -130,15 +130,17 @@
 // continuous listen mode.
 // Using this function means that we HAVE to use more dio pins on the RFM95/sx1276
 // device and also connect enable dio1 to detect this state. 
+#ifndef _CAD
 #define _CAD 1
-
+#endif
 
 // CRCCHECK
 // Defines whether we should check on the CRC of RXDONE messages (see stateMachine.ino)
 // This should prevent us from getting a lot os stranges messgages of unknown nodes.
 // Note: DIO3 must be connected for this to work (Heltec and later Wemos gateways). 
+#ifndef _CRCCHECK
 #define _CRCCHECK 1
-
+#endif
 
 // Definitions for the admin webserver.
 // _SERVER determines whether or not the admin webpage is included in the sketch.
@@ -294,8 +296,9 @@
 // 1: Use the nodes as a translation table for hex codes to names (in TLN)
 // 2: Same as 1, but is nodes NOT in the nodes list below they are NOT shown
 // NOTE: We probably will make this list dynamic!
+#ifndef _TRUSTED_NODES
 #define _TRUSTED_NODES 1
-
+#endif
 
 // ========================================================================
 // DO NOT CHANGE BELOW THIS LINE

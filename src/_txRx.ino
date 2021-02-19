@@ -193,7 +193,7 @@ int sendPacket(uint8_t *buf, uint8_t len)
 
 	uint32_t fff	= (uint32_t)(root["txpk"]["freq"].as<double>() * 1000000);
 	
-	if (abs(freqs[gwayConfig.ch].dwnFreq - fff) < 100000) {
+	if ((freqs[gwayConfig.ch].dwnFreq - fff) < 100000) {
 		LoraDown.freq = (uint32_t) (freqs[gwayConfig.ch].dwnFreq) & 0xFFFFFFFF ;
 	}
 	else {
