@@ -109,8 +109,14 @@ struct wpas {
 // Please fill in at least ONE valid SSID and password from your own WiFI network
 // below. This is needed to get the gateway working
 //
+
+#ifndef STASSID
+#define STASSID "yourSSID"
+#define STAPSK "yourPassword"
+#endif
+
 wpas wpa[] = {
-	{ "yourSSID", "yourPassword" },
+	{ STASSID, STAPSK },
 	{ "Your2SSID", "your2Password" }
 };
 
