@@ -1019,7 +1019,7 @@ void initLoraModem()
 	
 	// Low Noise Amplifier used in receiver
     writeRegister(REG_LNA, (uint8_t) LNA_MAX_GAIN);  			// set reg 0x0C to 0x23
-#	if _PIN_OUT==4
+#	if (_PIN_OUT==4) || (_PIN_OUT==5)
 		delay(1);
 #	endif
 
