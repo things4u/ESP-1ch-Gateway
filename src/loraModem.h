@@ -59,17 +59,17 @@
 //	channel gateway to work according to spec. 
 struct vector {
 	// Upstream messages
-	uint32_t upFreq;							// 4 bytes
+	uint32_t upFreq;							// 4 bytes unsigned int32 Frequency
 	uint16_t upBW;								// 2 bytes
 	uint8_t  upLo;								// 1 bytes
 	uint8_t  upHi;								// 1 bytes
 	// Downstream messages
-	uint32_t dwnFreq;							// 4 bytes Unsigned ubt Frequency
+	uint32_t dwnFreq;							// 4 bytes unsigned int32 Frequency
 	uint16_t dwnBW;								// 2 bytes BW Specification
 	uint8_t  dwnLo;								// 1 bytes Spreading Factor
 	uint8_t  dwnHi;								// 1 bytes
-	//
-	String jsonfreq; 
+  //
+  String jsonfreq;  
 };
 
 // Define all the relevant LoRa Regions
@@ -80,32 +80,32 @@ struct vector {
 // For each frequency SF7-SF12 are used.
 vector freqs [] = 
 {
-	{ 868100000, 125, 7, 12, 868100000, 125, 7, 12, "868.100"},			// Channel 0, 868.1 MHz/125 primary
-	{ 868300000, 125, 7, 12, 868300000, 125, 7, 12, "868.300"},			// Channel 1, 868.3 MHz/125 mandatory and (SF7BW250)
-	{ 868500000, 125, 7, 12, 868500000, 125, 7, 12, "868.800"},			// Channel 2, 868.5 MHz/125 mandatory
-	{ 867100000, 125, 7, 12, 867100000, 125, 7, 12, "867.100"},			// Channel 3, 867.1 MHz/125 Optional
-	{ 867300000, 125, 7, 12, 867300000, 125, 7, 12, "867.300"},			// Channel 4, 867.3 MHz/125 Optional
-	{ 867500000, 125, 7, 12, 867500000, 125, 7, 12, "867.500"}, 		// Channel 5, 867.5 MHz/125 Optional
-	{ 867700000, 125, 7, 12, 867700000, 125, 7, 12, "867.700"},			// Channel 6, 867.7 MHz/125 Optional 
-	{ 867900000, 125, 7, 12, 867900000, 125, 7, 12, "867.900"},			// Channel 7, 867.9 MHz/125 Optional 
-	{ 868800000, 125, 7, 12, 868800000, 125, 7, 12, "868.800"},			// Channel 8, 868.9 MHz/125 FSK Only										
-	{ 0,         0  , 0,  0, 869525000, 125, 9, 9,  "869.525"}			// Channel 9, 869.525 MHz/125 for RX2 responses SF9(10%)
-	// TTN defines an additional channel at 869.525 MHz using SF9 for class B. Not used
+  { 868100000, 125, 7, 12, 868100000, 125, 7, 12, "868.100"},     // Channel 0, 868.1 MHz/125 primary
+  { 868300000, 125, 7, 12, 868300000, 125, 7, 12, "868.300"},     // Channel 1, 868.3 MHz/125 mandatory and (SF7BW250)
+  { 868500000, 125, 7, 12, 868500000, 125, 7, 12, "868.800"},     // Channel 2, 868.5 MHz/125 mandatory
+  { 867100000, 125, 7, 12, 867100000, 125, 7, 12, "867.100"},     // Channel 3, 867.1 MHz/125 Optional
+  { 867300000, 125, 7, 12, 867300000, 125, 7, 12, "867.300"},     // Channel 4, 867.3 MHz/125 Optional
+  { 867500000, 125, 7, 12, 867500000, 125, 7, 12, "867.500"},     // Channel 5, 867.5 MHz/125 Optional
+  { 867700000, 125, 7, 12, 867700000, 125, 7, 12, "867.700"},     // Channel 6, 867.7 MHz/125 Optional 
+  { 867900000, 125, 7, 12, 867900000, 125, 7, 12, "867.900"},     // Channel 7, 867.9 MHz/125 Optional 
+  { 868800000, 125, 7, 12, 868800000, 125, 7, 12, "868.800"},     // Channel 8, 868.9 MHz/125 FSK Only                    
+  { 0,         0  , 0,  0, 869525000, 125, 9, 9,  "869.525"}      // Channel 9, 869.525 MHz/125 for RX2 responses SF9(10%)
+  // TTN defines an additional channel at 869.525 MHz using SF9 for class B. Not used
 };
 
 #elif defined(EU433)
 // The following 3 frequencies should be defined/used in an EU433 
 // environment. The plan is not defined for TTN yet so we use this one.
 vector freqs [] = {
-	{ 433175000, 125, 7, 12, 433175000, 125, 7, 12, "433.175"},			// Channel 0, 433.175 MHz/125 primary
-	{ 433375000, 125, 7, 12, 433375000, 125, 7, 12, "433.375"},			// Channel 1, 433.375 MHz primary
-	{ 433575000, 125, 7, 12, 433575000, 125, 7, 12, "433.575"},			// Channel 2, 433.575 MHz primary
-	{ 433775000, 125, 7, 12, 433775000, 125, 7, 12, "433.775"},			// Channel 3, 433.775 MHz primary
-	{ 433975000, 125, 7, 12, 433975000, 125, 7, 12, "433.975"},			// Channel 4, 433.975 MHz primary
-	{ 434175000, 125, 7, 12, 434175000, 125, 7, 12, "434.175"},			// Channel 5, 434.175 MHz primary
-	{ 434375000, 125, 7, 12, 434375000, 125, 7, 12, "434.375"},			// Channel 6, 434.375 MHz primary
-	{ 434575000, 125, 7, 12, 434575000, 125, 7, 12, "434.575"},			// Channel 7, 434.575 MHz primary
-	{ 434775000, 125, 7, 12, 434775000, 125, 7, 12, "434.775"}			// Channel 8, 434.775 MHz primary
+  { 433175000, 125, 7, 12, 433175000, 125, 7, 12, "433.175"},     // Channel 0, 433.175 MHz/125 primary
+  { 433375000, 125, 7, 12, 433375000, 125, 7, 12, "433.375"},     // Channel 1, 433.375 MHz primary
+  { 433575000, 125, 7, 12, 433575000, 125, 7, 12, "433.575"},     // Channel 2, 433.575 MHz primary
+  { 433775000, 125, 7, 12, 433775000, 125, 7, 12, "433.775"},     // Channel 3, 433.775 MHz primary
+  { 433975000, 125, 7, 12, 433975000, 125, 7, 12, "433.975"},     // Channel 4, 433.975 MHz primary
+  { 434175000, 125, 7, 12, 434175000, 125, 7, 12, "434.175"},     // Channel 5, 434.175 MHz primary
+  { 434375000, 125, 7, 12, 434375000, 125, 7, 12, "434.375"},     // Channel 6, 434.375 MHz primary
+  { 434575000, 125, 7, 12, 434575000, 125, 7, 12, "434.575"},     // Channel 7, 434.575 MHz primary
+  { 434775000, 125, 7, 12, 434775000, 125, 7, 12, "434.775"}      // Channel 8, 434.775 MHz primary
 };
 
 #elif defined(US902_928)
@@ -113,51 +113,51 @@ vector freqs [] = {
 // SF7-SF10 and BW125 whereas the downlink protocol uses SF7-SF12 and BW500.
 // Also the number of chanels is not equal.
 vector freqs [] = {
-	// Uplink
-	{ 903900000, 125, 7, 10, 923300000, 500, 7, 12, "903.900"},			// Up Ch 0, SF7BW125 to SF10BW125 primary
-	{ 904100000, 125, 7, 10, 923900000, 500, 7, 12, "904.100"},			// Up Ch 1, SF7BW125 to SF10BW125
-	{ 904300000, 125, 7, 10, 924500000, 500, 7, 12, "904.300"},			// Up Ch 2, SF7BW125 to SF10BW125, Dwn SF7-SF12 924,5 BW500
-	{ 904500000, 125, 7, 10, 925100000, 500, 7, 12, "904.500"},			// Up Ch 3, SF7BW125 to SF10BW125, Dwn SF7-SF12 925,1 BW500
-	{ 904700000, 125, 7, 10, 925700000, 500, 7, 12, "904.700"},			// Up Ch 3, SF7BW125 to SF10BW125, Dwn SF7-SF12 925,1
-	{ 904900000, 125, 7, 10, 926300000, 500, 7, 12, "904.900"},			// Up Ch 4, SF7BW125 to SF10BW125, Dwn SF7-SF12 
-	{ 905100000, 125, 7, 10, 926900000, 500, 7, 12, "905.100"},			// Up Ch 5, SF7BW125 to SF10BW125, Dwn SF7-SF12 
-	{ 905300000, 125, 7, 10, 927500000, 500, 7, 12, "905.300"},			// Up Ch 6, SF7BW125 to SF10BW125, Dwn SF7-SF12 
-	{ 904600000, 500, 8,  8, 0        , 0,   0, 00, "904.600"}			// Up Ch 7, SF8BW5000, no Dwn 0 																						// SFxxxBW500
+  // Uplink
+  { 903900000, 125, 7, 10, 923300000, 500, 7, 12, "903.900"},     // Up Ch 0, SF7BW125 to SF10BW125 primary
+  { 904100000, 125, 7, 10, 923900000, 500, 7, 12, "904.100"},     // Up Ch 1, SF7BW125 to SF10BW125
+  { 904300000, 125, 7, 10, 924500000, 500, 7, 12, "904.300"},     // Up Ch 2, SF7BW125 to SF10BW125, Dwn SF7-SF12 924,5 BW500
+  { 904500000, 125, 7, 10, 925100000, 500, 7, 12, "904.500"},     // Up Ch 3, SF7BW125 to SF10BW125, Dwn SF7-SF12 925,1 BW500
+  { 904700000, 125, 7, 10, 925700000, 500, 7, 12, "904.700"},     // Up Ch 3, SF7BW125 to SF10BW125, Dwn SF7-SF12 925,1
+  { 904900000, 125, 7, 10, 926300000, 500, 7, 12, "904.900"},     // Up Ch 4, SF7BW125 to SF10BW125, Dwn SF7-SF12 
+  { 905100000, 125, 7, 10, 926900000, 500, 7, 12, "905.100"},     // Up Ch 5, SF7BW125 to SF10BW125, Dwn SF7-SF12 
+  { 905300000, 125, 7, 10, 927500000, 500, 7, 12, "905.300"},     // Up Ch 6, SF7BW125 to SF10BW125, Dwn SF7-SF12 
+  { 904600000, 500, 8,  8, 0        , 0,   0, 00, "904.600"}      // Up Ch 7, SF8BW5000, no Dwn 0                                             // SFxxxBW500
 };
 
 #elif defined(AU925_928)
 // Australian plan or TTN/Lora frequencies
 vector freqs [] = { 
-	{ 916800000, 125, 7, 10, 916800000, 125, 7, 12, "916.800"},			// Channel 0, 916.8 MHz primary
-	{ 917000000, 125, 7, 10, 917000000, 125, 7, 12, "917.000"},			// Channel 1, 917.0 MHz mandatory
-	{ 917200000, 125, 7, 10, 917200000, 125, 7, 12, "917.200"},			// Channel 2, 917.2 MHz mandatory
-	{ 917400000, 125, 7, 10, 917400000, 125, 7, 12, "917.400"},			// Channel 3, 917.4 MHz Optional
-	{ 917600000, 125, 7, 10, 917600000, 125, 7, 12, "917.600"},			// Channel 4, 917.6 MHz Optional
-	{ 917800000, 125, 7, 10, 917800000, 125, 7, 12, "917.800"},			// Channel 5, 917.8 MHz Optional
-	{ 918000000, 125, 7, 10, 918000000, 125, 7, 12, "918.000"},			// Channel 6, 918.0 MHz Optional 
-	{ 918200000, 125, 7, 10, 918200000, 125, 7, 12, "918.200"},			// Channel 7, 918.2 MHz Optional
-	{ 917500000, 500, 8,  8,         0,   0, 0,  0, "917.500"}	  	// Channel 8, 917.5 SF8BW500 MHz Optional Uplink
+  { 916800000, 125, 7, 10, 916800000, 125, 7, 12, "916.800"},     // Channel 0, 916.8 MHz primary
+  { 917000000, 125, 7, 10, 917000000, 125, 7, 12, "917.000"},     // Channel 1, 917.0 MHz mandatory
+  { 917200000, 125, 7, 10, 917200000, 125, 7, 12, "917.200"},     // Channel 2, 917.2 MHz mandatory
+  { 917400000, 125, 7, 10, 917400000, 125, 7, 12, "917.400"},     // Channel 3, 917.4 MHz Optional
+  { 917600000, 125, 7, 10, 917600000, 125, 7, 12, "917.600"},     // Channel 4, 917.6 MHz Optional
+  { 917800000, 125, 7, 10, 917800000, 125, 7, 12, "917.800"},     // Channel 5, 917.8 MHz Optional
+  { 918000000, 125, 7, 10, 918000000, 125, 7, 12, "918.000"},     // Channel 6, 918.0 MHz Optional 
+  { 918200000, 125, 7, 10, 918200000, 125, 7, 12, "918.200"},     // Channel 7, 918.2 MHz Optional
+  { 917500000, 500, 8,  8,         0,   0, 0,  0, "917.500"}      // Channel 8, 917.5 SF8BW500 MHz Optional Uplink
 };
 
 #elif defined(CN470_510)
 // China plan for TTN frequencies
 vector freqs [] = { 
-	{ 486300000, 125, 7, 12, 486300000, 125, 7, 12, "486.300"},			// 486.3 - SF7BW125 to SF12BW125
-	{ 486500000, 125, 7, 12, 486500000, 125, 7, 12, "486.500"},			// 486.5 - SF7BW125 to SF12BW125
-	{ 486700000, 125, 7, 12, 486700000, 125, 7, 12, "486.700"},			// 486.7 - SF7BW125 to SF12BW125
-	{ 486900000, 125, 7, 12, 486900000, 125, 7, 12, "486.900"},			// 486.9 - SF7BW125 to SF12BW125
-	{ 487100000, 125, 7, 12, 487100000, 125, 7, 12, "487.100"},			// 487.1 - SF7BW125 to SF12BW125
-	{ 487300000, 125, 7, 12, 487300000, 125, 7, 12, "487.300"},			// 487.3 - SF7BW125 to SF12BW125
-	{ 487500000, 125, 7, 12, 487500000, 125, 7, 12, "487.500"},			// 487.5 - SF7BW125 to SF12BW125
-	{ 487700000, 125, 7, 12, 487700000, 125, 7, 12, "487.700"}				// 487.7 - SF7BW125 to SF12BW125
+  { 486300000, 125, 7, 12, 486300000, 125, 7, 12, "486.300"},     // 486.3 - SF7BW125 to SF12BW125
+  { 486500000, 125, 7, 12, 486500000, 125, 7, 12, "486.500"},     // 486.5 - SF7BW125 to SF12BW125
+  { 486700000, 125, 7, 12, 486700000, 125, 7, 12, "486.700"},     // 486.7 - SF7BW125 to SF12BW125
+  { 486900000, 125, 7, 12, 486900000, 125, 7, 12, "486.900"},     // 486.9 - SF7BW125 to SF12BW125
+  { 487100000, 125, 7, 12, 487100000, 125, 7, 12, "487.100"},     // 487.1 - SF7BW125 to SF12BW125
+  { 487300000, 125, 7, 12, 487300000, 125, 7, 12, "487.300"},     // 487.3 - SF7BW125 to SF12BW125
+  { 487500000, 125, 7, 12, 487500000, 125, 7, 12, "487.500"},     // 487.5 - SF7BW125 to SF12BW125
+  { 487700000, 125, 7, 12, 487700000, 125, 7, 12, "487.700"}        // 487.7 - SF7BW125 to SF12BW125
 };
 
 #elif defined(IN865_867)
 vector freqs [] = { 
-	{ 865062500, 125, 7, 12, 865062500, 125,  7, 12, "865.0625"},			// And RX1
-	{ 865402500, 125, 7, 12, 865402500, 125,  7, 12, "865.4025"},
-	{ 865985000, 125, 7, 12, 865985000, 125,  7, 12, "865.985"},
-	{         0,   0, 0,  0, 866550000, 125, 10, 10, "866.550"}			// RX2
+  { 865062500, 125, 7, 12, 865062500, 125,  7, 12, "865.0625"},     // And RX1
+  { 865402500, 125, 7, 12, 865402500, 125,  7, 12, "865.4025"},
+  { 865985000, 125, 7, 12, 865985000, 125,  7, 12, "865.985"},
+  {         0,   0, 0,  0, 866550000, 125, 10, 10, "866.550"}     // RX2
 };
 
 #else
@@ -300,11 +300,12 @@ struct stat_t {
 	uint8_t ch;								// Channel index to freqs array
 	uint8_t sf;
 #if RSSI==1
-	int8_t		rssi;						// XXX Can be < -128
+	int8_t	rssi;						// XXX Can be < -128
 #endif
-	int8_t		prssi;						// XXX Can be < -128
-#if _LOCALSERVER==1
-	uint8_t data[23];						// For memory purposes, only 23 chars
+	int8_t	prssi;						// XXX Can be < -128
+	uint8_t upDown;							// 0==up, 1==down
+#if _LOCALSERVER>=1
+	uint8_t data[24];						// For memory purposes, only 24 chars
 	uint8_t datal;							// Length of decoded message 1 char
 #endif
 } stat_t;
@@ -378,27 +379,33 @@ struct LoraDown {
 	uint32_t	tmst;						// Timestamp (will ignore time)
 	uint32_t	tmms;						// Timestamp according to GPS (sync required)
 	uint32_t	time;
-	double_t	freq;						// Frequency
+	uint32_t	freq;						// Frequency
+	
+	uint16_t	fcnt;						// Framecount of the requesting LoraUp message
+
 	uint8_t		size;
-	//			chan = <NOT USED>
+	uint8_t		chan;						// = <NOT USED>
+	uint8_t		sf;							// through datr
+	uint8_t		bw;							// through datr
+	
 	bool		ipol;
 	uint8_t		powe;						// transmit power, normally 14, except when using special channel
 	uint8_t		crc;
 	uint8_t		iiq;						// message inverted or not for node-node communiction
 	uint8_t		imme;						// Immediate transfer execution
-	uint8_t		sf;							// through datr
-	uint8_t		bw;							// through datr
 	uint8_t		ncrc;						// no CRC check
 	uint8_t		prea;						// preamble
-	uint8_t		rfch;						// Concentrator "RF chain" used for TX (unsigned integer)
+	uint8_t		rfch;						// Antenna "RF chain" used for TX (unsigned integer)
+
 	char *		modu;						//	"LORA" os "FSCK"
 	char *		datr;						// = "SF12BW125", contains both .sf and .bw parts
 	char *		codr;
-	
 
-	
 	uint8_t	* 	payLoad;
 } LoraDown;
+
+
+
 // Up buffer (from Lora sensor to UDP)
 // This struct contains all data of the buffer received from devices to gateway
 
@@ -406,15 +413,17 @@ struct LoraUp {
 	uint32_t	tmst;						// Timestamp of message
 	uint32_t	tmms;						// <not used at the moment>
 	uint32_t	time;						// <not used at the moment>
-	double_t	freq;						// frequency used in HZ
+	uint32_t	freq;						// MMM frequency used in HZ
 	uint8_t		size;						// Length of the message Payload
 	uint8_t		chan;						// Channel "IF" used for RX
 	uint8_t		sf;							// Spreading Factor
-	//			modu not used
-	//			datr = "SF12BW125", contains both .sf and .bw parts
+
 	int32_t		snr;
 	int16_t		prssi; 
 	int16_t		rssicorr;
+
+	char *		modu;						//	"LORA" os "FSCK"
+
 	uint8_t		payLoad[128];
 } LoraUp;
 
@@ -429,21 +438,30 @@ struct LoraUp {
 
 #define REG_FIFO                    0x00		// rw FIFO address
 #define REG_OPMODE                  0x01		// Operation Mode Register (Page 108)
-												// Register 2 to 5 are unused for LoRa
+// 0x02	 reserved
+// 0x03
+// 0x04
+// 0x05											// Register 2 to 5 are unused for LoRa
 #define REG_FRF_MSB					0x06
 #define REG_FRF_MID					0x07
 #define REG_FRF_LSB					0x08
 #define REG_PAC                     0x09
 #define REG_PARAMP                  0x0A
+#define REG_OCP						0x0B		// 200927 Not used yet
 #define REG_LNA                     0x0C
 #define REG_FIFO_ADDR_PTR           0x0D		// rw SPI interface address pointer in FIFO data buffer
 #define REG_FIFO_TX_BASE_AD         0x0E		// rw write base address in FIFO data buffer for TX modulator
 #define REG_FIFO_RX_BASE_AD         0x0F		// rw read base address in FIFO data buffer for RX demodulator (0x00)
 
-#define REG_FIFO_RX_CURRENT_ADDR    0x10		// r  Address of last packet received
-#define REG_IRQ_FLAGS_MASK          0x11
-#define REG_IRQ_FLAGS               0x12
-#define REG_RX_NB_BYTES             0x13
+#define REG_FIFO_RX_CURRENT_ADDR	0x10		// r  Address of last packet received
+#define REG_IRQ_FLAGS_MASK			0x11
+#define REG_IRQ_FLAGS				0x12
+#define REG_RX_BYTES_NB				0x13
+// 0x14
+// 0x15
+// 0x16
+// 0x17
+// 0x18
 #define REG_PKT_SNR_VALUE			0x19
 #define REG_PKT_RSSI				0x1A		// latest package
 #define REG_RSSI					0x1B		// Current RSSI, section 6.4, or  5.5.5
@@ -452,14 +470,32 @@ struct LoraUp {
 #define REG_MODEM_CONFIG2           0x1E		// LoRa: Modem PHY config 2
 #define REG_SYMB_TIMEOUT_LSB  		0x1F
 
+#define REG_PREAMBLE_MSB			0x20
+#define REG_PREAMBLE_LSB			0x21		// MMM 200930: set to 0x08
 #define REG_PAYLOAD_LENGTH          0x22
 #define REG_MAX_PAYLOAD_LENGTH 		0x23
 #define REG_HOP_PERIOD              0x24
-#define REG_MODEM_CONFIG3           0x26		// Modem PHY config 3
+#define REG_FIFO_RX_BYTE_ADDR_PTR	0x25		// 200927 Not used yet
+#define REG_MODEM_CONFIG3           0x26		// Modem PHY config 3, bit 2 AgcAutoOn and 3 LowDataRateOptimize used
+#define REG_PPM_CORRECTION			0x27
+#define REG_FREQ_ERROR_MSB			0x28 (r)
+#define REG_FREQ_ERROR_MID			0x29 (r)
+#define REG_FREQ_ERROR_LSB			0x2A (r)
+// 0x2B reserved
 #define REG_RSSI_WIDEBAND			0x2C
+// 0x2D reserved
+// 0x2E reserved
+// 0x2F reserved
 
-#define REG_INVERTIQ				0x33
+// 0x30 reserved
+#define REG_DETECT_OPTIMIZE			0x31
+// 0x32 reserved
+#define REG_INVERTIQ				0x33		// 0x27 for normal and 0x40 for inverted IIQ
+// 0x34 reserved
+// 0x35 reserved
+// 0x36 reserved
 #define REG_DET_TRESH				0x37		// SF6
+// 0x38 reserved
 #define REG_SYNC_WORD				0x39
 #define REG_TEMP					0x3C
 
@@ -482,7 +518,7 @@ struct LoraUp {
 
 // ----------------------------------------
 // LMIC Constants for radio registers
-#define OPMODE_LORA      			0x80
+#define OPMODE_LORA      			0x80		// bit 6 is AccessSharing Reg. Bits 4 and 5 are 0x00
 #define OPMODE_MASK      			0x0F		// Select LSB 8 bits 0, ignore LoRa bit for example
 
 #define OPMODE_LOWFREQ				0x08		// Should be - for 868.1 MHZ operation
@@ -585,7 +621,7 @@ struct LoraUp {
 
 // ----------------------------------------
 // Definitions for UDP message arriving from server
-#define PROTOCOL_VERSION			0x02
+#define PROTOCOL_VERSION			0x01
 
 #define PUSH_DATA					0x00
 #define PUSH_ACK					0x01
