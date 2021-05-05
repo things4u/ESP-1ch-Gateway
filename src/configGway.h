@@ -84,6 +84,7 @@
 // CN779-787	(Not Used!)
 // EU433		Europe
 // AS923		(Not Used)
+// KR920    South Korea
 // You can find the definitions in "loraModem.h" and frequencies in
 // See https://www.thethingsnetwork.org/docs/lorawan/frequency-plans.html
 #define EU863_870 1
