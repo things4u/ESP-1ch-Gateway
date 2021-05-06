@@ -523,7 +523,8 @@ int buildPacket(uint8_t *buff_up, struct LoraUp *LoraUp, bool internal)
 
 	doc["chan"] = "" + gwayConfig.ch;				// This could be any defined channel
 	doc["rfch"] = "0";								// First Antenna
-	doc["freq"] = "" + (freqs[gwayConfig.ch].upFreq / 1000000);
+  //doc["freq"] = "" + (freqs[gwayConfig.ch].upFreq / 1000000);
+  doc["freq"] = "" + freqs[gwayConfig.ch].jsonfreq;
 	doc["stat"] = "1";								// Always OK for CRC
 	doc["modu"] = "LORA";
 	doc["datr"] = "SF" + String(LoraUp->sf) + "BW" + String(freqs[gwayConfig.ch].upBW);
@@ -548,7 +549,8 @@ int buildPacket(uint8_t *buff_up, struct LoraUp *LoraUp, bool internal)
 #else 
 // _JSONENCODE undefined, this is default
 // ---------------------------------------
-	ftoa((double)freqs[gwayConfig.ch].upFreq / 1000000, cfreq, 6);		// XXX This can be done better
+	//ftoa((double)freqs[gwayConfig.ch].upFreq / 1000000, cfreq, 6);		// XXX This can be done better
+  freqs[gwayConfig.ch].jsonfreq.toCharArray(cfreq, 13);
 	if ((LoraUp->sf<6) || (LoraUp->sf>12)) { 							// Lora datarate & bandwidth SF6-SF12, 16-19 useful chars */
 		LoraUp->sf=7;
 	}			
@@ -769,4 +771,3 @@ int receivePacket()
 	return(0);											// failure no message read
 
 }//receivePacket
-
