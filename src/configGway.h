@@ -165,7 +165,8 @@
 //	2: COMRESULT pin out
 //	3: ESP32, Wemos pin out (Not used)
 //	4: ESP32, Heltec and TTGO pin out (should work for Heltec, 433 and Oled too).
-//	5: Other, define your own in loraModem.h (does not include GPS Code)
+//  5: ESP32/Heltec Wifi LoRA 32(V2)
+//	6: Other, define your own in loraModem.h (does not include GPS Code)
 #if !defined _PIN_OUT
 #	define _PIN_OUT 1
 #endif
