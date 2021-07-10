@@ -46,7 +46,7 @@ int initMonitor(struct moniLine *monitor)
 void id_print (String id, String val) 
 {
 #if _MONITOR>=1
-	if ((debug>=0) && (pdebug & P_MAIN)) {
+	if ((debug>=1) && (pdebug & P_MAIN)) {
 		Serial.print(id);
 		Serial.print(F("=\t"));
 		Serial.println(val);
@@ -172,7 +172,7 @@ int readConfig(const char *fn, struct espGwayConfig *c)
 	while (f.available()) {
 		
 #		if _MONITOR>=1
-		if ((debug>=0) && (pdebug & P_MAIN)) {
+		if ((debug>=1) && (pdebug & P_MAIN)) {
 			Serial.print('.');
 		}
 #		endif //_MONITOR
@@ -183,7 +183,7 @@ int readConfig(const char *fn, struct espGwayConfig *c)
 		if (tries >= 15) {
 			f.close();
 #			if _MONITOR>=1
-			if (debug>=0) {
+			if (debug>=1) {
 				mPrint("readConfig:: Formatting");
 			}
 #			endif //_MONITOR
@@ -494,7 +494,10 @@ int addLog(const unsigned char * line, int cnt)
 	
 	f.close();									// Close the file after appending to it
 
-#endif //_STAT_LOG
+#else //!_STAT_LOG
+    (void)line;
+    (void)cnt;
+#endif //!_STAT_LOG
 
 	gwayConfig.logFileRec++;
 

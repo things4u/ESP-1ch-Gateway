@@ -45,7 +45,7 @@ int WlanStatus() {
 		// The ESP is configured to reconnect to the last router in memory.
 		case WL_DISCONNECTED:
 #			if _MONITOR>=1
-			if ( debug>=0 ) {
+			if ( debug>=1 ) {
 				mPrint("WlanStatus:: DISCONNECTED, IP=" + String(WiFi.localIP().toString())); // 6
 			}
 #			endif
@@ -58,7 +58,7 @@ int WlanStatus() {
 		// When still pocessing
 		case WL_IDLE_STATUS:
 #			if _MONITOR>=1
-			if ( debug>=0 ) {
+			if ( debug>=1 ) {
 				mPrint("WlanStatus:: IDLE");								// 0
 			}
 #			endif //_MONITOR
@@ -68,14 +68,14 @@ int WlanStatus() {
 		// Whene detected, the program will search for a better AP in range
 		case WL_NO_SSID_AVAIL:
 #			if _MONITOR>=1
-			if ( debug>=0 )
+			if ( debug>=1 )
 				mPrint("WlanStatus:: NO SSID");								// 1
 #			endif //_MONITOR
 			break;
 			
 		case WL_CONNECT_FAILED:
 #			if _MONITOR>=1
-			if ( debug>=0 )
+			if ( debug>=1 )
 				mPrint("WlanStatus:: Connect FAILED");								// 4
 #			endif //_MONITOR
 			break;
@@ -83,7 +83,7 @@ int WlanStatus() {
 		// Never seen this code
 		case WL_SCAN_COMPLETED:
 #			if _MONITOR>=1
-			if ( debug>=0 )
+			if ( debug>=1 )
 				mPrint("WlanStatus:: SCAN COMPLETE");						// 2
 #			endif //_MONITOR
 			break;
@@ -91,7 +91,7 @@ int WlanStatus() {
 		// Never seen this code
 		case WL_CONNECTION_LOST:
 #			if _MONITOR>=1
-			if ( debug>=0 )
+			if ( debug>=1 )
 				mPrint("WlanStatus:: Connection LOST");						// 5
 #			endif //_MONITOR
 			break;
@@ -100,14 +100,14 @@ int WlanStatus() {
 		// before accessing WiFi functions
 		case WL_NO_SHIELD:
 #			if _MONITOR>=1
-			if ( debug>=0 )
+			if ( debug>=1 )
 				mPrint("WlanStatus:: WL_NO_SHIELD");							// 
 #			endif //_MONITOR
 			break;
 			
 		default:
 #			if _MONITOR>=1
-			if ( debug>=0 ) {
+			if ( debug>=1 ) {
 				mPrint("WlanStatus Error:: code=" + String(WiFi.status()));	// 255 means ERROR
 			}
 #			endif //_MONITOR
@@ -286,7 +286,7 @@ int WlanConnect(int maxTry) {
 				agains++;		
 				delay(8000);											// delay(agains*500);
 #				if _MONITOR>=1
-				if ( debug>=0 ) {
+				if ( debug>=1 ) {
 					Serial.print(".");									// Serial only
 				}
 #				endif //_MONITOR

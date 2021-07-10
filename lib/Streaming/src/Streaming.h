@@ -100,6 +100,6 @@ inline Print &operator <<(Print &obj, const _FLOAT &arg)
 enum _EndLineCode { endl };
 
 inline Print &operator <<(Print &obj, _EndLineCode arg)
-{ obj.println(); return obj; }
+{ (void)arg; obj.println(); return obj; }
 
 #endif

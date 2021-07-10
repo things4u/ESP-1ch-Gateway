@@ -430,7 +430,7 @@ uint8_t receivePkt(uint8_t *payload)
     if (irqflags & IRQ_LORA_CRCERR_MASK)								// Is CRC error?
     {
 #		if _MONITOR>=1
-        if ((debug>=0) && (pdebug & P_RADIO)) {
+        if ((debug>=1) && (pdebug & P_RADIO)) {
 			String response=("rxPkt:: Err CRC, t=");
 			stringTime(now(), response);
 			mPrint(response);
@@ -445,7 +445,7 @@ uint8_t receivePkt(uint8_t *payload)
 	else if ((irqflags & IRQ_LORA_HEADER_MASK) == false)				// Header not ok?
     {
 #		if _MONITOR>=1
-			if ((debug>=0) && (pdebug & P_RADIO)) {
+			if ((debug>=1) && (pdebug & P_RADIO)) {
 				mPrint("rxPkt:: Err HEADER");
 			}
 #		endif //_MONITOR
@@ -484,7 +484,7 @@ uint8_t receivePkt(uint8_t *payload)
 
 		if (receivedCount > PAYLOAD_LENGTH) {
 #			if _MONITOR>=1
-				if ((debug>=0) & (pdebug & P_RADIO)) {
+				if ((debug>=1) & (pdebug & P_RADIO)) {
 					mPrint("rxPkt:: ERROR Payliad receivedCount="+String(receivedCount));
 				}
 #			endif //_MONITOR

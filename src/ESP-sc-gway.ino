@@ -140,7 +140,7 @@ uint8_t pdebug= P_MAIN ;									// Initially only MAIN and GUI
 #	endif //_GPS
 #endif //_GATEWAYNODE
 
-using namespace std;
+//using namespace std;
 byte 		currentMode = 0x81;
 bool		sx1272 = false;									// Actually we use sx1276/RFM95
 uint8_t		MAC_array[6];
@@ -238,7 +238,7 @@ int sendPacket(uint8_t *buf, uint8_t length);							// _txRx.ino forward
 void printIP(IPAddress ipa, const char sep, String & response);			// _wwwServer.ino
 void setupWWW();														// _wwwServer.ino forward
 
-void mPrint(String txt);												// _utils.ino
+void mPrint(const String& txt);												// _utils.ino
 int getNtpTime(time_t *t);												// _utils.ino
 int mStat(uint8_t intr, String & response);								// _utils.ino
 void SerialStat(uint8_t intr);											// _utils.ino
@@ -292,7 +292,7 @@ void setup() {
 
 	char MAC_char[19];										// XXX Unbelievable
 	MAC_char[18] = 0;
-	char hostname[12];										// hostname space
+	char hostname[32];										// hostname space
 
 	initConfig(&gwayConfig);
 		
@@ -363,14 +363,14 @@ void setup() {
 	//
 	if (readGwayCfg(_CONFIGFILE, &gwayConfig) > 0) {			// read the Gateway Config
 #		if _MONITOR>=1
-		if (debug>=0) {
+		if (debug>=1) {
 			mPrint("readGwayCfg:: return OK");
 		}
 #		endif
 	}
 	else {
 #		if _MONITOR>=1
-		if (debug>=0) {
+		if (debug>=1) {
 			mPrint("setup:: readGwayCfg: ERROR readGwayCfg Failed");
 		}
 #		endif	
@@ -402,7 +402,7 @@ void setup() {
 	// Setup WiFi UDP connection. Give it some time and retry x times. '0' means try forever
 	while (WlanConnect(0) <= 0) {
 #		if _MONITOR>=1
-		if ((debug>=0) && (pdebug & P_MAIN)) {
+		if ((debug>=1) && (pdebug & P_MAIN)) {
 			mPrint("setup:: Error Wifi network connect(0)");
 		}
 #		endif //_MONITOR
@@ -429,7 +429,7 @@ void setup() {
 #	endif	//ESP32_ARCH
 
 #	if _MONITOR>=1
-	if (debug>=0) {
+	if (debug>=1) {
 		String response = "Host=";
 #		if defined(ESP32_ARCH)
 			response += String(WiFi.getHostname());
@@ -487,7 +487,7 @@ void setup() {
     // display results of getting hardware address
 	//
 #	if _MONITOR>=1
-	if (debug>=0) {
+	if (debug>=1) {
 		String response= "Gateway ID: ";
 		printHexDigit(MAC_array[0], response);
 		printHexDigit(MAC_array[1], response);
@@ -531,8 +531,8 @@ void setup() {
 			time_t newTime;
 			if (getNtpTime(&newTime)<=0) {
 #				if _MONITOR>=1
-				if (debug>=0) {
-					mPrint("setup:: ERROR Time not set (yet). Time="+String(newTime) );
+				if (debug>=1) {
+					mPrint("setup:: ERROR Time not set (yet). Time="+String((int)newTime) );
 				}
 #				endif //_MONITOR
 				response += ".";
@@ -549,7 +549,7 @@ void setup() {
 		// When we are here we succeeded in getting the time
 		startTime = now();										// Time in seconds
 #		if _MONITOR>=1
-		if (debug>=0) {
+		if (debug>=1) {
 			String response= "Time set=";
 			stringTime(now(),response);
 			mPrint(response);
@@ -670,7 +670,7 @@ void loop ()
 	// We will not read Udp in this loop cycle if not connected to Wlan
 	if (WlanConnect(1) < 0) {
 #		if _MONITOR>=1
-		if ((debug>=0) && (pdebug & P_MAIN)) {
+		if ((debug>=1) && (pdebug & P_MAIN)) {
 			mPrint("loop:: ERROR reconnect WLAN");
 		}
 #		endif //_MONITOR
@@ -701,7 +701,7 @@ void loop ()
 		//
 		if (readUdp(packetSize) < 0) {
 #			if _MONITOR>=1
-			if (debug>=0)
+			if (debug>=1)
 				mPrint("v readUdp ERROR, returning < 0");
 #			endif //_MONITOR
 			break;
@@ -882,7 +882,7 @@ void loop ()
 			if (getNtpTime(&newTime)<=0) {
 #				if _MONITOR>=1
 				if (debug>=2) {
-					mPrint("loop:: WARNING Time not set (yet). Time="+String(newTime) );
+					mPrint("loop:: WARNING Time not set (yet). Time="+String((int)newTime) );
 				}
 #				endif //_MONITOR
 			}

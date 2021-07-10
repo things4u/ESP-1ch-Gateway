@@ -45,6 +45,8 @@ void printInt (uint32_t i, String & response)
 
 void printRegs(struct LoraDown *LoraDown, String & response)
 {
+    (void)LoraDown;
+
 	response += "v FIFO (0x00)=0x" + String(readRegister(REG_FIFO),HEX);
 	response += "v OPMODE (0x01)=0x" + String(readRegister(REG_OPMODE),HEX);
 	
@@ -168,7 +170,7 @@ void printIP(IPAddress ipa, const char sep, String & response)
 void printHex(uint32_t hexa, const char sep, String & response) 
 {
 #	if _MONITOR>=1
-	if ((debug>=0) && (hexa==0)) {
+	if ((debug>=1) && (hexa==0)) {
 		mPrint("printHex:: hexa amount to convert is 0");
 	}
 #	endif
@@ -209,7 +211,7 @@ void printHexDigit(uint8_t digit, String & response)
 // return:
 //	<None>
 // ----------------------------------------------------------------------------------------
-void mPrint(String txt) 
+void mPrint(const String& txt) 
 {
 
 #	if _DUSB>=1
@@ -252,7 +254,7 @@ int mStat(uint8_t intr, String & response)
 {
 #if _MONITOR>=1
 
-	if (debug>=0) {
+	if (debug>=1) {
 	
 		response += "I=";
 
@@ -461,7 +463,7 @@ int getNtpTime(time_t *t)
     if (!sendNtpRequest(ntpServer))							// Send the request for new time
 	{
 #		if _MONITOR>=1
-		if (debug>=0) {
+		if (debug>=1) {
 			mPrint("utils:: ERROR getNtpTime: sendNtpRequest failed");
 		}
 #		endif //_MONITOR
@@ -481,7 +483,7 @@ int getNtpTime(time_t *t)
 		
 			if (Udp.read(packetBuffer, NTP_PACKET_SIZE) < NTP_PACKET_SIZE) {
 #				if _MONITOR>=1
-				if (debug>=0) {
+				if (debug>=1) {
 					mPrint("getNtpTime:: ERROR packetsize too low");
 				}
 #				endif //_MONITOR

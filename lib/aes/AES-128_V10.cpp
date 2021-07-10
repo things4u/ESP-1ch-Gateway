@@ -77,7 +77,7 @@ static unsigned char AES_Sub_Byte(unsigned char Byte);
 static void AES_Shift_Rows();
 static void AES_Mix_Collums();
 static void AES_Calculate_Round_Key(unsigned char Round, unsigned char *Round_Key);
-static void Send_State();
+//static void Send_State();
 
 /*
 *****************************************************************************************

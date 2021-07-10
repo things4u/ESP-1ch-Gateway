@@ -133,7 +133,7 @@ void stateMachine()
 				default:
 					doneWait *= 1;
 #					if _MONITOR>=1
-					if ((debug>=0) && (pdebug & P_PRE)) {
+					if ((debug>=1) && (pdebug & P_PRE)) {
 						mPrint("StateMachine:: PRE: DEF set");
 					}
 #					endif //_MONITOR
@@ -374,7 +374,7 @@ void stateMachine()
 		//
 		else {
 #			if _MONITOR>=1
-			if ((debug>=0) && (pdebug & P_SCAN)) {
+			if ((debug>=1) && (pdebug & P_SCAN)) {
 				String response = "SCAN unknown:: ";
 				mStat(intr, response);
 				mPrint(response);
@@ -529,7 +529,7 @@ void stateMachine()
 		//
 		else {
 #			if _MONITOR>=1
-			if ( debug>=0) { 
+			if ( debug>=1) { 
 				mPrint("ERROR CAD: Unknown::" + String(intr) ); 
 			}
 #			endif //_MONITOR
@@ -565,7 +565,7 @@ void stateMachine()
 			//
 			if (intr & IRQ_LORA_CRCERR_MASK) {
 #				if _MONITOR>=1
-				if ((debug>=0) && (pdebug & P_RX)) {
+				if ((debug>=1) && (pdebug & P_RX)) {
 					String response = "^ CRC ERROR:: ";
 					mStat(intr, response);
 				}
@@ -612,7 +612,7 @@ void stateMachine()
 
 			if((LoraUp.size = receivePkt(LoraUp.payLoad)) <= 0) {
 #				if _MONITOR>=1
-				if ((debug>=0) && (pdebug & P_RX)) {
+				if ((debug>=1) && (pdebug & P_RX)) {
 					String response = "sMachine:: ERROR S-RX: size=" + String(LoraUp.size);
 					mPrint(response);
 				}
@@ -663,7 +663,7 @@ void stateMachine()
 			//
 			if (receivePacket() <= 0) {								// read is not successful
 #				if _MONITOR>=1
-				if ((debug>=0) && (pdebug & P_RX)) {
+				if ((debug>=1) && (pdebug & P_RX)) {
 					mPrint("sMach:: ERROR receivePacket");
 				}
 #				endif //_MONITOR
@@ -760,7 +760,7 @@ void stateMachine()
 		// as HEADER interrupt comes just before RXDONE
 		else {							
 #			if _MONITOR>=1
-			if ((debug>=0) && (pdebug & P_RX)) {
+			if ((debug>=1) && (pdebug & P_RX)) {
 				mPrint("R S_RX:: no RXDONE, RXTOUT, HEADER:: " + String(intr));
 			}
 #			endif //_MONITOR
@@ -880,7 +880,7 @@ void stateMachine()
 
 			if (Udp.write((unsigned char *)buff, 12) != 12) {
 #				if _MONITOR>=1
-				if (debug>=0) {
+				if (debug>=1) {
 					mPrint("^ readUdp:: ERROR: PULL_ACK write");
 				}
 #				endif //_MONITOR
@@ -895,7 +895,7 @@ void stateMachine()
 
 			if (!Udp.endPacket()) {
 #				if _MONITOR>=1
-				if ((debug>=0) && (pdebug & P_TX)) {
+				if ((debug>=1) && (pdebug & P_TX)) {
 					mPrint("^ readUdp:: PULL_ACK: ERROR Udp.endPacket");
 				}
 #				endif //_MONITOR
@@ -906,7 +906,7 @@ void stateMachine()
 		// If a soft _event==0 interrupt and no transmission finished:
 		else if ( intr != 0 ) {
 #			if _MONITOR>=1
-			if ((debug>=0) && (pdebug & P_TX)) {
+			if ((debug>=1) && (pdebug & P_TX)) {
 				String response =  "TXDONE:: ERROR unknown intr=";
 				mStat(intr, response);
 				mPrint(response);
@@ -965,14 +965,14 @@ void stateMachine()
 	  // make sure that we pick up next interrupt
 	  default:
 #		if _MONITOR>=1
-		if ((debug>=0) && (pdebug & P_PRE)) {
+		if ((debug>=1) && (pdebug & P_PRE)) {
 			mPrint("ERR state=" + String(_state));	
 		}
 #		endif //_MONITOR
 
 		if ((gwayConfig.cad) || (gwayConfig.hop)) {
 #			if _MONITOR>=1
-			if (debug>=0) {
+			if (debug>=1) {
 				String response = "default:: Unknown _state ";
 				mStat(intr, response);
 				mPrint(response);

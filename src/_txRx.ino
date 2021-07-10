@@ -94,7 +94,7 @@ int sendPacket(uint8_t *buf, uint8_t len)
 	auto error = deserializeJson(jsonBuffer, bufPtr);		
 	if (error) {
 #		if _MONITOR>=1
-		if ((debug>=0) && (pdebug & P_TX)) {
+		if ((debug>=1) && (pdebug & P_TX)) {
 			mPrint("v sendPacket:: ERROR: Json Decode: " + String(bufPtr) );
 		}
 #		endif //_MONITOR
@@ -115,7 +115,7 @@ int sendPacket(uint8_t *buf, uint8_t len)
 	const char * datr	= root["txpk"]["datr"];			// eg "SF7BW125"
 	const char * codr	= root["txpk"]["codr"];			// "4/5"
 	const char * modu	= root["txpk"]["modu"];
-	const char * time	= root["txpk"]["time"];			// Time is a string in UTC
+	//const char * time	= root["txpk"]["time"];			// Time is a string in UTC
 	
 	LoraDown.modu		= (char *) modu;				// =="LORA"
 	LoraDown.codr		= (char *) codr;				// e.g. "4/5"
@@ -152,7 +152,7 @@ int sendPacket(uint8_t *buf, uint8_t len)
 	}
 	else {												// There is data!
 #		if _MONITOR>=1
-		if ((debug>=0) && (pdebug & P_TX)) {
+		if ((debug>=1) && (pdebug & P_TX)) {
 			mPrint("v sendPacket:: ERROR: data is NULL");
 		}
 #		endif //_MONITOR
@@ -193,7 +193,7 @@ int sendPacket(uint8_t *buf, uint8_t len)
 
 	uint32_t fff	= (uint32_t)(root["txpk"]["freq"].as<double>() * 1000000);
 	
-	if (abs(freqs[gwayConfig.ch].dwnFreq - fff) < 100000) {
+	if ((freqs[gwayConfig.ch].dwnFreq - fff) < 100000) {
 		LoraDown.freq = (uint32_t) (freqs[gwayConfig.ch].dwnFreq) & 0xFFFFFFFF ;
 	}
 	else {
@@ -225,7 +225,7 @@ int sendPacket(uint8_t *buf, uint8_t len)
 
 	if (LoraDown.size != psize) {
 #		if _MONITOR>=1
-		if (debug>=0) {
+		if (debug>=1) {
 			mPrint("v sendPacket:: WARNING size=" + String(LoraDown.size) + ", psize=" + String(psize) );
 		}
 #		endif //_MONITOR

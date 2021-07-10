@@ -277,6 +277,8 @@ void OLEDDisplayUi::drawFrame(){
           x1 = 0;
           y1 = y - 64;
           break;
+        default:
+          return;
        }
 
        // Invert animation if direction is reversed.
@@ -331,7 +333,7 @@ void OLEDDisplayUi::drawIndicator() {
       return;
     }
 
-    uint8_t posOfHighlightFrame;
+    uint8_t posOfHighlightFrame = 0;
     float indicatorFadeProgress = 0;
 
     // if the indicator needs to be slided in we want to
