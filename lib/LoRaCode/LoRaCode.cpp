@@ -35,7 +35,7 @@
 #include <Arduino.h>
 #include <Battery.h>
 #elif defined(ARDUINO_ARCH_ESP8266) | defined(ESP32)
-#include <ESP.h>
+#include <Esp.h>
 #elif defined(__MKL26Z64__)
 #include <Arduino.h>
 #else
