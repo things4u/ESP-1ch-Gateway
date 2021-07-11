@@ -1,5 +1,5 @@
 // 1-channel LoRa Gateway for ESP8266 and ESP32
-// Copyright (c) 2016-2020 Maarten Westenberg 
+// Copyright (c) 2016-2021 Maarten Westenberg 
 //
 // Based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 // and many others.
@@ -40,7 +40,7 @@
 //
 // As part of this function, we will listen for another set of messages
 // that is defined in loraModem.h.
-// All opCodes start with 0x1y for at leaving opcodes 0x00 to 0x0F to the
+// All opCodes start with 0x10, leaving opcodes 0x00 to 0x0F to the
 // pure Gateway protocol
 //
 // Incoming mesage format:

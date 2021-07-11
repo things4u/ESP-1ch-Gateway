@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP32 and ESP8266
-// Copyright (c) Maarten Westenberg 2016-2020 
+// Copyright (c) Maarten Westenberg 2016-2021 
 
-#define VERSION "V.6.2.7.EU868; PlatformIO 201030 d"
+#define VERSION "V.6.2.8.EU868; PlatformIO 210711 a; GIT"
 
 //
 // Based on work done by Thomas Telkamp for Raspberry PI 1ch gateway and many others.
@@ -81,10 +81,10 @@
 // AU925_928	Australia
 // CN470_510	China
 // IN865_867	India
-// CN779-787	(Not Used!)
+// CN779-787	(Not Used)
 // EU433		Europe
+// KR920    	South Korea
 // AS923		(Not Used)
-// KR920    South Korea
 // You can find the definitions in "loraModem.h" and frequencies in
 // See https://www.thethingsnetwork.org/docs/lorawan/frequency-plans.html
 #define EU863_870 1
@@ -252,7 +252,6 @@
 #define _LOCUDPPORT 1700					// UDP port of gateway! Often 1700 or 1701 is used for upstream comms
 
 
-
 // This defines whether or not we would use the gateway as 
 // as sort of backend decoding system for local sensors which decodes (such as TTGO T-Beam)
 // 0: Do not use _LOCALSERVER
@@ -268,7 +267,7 @@
 #define NTP_TIMESERVER "nl.pool.ntp.org"	// Country and region specific
 #define NTP_TIMEZONES	2					// How far is our Timezone from UTC (excl daylight saving/summer time)
 #define SECS_IN_HOUR	3600
-#define NTP_INTR 0							// Do NTP processing with interrupts or in loop();
+#define _NTP_INTR 0							// Do NTP processing with interrupts or in loop();
 
 
 // lora sensor code definitions
@@ -357,10 +356,25 @@
 #define _MUTEX 0
 
 
+// Read server/gateway traffic
+#if !defined _GWAYSCAN
+#	define _GWAYSCAN 0						// default, NO _GWAYSCAN
+#endif //GWAYSCAN
+
+
+// Init EXPERT mode
+#if !defined _EXPERT
+#	define _EXPERT 0						// default, NO _EXPERT
+#endif //EXPERT
+
 // MQTT definitions, these settings should be standard for TTN
 // and need no changing. When _REPEATER function is selected, we do not
 // use the backend function to send message to server over MQTT.
 #if _REPEATER==0
-#	define _TTNSERVER "router.eu.thethings.network"
+// TTN Version 2:
+//#	define _TTNSERVER "router.eu.thethings.network"
+//
+// TTN Version 3:
+#	define _TTNSERVER "eu1.cloud.thethings.network"	
 #	define _TTNPORT 1700							// Standard port for TTN
 #endif

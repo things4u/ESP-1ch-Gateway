@@ -1,5 +1,5 @@
 // 1-channel LoRa Gateway for ESP8266
-// Copyright (c) 2016-2020 Maarten Westenberg version for ESP8266
+// Copyright (c) 2016-2021 Maarten Westenberg version for ESP8266
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -74,11 +74,12 @@ void initConfig(struct espGwayConfig *c)
 	(*c).cad = _CAD;
 	(*c).hop = false;
 	(*c).seen = true;					// Seen interface is ON
-	(*c).expert = false;				// Expert interface is OFF
+	(*c).expert = _EXPERT;				// Expert interface is default OFF
 	(*c).monitor = true;				// Monitoring is ON
 	(*c).trusted = 1;
 	(*c).txDelay = 0;					// First Value without saving is 0;
 	(*c).dusbStat = true;
+	(*c).d_fcnt = 0;					// Set downstream DCNT to 0 at reboot
 	
 	(*c).maxSeen = _MAXSEEN;
 	(*c).maxStat = _MAXSTAT;
@@ -134,9 +135,9 @@ int readGwayCfg(const char *fn, struct espGwayConfig *c)
 
 #	if _GATEWAYNODE==1
 		if (gwayConfig.fcnt != (uint8_t) 0) {
-			frameCount = gwayConfig.fcnt+10;			// Assume he is only 10 off
+			LoraUp.fcnt = gwayConfig.fcnt+10;			// Assume it is only 10 off
 		}
-#	endif
+#	endif //_GATEWAYNODE
 
 	writeGwayCfg(_CONFIGFILE, &gwayConfig );			// And writeback the configuration, not to miss a boot
 
@@ -225,10 +226,14 @@ int readConfig(const char *fn, struct espGwayConfig *c)
 			id_print(id, val);
 			(*c).expert = (bool) val.toInt();
 		}
-		else if (id == "FCNT") {								// Frame Counter
+		else if (id == "FCNT") {								// Frame Counter Up
 			id_print(id, val);
-			(*c).fcnt = (uint16_t) val.toInt();
+			(*c).u_fcnt = (uint16_t) val.toInt();
 		}
+		//else if (id == "DCNT") {								// Frame Counter Down
+		//	id_print(id, val);
+		//	(*c).d_fcnt = (uint16_t) val.toInt();
+		//}
 		else if (id == "FILENO") {								// FILENO setting
 			id_print(id, val);
 			(*c).logFileNo = (uint16_t) val.toInt();
@@ -265,7 +270,7 @@ int readConfig(const char *fn, struct espGwayConfig *c)
 			id_print(id, val);
 			(*c).ntpErr = (uint16_t) val.toInt();
 		}
-		else if (id == "NTPETIM") {								// NTPERR setting
+		else if (id == "NTPETIM") {								// NTPETIM setting
 			id_print(id, val);
 			(*c).ntpErrTime = (uint32_t) val.toInt();
 		}
@@ -339,8 +344,9 @@ int writeGwayCfg(const char *fn, struct espGwayConfig *c)
 	(*c).pdebug = pdebug;
 
 #	if _GATEWAYNODE==1
-		(*c).fcnt = frameCount;
+		(*c).u_fcnt = LoraUp.fcnt;
 #	endif //_GATEWAYNODE
+	(*c).d_fcnt = LoraDown.fcnt;
 
 	return(writeConfig(fn, c));
 } // writeGwayCfg
@@ -369,7 +375,8 @@ int writeConfig(const char *fn, struct espGwayConfig *c)
 
 	f.print("CH");		f.print('='); f.print((*c).ch);			f.print('\n');
 	f.print("SF");		f.print('='); f.print((*c).sf);			f.print('\n');
-	f.print("FCNT");	f.print('='); f.print((*c).fcnt);		f.print('\n');
+	f.print("FCNT");	f.print('='); f.print((*c).u_fcnt);		f.print('\n');
+	f.print("DCNT");	f.print('='); f.print((*c).d_fcnt);		f.print('\n');
 	f.print("DEBUG");	f.print('='); f.print((*c).debug);		f.print('\n');
 	f.print("PDEBUG");	f.print('='); f.print((*c).pdebug);		f.print('\n');
 	f.print("CAD");		f.print('='); f.print((*c).cad);		f.print('\n');
@@ -646,7 +653,6 @@ int printSeen(const char *fn, struct nodeSeen *listSeen)
 		f.print((uint8_t)listSeen[i].chnSeen);	f.print('\t');
 		f.print((uint8_t)listSeen[i].sfSeen);	f.print('\n');
 
-		// MMM
 #		if _MONITOR>=1
 		if ((debug >= 2) && (pdebug & P_TX)) {
 			if (listSeen[i].upDown == 1) {

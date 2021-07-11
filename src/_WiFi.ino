@@ -1,5 +1,5 @@
 // 1-channel LoRa Gateway for ESP8266 and ESP32
-// Copyright (c) 2016-2020 Maarten Westenberg version for ESP8266
+// Copyright (c) 2016-2021 Maarten Westenberg version for ESP8266
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -206,7 +206,7 @@ void configModeCallback (WiFiManager *myWiFiManager)
 // samen SSID as it was connected to before.
 // Parameters:
 //		int maxTry: Number of retries we do:
-//		0: Used during Setup first CONNECT
+//		0: Used during Setup first CONNECT, try Forever
 //		1: Try once and if unsuccessful return(1);
 //		x: Try x times
 //

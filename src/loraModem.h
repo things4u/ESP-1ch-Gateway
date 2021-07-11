@@ -1,5 +1,5 @@
 // 1-channel LoRa Gateway for ESP8266 and ESP32
-// Copyright (c) 2016-2020 Maarten Westenberg version for ESP8266
+// Copyright (c) 2016-2021 Maarten Westenberg version for ESP8266
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many other contributors.
@@ -23,7 +23,7 @@
 // ----------------------------------------
 // Used by REG_PAYLOAD_LENGTH to set receive payload length
 #define PAYLOAD_LENGTH              0x40		// 64 bytes
-#define MAX_PAYLOAD_LENGTH          0x80		// 128 bytes
+#define MAX_PAYLOAD_LENGTH          0x40		// 64 bytes
 
 // In order to make the CAD behaviour dynamic we set a variable
 // when the CAD functions are defined. Value of 3 is minimum frequencies a
@@ -48,9 +48,11 @@
 #define EVENT_WAIT	15000						// XXX 180520 was 25 milliseconds before CDDETD timeout
 #define DONE_WAIT	1950						// 2000 microseconds (1/500) sec between CDDONE events
 
+// Correct for the delay time and for activation TX time.
+#define WAIT_CORRECTION	20000					// In uSecs, delay the time less, and use te time for the delay of TX
 
 // SPI setting. 8MHz seems to be the max
-#define SPISPEED 8000000						// Set to 8 * 10E6
+#define SPISPEED 8000000						// Set to freq (40MHz) / 8
 
 // Frequencies
 // Set center frequency. If in doubt, choose the first one, comment out all others
@@ -60,24 +62,23 @@
 struct vector {
 	// Upstream messages
 	uint32_t upFreq;							// 4 bytes unsigned int32 Frequency
-	uint16_t upBW;								// 2 bytes
-	uint8_t  upLo;								// 1 bytes
-	uint8_t  upHi;								// 1 bytes
+	uint16_t upBW;								// 2 bytes e.g. 4/5
+	uint8_t  upLo;								// 1 bytes Spreading Factor
+	uint8_t  upHi;								// 1 bytes Spreading Factor
 	// Downstream messages
 	uint32_t dwnFreq;							// 4 bytes unsigned int32 Frequency
 	uint16_t dwnBW;								// 2 bytes BW Specification
 	uint8_t  dwnLo;								// 1 bytes Spreading Factor
-	uint8_t  dwnHi;								// 1 bytes
+	uint8_t  dwnHi;								// 1 bytes Spreading Factor
 };
 
 // Define all the relevant LoRa Regions
-//==
+//=====================================
 #ifdef EU863_870
 // This the the EU863_870 format as used in most of Europe
 // It is also the default for most of the single channel gateway work.
 // For each frequency SF7-SF12 are used.
-vector freqs [] = 
-{
+vector freqs [] = {
 	{ 868100000, 125, 7, 12, 868100000, 125, 7, 12},			// Channel 0, 868.1 MHz/125 primary
 	{ 868300000, 125, 7, 12, 868300000, 125, 7, 12},			// Channel 1, 868.3 MHz/125 mandatory and (SF7BW250)
 	{ 868500000, 125, 7, 12, 868500000, 125, 7, 12},			// Channel 2, 868.5 MHz/125 mandatory
@@ -150,14 +151,6 @@ vector freqs [] = {
 	{ 487700000, 125, 7, 12, 487700000, 125, 7, 12}				// 487.7 - SF7BW125 to SF12BW125
 };
 
-#elif defined(IN865_867)
-vector freqs [] = { 
-	{ 865062500, 125, 7, 12, 865062500, 125,  7, 12},			// And RX1
-	{ 865402500, 125, 7, 12, 865402500, 125,  7, 12},
-	{ 865985000, 125, 7, 12, 865985000, 125,  7, 12},
-	{         0,   0, 0,  0, 866550000, 125, 10, 10}			// RX2
-};
-
 #elif defined(KR920)
 vector freqs [] = {
   { 922100000, 125, 7, 12, 922100000, 125,  7, 12},     //  SF7BW125 to SF12BW125
@@ -169,6 +162,15 @@ vector freqs [] = {
   { 923300000, 125, 7, 12, 923300000, 125,  7, 12},     //  SF7BW125 to SF12BW125
 
 };
+
+#elif defined(IN865_867)
+vector freqs [] = { 
+	{ 865062500, 125, 7, 12, 865062500, 125,  7, 12},			// And RX1
+	{ 865402500, 125, 7, 12, 865402500, 125,  7, 12},
+	{ 865985000, 125, 7, 12, 865985000, 125,  7, 12},
+	{         0,   0, 0,  0, 866550000, 125, 10, 10}			// RX2
+};
+
 #else
 vector freqs [] = {
 	// Print an Error, Not supported
@@ -310,7 +312,7 @@ struct stat_t {
 	uint8_t sf;
 #if RSSI==1
 	int8_t	rssi;						// XXX Can be < -128
-#endif
+#endif //RSSI
 	int8_t	prssi;						// XXX Can be < -128
 	uint8_t upDown;							// 0==up, 1==down
 #if _LOCALSERVER>=1
@@ -385,10 +387,11 @@ uint8_t payLoad[128];						// Payload i
 // the gateway can also be used as a repeater
 // ====================================================================
 struct LoraDown {
-	uint32_t	tmst;						// Timestamp (will ignore time)
+	uint32_t	tmst;						// Timestamp (will ignore time), time to output
 	uint32_t	tmms;						// Timestamp according to GPS (sync required)
 	uint32_t	time;
 	uint32_t	freq;						// Frequency
+	uint32_t	usec;						// Store the value of microseconds for later printing
 	
 	uint16_t	fcnt;						// Framecount of the requesting LoraUp message
 
@@ -422,16 +425,17 @@ struct LoraUp {
 	uint32_t	tmst;						// Timestamp of message
 	uint32_t	tmms;						// <not used at the moment>
 	uint32_t	time;						// <not used at the moment>
-	uint32_t	freq;						// MMM frequency used in HZ
+	uint32_t	freq;						// frequency used in HZ
 	uint8_t		size;						// Length of the message Payload
 	uint8_t		chan;						// Channel "IF" used for RX
 	uint8_t		sf;							// Spreading Factor
 
+	uint16_t	fcnt;
 	int32_t		snr;
 	int16_t		prssi; 
 	int16_t		rssicorr;
 
-	char *		modu;						//	"LORA" os "FSCK"
+	char *		modu;						//	"LORA" or "FSCK"
 
 	uint8_t		payLoad[128];
 } LoraUp;
@@ -480,16 +484,16 @@ struct LoraUp {
 #define REG_SYMB_TIMEOUT_LSB  		0x1F
 
 #define REG_PREAMBLE_MSB			0x20
-#define REG_PREAMBLE_LSB			0x21		// MMM 200930: set to 0x08
+#define REG_PREAMBLE_LSB			0x21		// 200930: set to 0x08
 #define REG_PAYLOAD_LENGTH          0x22
 #define REG_MAX_PAYLOAD_LENGTH 		0x23
 #define REG_HOP_PERIOD              0x24
 #define REG_FIFO_RX_BYTE_ADDR_PTR	0x25		// 200927 Not used yet
 #define REG_MODEM_CONFIG3           0x26		// Modem PHY config 3, bit 2 AgcAutoOn and 3 LowDataRateOptimize used
 #define REG_PPM_CORRECTION			0x27
-#define REG_FREQ_ERROR_MSB			0x28 (r)
-#define REG_FREQ_ERROR_MID			0x29 (r)
-#define REG_FREQ_ERROR_LSB			0x2A (r)
+#define REG_FREQ_ERROR_MSB			0x28 		//(r)
+#define REG_FREQ_ERROR_MID			0x29 		//(r)
+#define REG_FREQ_ERROR_LSB			0x2A 		//(r)
 // 0x2B reserved
 #define REG_RSSI_WIDEBAND			0x2C
 // 0x2D reserved
@@ -503,16 +507,17 @@ struct LoraUp {
 // 0x34 reserved
 // 0x35 reserved
 // 0x36 reserved
-#define REG_DET_TRESH				0x37		// SF6
+#define REG_DET_TRESH				0x37		// Detection Treshold  DF07-12 == 0x0A
 // 0x38 reserved
 #define REG_SYNC_WORD				0x39
+#define REG_INVERTIQ2				0x3B
 #define REG_TEMP					0x3C
 
 #define REG_DIO_MAPPING_1           0x40		// Mapping of pins DIO0 to DIO3
 #define REG_DIO_MAPPING_2           0x41		// Mapping of pins DIO4 and DIO5, ClkOut frequency
 #define REG_VERSION	  				0x42		// 0x12? Semtech def
 
-#define REG_PADAC					0x5A
+#define REG_PADAC					0x4D		// see August 2016 Semtech rev 5 specs
 #define REG_PADAC_SX1272			0x5A
 #define REG_PADAC_SX1276			0x4D
 
@@ -616,6 +621,7 @@ struct LoraUp {
 #define MAP_DIO2_FSK_TXNOP     		0x04  // ----01--
 #define MAP_DIO2_FSK_TIMEOUT   		0x08  // ----10--
 
+
 // ----------------------------------------
 // Bits masking the corresponding IRQs from the radio
 #define IRQ_LORA_RXTOUT_MASK 		0x80	// RXTOUT
@@ -630,7 +636,7 @@ struct LoraUp {
 
 // ----------------------------------------
 // Definitions for UDP message arriving from server
-#define PROTOCOL_VERSION			0x01
+#define	_PROTOCOL					0x02	// This is the new version
 
 #define PUSH_DATA					0x00
 #define PUSH_ACK					0x01
@@ -639,7 +645,96 @@ struct LoraUp {
 #define PULL_ACK					0x04
 #define TX_ACK						0x05
 
-#define MGT_RESET					0x15		// Not a LoRa Gateway Spec message
+#define MGT_RESET					0x15		// Not a LoRa Gateway message according to spec
 #define MGT_SET_SF					0x16
 #define MGT_SET_FREQ				0x17
+
+
+
+// -----------------------------------------------------------------------------
+// For printing the register values
+//
+// -----------------------------------------------------------------------------
+struct regs {
+	// Upstream messages
+	const char *  name;								// 10 bytes 
+	uint8_t  regid;								// 1 byte
+	uint8_t	 reghex;							// 1 byte
+	uint8_t  regvalue;							// 1 byte
+};
+
+#define _REG_AMOUNT 42
+regs registers [] = { 
+	{ "REG_FIFO",		REG_FIFO,			1, 0 },			// 0x00
+	{ "REG_OPMODE",		REG_OPMODE,			1, 0 },			// 0x02
+// 0x02	 reserved
+// 0x03
+// 0x04
+// 0x05
+	{ "FRF_MSB",		REG_FRF_MSB,		1, 0 },			// 0x06
+	{ "FRF_MID",		REG_FRF_MID,		1, 0 },			// 0x07
+	{ "FRF_LSB",		REG_FRF_LSB,		1, 0 },			// 0x08
+	{ "PAC",			REG_PAC,			1, 0 },			// 0x09
+	{ "PARAMP",			REG_PARAMP,			1, 0 },			// 0x0A
+	{ "OCP",			REG_OCP,			1, 0 },			// 0x0B
+	{ "LNA",			REG_LNA,			1, 0 },			// 0x0C
+	{ "ADDR_PTR",		REG_FIFO_ADDR_PTR,	1, 0 },			// 0x0D
+	{ "TX_BASE_AD",		REG_FIFO_TX_BASE_AD,1, 0 },			// 0x0E
+	{ "RX_BASE_AD",		REG_FIFO_RX_BASE_AD,1, 0 },			// 0x0F
+	{ "RX_CURRENT_ADDR",REG_FIFO_RX_CURRENT_ADDR,	1, 0 },	// 0x10
+	{ "IRQ_FLAGS_MASK",	REG_IRQ_FLAGS_MASK,	1, 0 },			// 0x11
+	{ "IRQ_FLAGS",		REG_IRQ_FLAGS,		1, 0 },			// 0x12
+	{ "RX_BYTES_NB",	REG_RX_BYTES_NB,	1, 0 },			// 0x13
+// 0x14
+// 0x15
+// 0x16
+// 0x17
+// 0x18
+	{ "PKT_SNR_VALUE",	REG_PKT_SNR_VALUE,	1, 0 },			// 0x19
+	{ "REG_PKT_RSSI",	REG_PKT_RSSI,		1, 0 },			// 0x1A
+	{ "REG_RSSI",		REG_RSSI,			1, 0 },			// 0x1B
+	{ "HOP_CHANNEL",	REG_HOP_CHANNEL,	1, 0 },			// 0x1C
+	{ "MODEM_CONFIG1",	REG_MODEM_CONFIG1,	1, 0 },			// 0x1D
+	{ "MODEM_CONFIG2",	REG_MODEM_CONFIG2,	1, 0 },			// 0x1E
+	{ "SYMB_TIMEOUT_LSB",	REG_SYMB_TIMEOUT_LSB,	1, 0 },	// 0x1F
+
+	{ "PREAMBLE_MSB",	REG_PREAMBLE_MSB,	1, 0 },			// 0x20
+	{ "PREAMBLE_LSB",	REG_PREAMBLE_LSB,	1, 0 },			// 0x21
+	{ "PAYLOAD_LENGTH",	REG_PAYLOAD_LENGTH,	1, 0 },			// 0x22
+	{ "MAX_PAYLOAD_LENGTH",	REG_MAX_PAYLOAD_LENGTH,	1, 0 },	// 0x23
+	{ "HOP_PERIOD",		REG_HOP_PERIOD,	1, 0 },				// 0x24
+
+	{ "FIFO_RX_BYTE",	REG_FIFO_RX_BYTE_ADDR_PTR,	1, 0 },	// 0x25
+	{ "MODEM_CONFIG3",	REG_MODEM_CONFIG3,	1, 0 },			// 0x26
+	{ "PPM_CORRECTION",	REG_PPM_CORRECTION,	1, 0 },			// 0x27
+	{ "FREQ_ERROR_MSB",	REG_FREQ_ERROR_MSB,	1, 0 },			// 0x28
+	{ "FREQ_ERROR_MID",	REG_FREQ_ERROR_MID,	1, 0 },			// 0x29
+	{ "FREQ_ERROR_LSB",	REG_FREQ_ERROR_LSB,	1, 0 },			// 0x2A
+// 0x2B reserved
+	{ "RSSI_WIDEBAND",	REG_RSSI_WIDEBAND,	1, 0 },			// 0x2B
+// 0x2D reserved
+// 0x2E reserved
+// 0x2F reserved
+
+// 0x30 reserved
+	{ "DETECT_OPT",		REG_DETECT_OPTIMIZE,1, 0 },			// 0x31
+// 0x32 reserved
+	{ "INVERTIQ",		REG_INVERTIQ,		1, 0 },			// 0x33
+// 0x34 reserved
+// 0x35 reserved
+// 0x36 reserved	
+	{ "DET_TRESH",		REG_DET_TRESH,		1, 0 },			// 0x37
+// 0x38 reserved
+	{ "SYNC_WORD",		REG_SYNC_WORD,		1, 0 },			// 0x39
+// 0x3A reserved
+	{ "INVERTIQ2",		REG_INVERTIQ2,		1, 0 },			// 0x3B
+	{ "REG_TEMP",		REG_TEMP,			1, 0 },			// 0x3C
+// 0x3D reserved
+// 0x3E reserved
+// 0x3F reserved
+
+
+	{ "PADAC_1276",		REG_PADAC_SX1276,	1, 0 },			// 0x4D
+	{ "PADAC",			REG_PADAC,			1, 0 }			// 0x4D
+};
 

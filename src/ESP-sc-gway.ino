@@ -1,5 +1,5 @@
 // 1-channel LoRa Gateway for ESP8266 and ESP32
-// Copyright (c) 2016-2020 Maarten Westenberg
+// Copyright (c) 2016-2021 Maarten Westenberg
 // Author: Maarten Westenberg (mw12554@hotmail.com)
 //
 // Based on work done by Thomas Telkamp for Raspberry PI 1-ch gateway and many others.
@@ -79,7 +79,7 @@ extern "C" {
 #	include <WiFi.h>
 #	include <ESPmDNS.h>
 #	include <SPIFFS.h>
-#	include <WiFiManager.h>								// Standard lib for ESP WiFi config through an AP
+#	include <WiFiManager.h>									// Standard lib for ESP WiFi config through an AP
 
 #	define ESP_getChipId()   ((uint32_t)ESP.getEfuseMac())
 
@@ -122,7 +122,8 @@ extern "C" {
 #else
 #	error "Architecture not supported"
 
-#endif //ESP_ARCH
+#endif
+
 
 #include <DNSServer.h>										// Local DNSserver
 
@@ -131,6 +132,7 @@ extern "C" {
 
 uint8_t debug=1;											// Debug level! 0 is no msgs, 1 normal, 2 extensive
 uint8_t pdebug= P_MAIN ;									// Initially only MAIN and GUI
+uint32_t txDones=0;											// Count the number of TXDONE calls in stateMachine for a send
 
 #if _GATEWAYNODE==1
 #	if _GPS==1
@@ -142,7 +144,7 @@ uint8_t pdebug= P_MAIN ;									// Initially only MAIN and GUI
 
 using namespace std;
 byte 		currentMode = 0x81;
-bool		sx1272 = false;									// Actually we use sx1276/RFM95
+bool		sx1276 = true;									// Actually we use sx1276/RFM95
 uint8_t		MAC_array[6];
 
 // ----------------------------------------------------------------------------
@@ -151,8 +153,7 @@ uint8_t		MAC_array[6];
 //
 // ----------------------------------------------------------------------------
 
-
-uint8_t protocol	= PROTOCOL_VERSION;
+uint8_t protocol	= _PROTOCOL;
 
 // Set spreading factor (SF7 - SF12)
 sf_t sf 			= _SPREADING;							// Initial value of SF					
@@ -194,11 +195,12 @@ uint32_t fileTime = 0;										// Write the configuration to file
 #if _SERVER==1
 	uint32_t wwwtime = 0;
 #endif
-#if NTP_INTR==0
+#if _NTP_INTR==0
 	uint32_t ntptimer = 0;
 #endif
 #if _GATEWAYNODE==1
-	uint16_t frameCount=0;									// We write this to SPIFF file
+	uint16_t LoraUp.fcnt = 0;								// We write this to SPIFF file
+	uint16_t LoraDown.fcnt = 0;								// LoraDown framecount init 0
 #endif
 #ifdef _PROFILER
 	uint32_t endTmst=0;
@@ -221,6 +223,8 @@ IPAddress remoteIpNo;
 unsigned int remotePortNo;
 
 
+
+
 // ----------------------------------------------------------------------------
 // FORWARD DECLARATIONS
 // These forward declarations are done since other .ino fils are linked by the
@@ -233,7 +237,7 @@ unsigned int remotePortNo;
 void ICACHE_RAM_ATTR Interrupt_0();
 void ICACHE_RAM_ATTR Interrupt_1();
 
-int sendPacket(uint8_t *buf, uint8_t length);							// _txRx.ino forward
+int sendPacket(uint8_t *buf, uint8_t len);								// _txRx.ino forward
 
 void printIP(IPAddress ipa, const char sep, String & response);			// _wwwServer.ino
 void setupWWW();														// _wwwServer.ino forward
@@ -294,6 +298,7 @@ void setup() {
 	MAC_char[18] = 0;
 	char hostname[12];										// hostname space
 
+	initDown(&LoraDown);
 	initConfig(&gwayConfig);
 		
 #	if _DUSB>=1
@@ -301,7 +306,6 @@ void setup() {
 		delay(500);
 		Serial.flush();
 #	endif //_DUSB
-
 
 #	if _OLED>=1
 		init_oLED();										// When done display "STARTING" on Oled
@@ -317,13 +321,13 @@ void setup() {
 	if (SPIFFS.begin()) {
 #		if _MONITOR>=1
 		if ((debug>=1) && (pdebug & P_MAIN)) {
-			mPrint("SPIFFS begin");
+			mPrint(F("SPIFFS begin"));
 		}
 #		endif //_MONITOR
 	}
 	else {													// SPIFFS not found
 		if (pdebug & P_MAIN) {
-			mPrint("SPIFFS.begin: not found, formatting");
+			mPrint(F("SPIFFS not found, formatting"));
 		}
 		msg_oLED("FORMAT");
 		SPIFFS.format();
@@ -379,8 +383,8 @@ void setup() {
 
 #	if _WIFIMANAGER==1
 		msg_oLED("WIFIMGR");
-#		if MONITOR>=1
-			mPrint("setup:: WiFiManager");
+#		if _MONITOR>=1
+			mPrint(F("setup:: WiFiManager"));
 #		endif //_MONITOR
 		delay(500);
 	
@@ -461,7 +465,7 @@ void setup() {
 		}
 #	else
 #		if _MONITOR>=1
-			mPrint(F("Setup:: ERROR, No UDP or TCP Connection"));
+			mPrint("Setup:: ERROR, No UDP or TCP Connection");
 #		endif //_MONITOR	
 #	endif //_UDPROUTER
 
@@ -474,12 +478,15 @@ void setup() {
 	pinMode(pins.dio1, INPUT);								// This pin is interrupt
 	//pinMode(pins.dio2, INPUT);								// XXX future expansion
 
-	// Init the SPI pins
+
 #if defined(ESP32_ARCH)
-	SPI.begin(SCK, MISO, MOSI, SS);
+	SPI.begin(SCK, MISO, MOSI, SS);							// Init the SPI pins
 #else
 	SPI.begin();
 #endif //ESP32_ARCH
+	// define the SPI settings for reading/writing messages
+	SPISettings settings(SPISPEED, MSBFIRST, SPI_MODE0);
+	SPI.beginTransaction(settings);
 
 	delay(500);
 	
@@ -517,10 +524,10 @@ void setup() {
 
 	// Set the NTP Time
 	// As long as the time has not been set we try to set the time.
-#	if NTP_INTR==1
+#	if _NTP_INTR==1
 		setupTime();											// Set NTP time host and interval
 		
-#	else //NTP_INTR
+#	else //_NTP_INTR
 	{
 		// If not using the standard libraries, do manual setting
 		// of the time. This method works more reliable than the 
@@ -558,32 +565,37 @@ void setup() {
 
 		writeGwayCfg(_CONFIGFILE, &gwayConfig );
 	}
-#	endif //NTP_INTR
+#	endif //_NTP_INTR
 
 	delay(100);
 
 
-	// ---------- TTN SERVER -------------------------------	
-#ifdef _TTNSERVER
-	ttnServer = resolveHost(_TTNSERVER, 10);					// Use DNS to get server IP
-	if (ttnServer.toString() == "0:0:0:0") {					// Experimental
-#		if _MONITOR>=1
-		if (debug>=1) {
-			mPrint("setup:: TTN Server not found");
-		}
-#		endif
-		delay(10000);											// Delay 10 seconds
-		ttnServer = resolveHost(_TTNSERVER, 10);
-	}	
-	delay(100);
-#endif //_TTNSERVER
+#if _GWAYSCAN==1
+	mPrint("setup:: _GWAYSCAN=1: Setup OK");
 
+#else
 
+	// ---------- TTNSERVER or THINGSERVER -------------------------------	
+#	ifdef _TTNSERVER
+		ttnServer = resolveHost(_TTNSERVER, 10);			// Use DNS to get server IP
+		if (ttnServer.toString() == "0:0:0:0") {			// Experimental
+#			if _MONITOR>=1
+			if (debug>=1) {
+				mPrint("setup:: TTN Server not found");
+			}
+#			endif
+			delay(10000);									// Delay 10 seconds
+			ttnServer = resolveHost(_TTNSERVER, 10);
+		}	
+		delay(100);
+#	endif //_TTNSERVER
 
-#ifdef _THINGSERVER
-	thingServer = resolveHost(_THINGSERVER, 10);				// Use DNS to get server IP
-	delay(100);
-#endif //_THINGSERVER
+#	ifdef _THINGSERVER
+		thingServer = resolveHost(_THINGSERVER, 10);		// Use DNS to get server IP
+		delay(100);
+#	endif //_THINGSERVER
+
+#endif //_GWAYSCAN
 
 	// The Over the Air updates are supported when we have a WiFi connection.
 	// The NTP time setting does not have to be precise for this function to work.
@@ -637,8 +649,13 @@ void setup() {
 		addr_oLED();
 #	endif //_OLED
 
-	writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) 0x00);	// Allow all
-	writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);		// Reset all interrupt flags
+	writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) 0x00);		// Allow all
+	writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);			// Reset all interrupt flags
+
+	// Now print a few registers
+#	define printReg(x) {int i=readRegister(x); if(i<=0x0F) Serial.print('0'); Serial.print(i,HEX);}
+	Serial.print("RegInvertiQ :: "); printReg(REG_INVERTIQ);  Serial.println();
+	Serial.print("RegInvertiQ2:: "); printReg(REG_INVERTIQ2); Serial.println();
 
 	mPrint(" --- Setup() ended, Starting loop() ---");
 
@@ -710,7 +727,7 @@ void loop ()
 		// If return value is 0, we received a NTP message,
 		// otherwise a UDP message with other TTN content, all ACKs are 4 bytes long
 		else {
-			//_event=1;									// Could be done double if more messages received
+			//_event=1;										// Could be done double if more messages received
 			//mPrint("v udp received="+String(micros())+", packetSize="+String(packetSize));
 		}
 	}
@@ -871,7 +888,7 @@ void loop ()
 	// If we do our own NTP handling (advisable)
 	// We do not use the timer interrupt but use the timing
 	// of the loop() itself which is better for SPI
-#	if NTP_INTR==0
+#	if _NTP_INTR==0
 		// Set the time in a manual way. v not use setSyncProvider
 		//  as this function may collide with SPI and other interrupts
 		// Note: It can be that we do not receive a time this loop (no worries)
@@ -888,12 +905,12 @@ void loop ()
 			}
 			else {
 				setTime(newTime);
-				if (year(now()) != 1970) {						// Do not when year(now())=="1970"
-					ntptimer = nowSeconds;						// beacause of "FORMAT"
+				if (year(now()) != 1970) {					// Do not when year(now())=="1970"
+					ntptimer = nowSeconds;					// beacause of "FORMAT"
 				}
 			}
 		}
-#	endif//NTP_INTR
+#	endif //_NTP_INTR
 
 #	if _MAXSEEN>=1
 		if ((nowSeconds - fileTime) >= _FILE_INTERVAL) {

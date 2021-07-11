@@ -1,0 +1,27 @@
+
+What normally transmit is for the sensor devices is receive for gateway.
+And equally, what is transmit for the gateway is receive for the sensor.
+
+For sensor configLoraModem():
+set register LORARegModemConfig1
+	mc1 = 0;
+	mc1 |= SX1276_MC1_BW_125;			0x70
+	mc1 |= SX1276_MC1_IMPLICIT_HEADER_MODE_ON	0x01 No
+	mc1 |= SX1276_MC1_CR_4_5			0x02 Yes
+
+set register LORARegModemConfig2
+	mc2 = 0;
+	mc2 |= SX1276_MC2_RX_PAYLOAD_CRCON		0x04 No?
+
+set register LORARegModemConfig3
+	mc3 = 0;
+	--
+
+For the gateway transmit, and for sensor receive, rxlora() is as follows:
+- RXLORA_RXMODE_RSSI_REG_MODEM_CONFIG1 0x72	// LORARegModemConfig1==0x1D
+- RXLORA_RXMODE_RSSI_REG_MODEM_CONFIG2 0x70	// LORARegModemConfig2==0x1E
+- RXLORA_RXMODE_RSSI_REG_MODEM_CONFIG3 0x04 | 0x08 (for SF11+)	
+						// LORARegModemConfig3==0x26, 
+
+For gateway receive
+

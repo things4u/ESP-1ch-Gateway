@@ -1,5 +1,5 @@
 // sensor.ino; 1-channel LoRa Gateway for ESP8266 and ESP32
-// Copyright (c) 2016-2020 Maarten Westenberg
+// Copyright (c) 2016-2021 Maarten Westenberg
 //
 // All rights reserved. This program and the accompanying materials
 // are made available under the terms of the MIT License
@@ -457,7 +457,8 @@ void checkMic(uint8_t *buf, uint8_t len, uint8_t *key)
 	}
 	len -=4;
 	
-	uint16_t FrameCount = ( cBuf[7] * 256 ) + cBuf[6];
+	//uint16_t FrameCount = ( cBuf[7] * 256 ) + cBuf[6];
+	uint16_t FrameCount = cBuf[6] | cBuf[7] << 8;					// To allow 32-bit counters
 	len += micPacket(cBuf, len, FrameCount, NwkSKey, 0);
 	
 	if ((debug>=2) && (pdebug & P_RX)) {
@@ -473,7 +474,7 @@ void checkMic(uint8_t *buf, uint8_t len, uint8_t *key)
 }
 #endif //_CHECK_MIC
 
-// ----------------------------------------------------------------------------
+// ----------------------------- UP -------------------------------------------
 // SENSORPACKET
 // The gateway may also have local sensors that need reporting.
 // We will generate a message in gateway-UDP format for upStream messaging
@@ -536,13 +537,14 @@ int sensorPacket() {
 	LUP.payLoad[4] = DevAddr[0];						// First byte[0] of Dev_Addr
 	
 	LUP.payLoad[5] = 0x00;								// FCtrl is normally 0
-	LUP.payLoad[6] = frameCount % 0x100;				// LSB
-	LUP.payLoad[7] = frameCount / 0x100;				// MSB
+	LUP.payLoad[6] = LoraUp.fcnt % 0x100;				// LSB
+	LUP.payLoad[7] = LoraUp.fcnt / 0x100;				// MSB
 
 	// -------------------------------
-	// FPort, either 0 or 1 bytes. Must be != 0 for non MAC messages such as user payload
-	//
-	LUP.payLoad[8] = 0x01;								// FPort must not be 0
+	// Options Length
+	LUP.payLoad[8] = 0x01;								// MMM 201207 FOpts=0x00,
+
+	
 	LUP.size  = 9;
 	
 	// FRMPayload; Payload will be AES128 encoded using AppSKey
@@ -569,7 +571,7 @@ int sensorPacket() {
 	uint8_t CodeLength = encodePacket(
 		(uint8_t *)(LUP.payLoad + LUP.size), 
 		PayLength,
-		(uint16_t)frameCount, 
+		(uint16_t)LoraUp.fcnt, 
 		DevAddr, 
 		AppSKey, 
 		0
@@ -594,7 +596,7 @@ int sensorPacket() {
 	// Note: Until MIC is done correctly, TTN does not receive these messages
 	//		 The last 4 bytes are MIC bytes.
 	//
-	LUP.size += micPacket((uint8_t *)(LUP.payLoad), LUP.size, (uint16_t)frameCount, NwkSKey, 0);
+	LUP.size += micPacket((uint8_t *)(LUP.payLoad), LUP.size, (uint16_t)LoraUp.fcnt, NwkSKey, 0);
 
 #if _DUSB>=1
 	if ((debug>=2) && (pdebug & P_RADIO)) {
@@ -614,7 +616,7 @@ int sensorPacket() {
 	//
 	uint16_t buff_index = buildPacket(buff_up, &LUP, true);
 	
-	frameCount++;
+	LoraUp.fcnt++;
 	statc.msg_ttl++;					// XXX Should we count sensor messages as well?
 	statc.msg_sens++;
 	switch(gwayConfig.ch) {
@@ -628,7 +630,7 @@ int sensorPacket() {
 	// 10 value when restarting the gateway.
 	// NOTE: This means that preferences are NOT saved unless >=10 messages have been received.
 	//
-	if ((frameCount % 10)==0) writeGwayCfg(_CONFIGFILE, &gwayConfig );
+	if ((LoraUp.fcnt % 10)==0) writeGwayCfg(_CONFIGFILE, &gwayConfig );
 	
 	if (buff_index > 512) {
 		if (debug>0) 
@@ -636,17 +638,19 @@ int sensorPacket() {
 		return(-1);
 	}
 
-#ifdef _TTNSERVER	
+#if _GWAYSCAN==0
+#	ifdef _TTNSERVER	
 	if (!sendUdp(ttnServer, _TTNPORT, buff_up, buff_index)) {
 		return(-1);
 	}
-#endif //_TTNSERVER
+#	endif //_TTNSERVER
 
-#ifdef _THINGSERVER
+#	ifdef _THINGSERVER
 	if (!sendUdp(thingServer, _THINGPORT, buff_up, buff_index)) {
 		return(-1);
 	}
-#endif //_THINGSERVER
+#	endif //_THINGSERVER
+#endif //_GWAYSCAN
 
 #if _DUSB>=1
 	// If all is right, we should after decoding (which is the same as encoding) get
@@ -655,7 +659,7 @@ int sensorPacket() {
 		CodeLength = encodePacket(
 			(uint8_t *)(LUP.payLoad + 9), 
 			PayLength, 
-			(uint16_t)frameCount-1, 
+			(uint16_t)LoraUp.fcnt-1, 
 			DevAddr, 
 			AppSKey, 
 			0

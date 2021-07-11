@@ -1,5 +1,5 @@
 // 1-channel LoRa Gateway for ESP8266 and ESP32
-// Copyright (c) 2016-2020 Maarten Westenberg version for ESP8266
+// Copyright (c) 2016-2021 Maarten Westenberg version for ESP8266
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -34,10 +34,10 @@
 //	char * buf			Total buffer including first 4 bytes that need skip
 //	uint8_t len;		Length of the buf unsigned 0-255 bytes, including first four bytes
 //
-//	buf[0]	Version number (==PROTOCOL_VERSION)
-//	buf[1]	Token LSB: If Protocol version==0, make 0. If version==1 arbitrary?
+//	buf[0]	Version number (== _PROTOCOL)
+//	buf[1]	Token LSB: If Protocol version==1, make 0. If version==2 arbitrary?
 //	buf[2]	Token MSB
-//	buf[3]	PULL_RESP: ident = 0x03
+//	buf[3]	PULL_RESP: ident == 0x03
 //
 // Return:
 //	Int = 1 when success
@@ -74,18 +74,17 @@ int sendPacket(uint8_t *buf, uint8_t len)
 	//		RxDelay (1 byte)
 	//		CFList (fill to 16 bytes)
 	//
-	// PULL_RESP: Data sent by server to node
-	//		Byte 0:	Protocol Version (==PROTOCOL_VERSION)
+	// PULL_RESP: Data sent by server to node, is already in LoraDown
+	//		Byte 0:		Protocol Version (== _PROTOCOL)
 	//		Byte 1-2:	Token (LSB first).
 	//		Byte 3:		Command code
 	
-	int i=0;
 	char * bufPtr = (char *) (buf+4);							// Correct for first 4 bytes sent to function
 	bufPtr[len-4] = 0;											// Correct for the full string sent to function
 
 #	if _MONITOR>=1
-	if ((debug>=1) && (pdebug & P_TX)) {
-		mPrint("v sendPacket:: token=" + String(buf[2]*256+buf[1]) + ", " + String((char *)bufPtr));
+	if ((debug>=2) && (pdebug & P_TX)) {
+		mPrint("v sendPacket:: cmd="+ String(buf[3]) +", token=" + String(buf[2]<<8 | buf[1]) + ", " + String((char *)bufPtr));
 	}
 #	endif //_MONITOR
 
@@ -97,13 +96,13 @@ int sendPacket(uint8_t *buf, uint8_t len)
 		if ((debug>=0) && (pdebug & P_TX)) {
 			mPrint("v sendPacket:: ERROR: Json Decode: " + String(bufPtr) );
 		}
+		yield();
 #		endif //_MONITOR
 		return(-1);
 	}
 
 	// Meta Data sent by server (example)
 	// {"txpk":{"codr":"4/5","data":"YCkEAgIABQABGmIwYX/kSn4Y","freq":868.1,"ipol":true,"modu":"LORA","powe":14,"rfch":0,"size":18,"tmst":1890991792,"datr":"SF7BW125"}}
-
 	// Used in the protocol of Gateway:
 
 	JsonObject root		= jsonBuffer.as<JsonObject>();	// 191111 Avoid Crashes
@@ -121,12 +120,13 @@ int sendPacket(uint8_t *buf, uint8_t len)
 	LoraDown.codr		= (char *) codr;				// e.g. "4/5"
 	
 	LoraDown.ipol		= root["txpk"]["ipol"];			// =0x01 for downlink
+
 	LoraDown.imme 		= root["txpk"]["imme"];			// Immediate Transmit (tmst don't care)
 	LoraDown.powe		= root["txpk"]["powe"];			// power, e.g. 14 or 27
 	LoraDown.prea		= root["txpk"]["prea"];
 	LoraDown.ncrc		= root["txpk"]["ncrc"];			// Cancel CRC for outgoing packets
 	LoraDown.rfch		= root["txpk"]["rfch"];			// ==0X00 first antenna
-	LoraDown.iiq 		= (LoraDown.ipol==true ? (0x67 | 0x27): 0x27);
+	LoraDown.iiq 		= (LoraDown.ipol==true ? 0x40: 0x27);	// 210116 changed
 	LoraDown.crc		= 0x00;							// switch CRC off for TX
 
 	LoraDown.sf 		= atoi(datr+2);					// Convert "SF9BW125" or what is received from gateway to number
@@ -134,23 +134,128 @@ int sendPacket(uint8_t *buf, uint8_t len)
 	LoraDown.bw 		= atoi(datr+j+1);
 	
 	LoraDown.size		= base64_dec_len((char *) data, strlen(data));	// Length of the Payload data	
-	base64_decode((char *) payLoad, (char *) data, strlen(data));	// Fill payload w decoded message
+	base64_decode((char *) payLoad, (char *) data, strlen(data));		// Fill payload w decoded message
 	LoraDown.payLoad	= payLoad;
 
+	// Do some checks on the data received above
+
+	if (LoraDown.imme) {
+#		if _MONITOR>=1
+		if ((debug >= 1) && (pdebug & P_TX)) {
+			mPrint("sendPacket:: IMME");
+		}
+#		endif //_MONITOR
+	}
+
+	if (time!=0) {
+#		if _MONITOR>=1
+		if ((debug >= 1) && (pdebug & P_TX)) {
+			mPrint("sendPacket:: time="+String(time));
+		}
+#		endif //_MONITOR
+	}
+	
+#	if _MONITOR>=1
+	if ((debug>=2) && (pdebug & P_TX)) {
+		String response = "v (" ;
+		response += String(LoraDown.size);
+		response += "): " ;
+		for (j=0; j<LoraDown.size; j++) {
+			printHexDigit(LoraDown.payLoad[j], response);
+			response += " ";
+		}
+		mPrint(response);
+	}
+#	endif
+
+
+#	if _PROFILER>=2
+	uint8_t mhdr = (uint8_t) (LoraDown.payLoad[0] >> 5);
+	switch (mhdr) {
+		case 0x00: 
+#					if _MONITOR>=1
+					if ((debug >= 1) && (pdebug & P_TX)) {
+						mPrint("sendPacket:: Join Request");
+					}
+#					endif //_MONITOR
+					break;
+		case 0x01: 
+#					if _MONITOR>=1
+					if ((debug >= 1) && (pdebug & P_TX)) {
+						mPrint("sendPacket:: Join Accept");
+					}
+#					endif //_MONITOR
+					//LoraDown.tmst = micros() + 5000000;
+					break;
+		case 0x02:
+#					if _MONITOR>=1
+					if ((debug >= 1) && (pdebug & P_TX)) {
+						mPrint("sendPacket:: Unconfirmed Data Up");
+					}
+#					endif //_MONITOR						
+					break;
+		case 0x03:
+#					if _MONITOR>=1
+					if ((debug >= 1) && (pdebug & P_TX)) {
+						mPrint("sendPacket:: Unconfirmed Data Down");
+					}
+#					endif //_MONITOR
+					//LoraDown.tmst = micros() + 1000000;
+					break;
+		case 0x04:
+#					if _MONITOR>=1
+					if ((debug >= 1) && (pdebug & P_TX)) {
+						mPrint("sendPacket:: Confirmed Data Up");
+					}
+#					endif //_MONITOR
+					break;
+		case 0x05:
+#					if _MONITOR>=1
+					if ((debug >= 1) && (pdebug & P_TX)) {
+						mPrint("sendPacket:: Confirmed Data Down");
+					}
+#					endif //_MONITOR
+					//LoraDown.tmst = micros() + 1000000;
+					break;
+		case 0x06:
+#					if _MONITOR>=1
+					if ((debug >= 1) && (pdebug & P_TX)) {
+						mPrint("sendPacket:: RFU");
+					}
+#					endif //_MONITOR
+					break;
+		case 0x07:
+#					if _MONITOR>=1
+					if ((debug >= 1) && (pdebug & P_TX)) {
+						mPrint("sendPacket:: Proprietary");
+					}
+#					endif //_MONITOR
+					break;
+		default:
+#					if _MONITOR>=1
+					if ((debug >= 1) && (pdebug & P_TX)) {
+						mPrint("sendPacket:: mhdr undefined");
+					}
+#					endif //_MONITOR
+	}
+#	endif //_PROFILER
+
+	yield();
+
 	//	preamble definition
-	if (LoraDown.prea == 0) LoraDown.prea = 0x0A;		// Change one time, maybe better use 0x0A or so
+	//if (LoraDown.prea == 0) LoraDown.prea = 0x08;		// Change one time, 0x08 or maybe better use 0x0A or so
 	
 	// Compute wait time in microseconds
 	//int32_t w = (int32_t) (LoraDown.tmst - micros());	// Wait Time compute
 
-	if (data != NULL) {
+	if (data != NULL) {									// There is data!
 #		if _MONITOR>=1
 		if ((debug>=2) && (pdebug & P_TX)) { 
 			mPrint("v sendPacket:: LoraDown.size="+String(LoraDown.size)+", psize="+String(psize)+", strlen(data)="+String(strlen(data))+", data=" + String(data)); 
 		}
 #		endif //_MONITOR
 	}
-	else {												// There is data!
+	else {												// There is NO data!
 #		if _MONITOR>=1
 		if ((debug>=0) && (pdebug & P_TX)) {
 			mPrint("v sendPacket:: ERROR: data is NULL");
@@ -159,24 +264,38 @@ int sendPacket(uint8_t *buf, uint8_t len)
 		return(-1);
 	}
 
-// _STRICT_1CH determines how we will react on downstream messages.
-//
-// If _STRICT==1, we will answer (in the RX1 timeslot) on the frequency we receive on.
-// We will answer in RX2 in the Spreading Factor set by _RX2_SF (set in configGway.h)
-// This way, we can better communicate as a single gateway machine
-//
-#if _STRICT_1CH == 1
+	// _STRICT_1CH determines how we will react on downstream messages.
+	//
+#if _STRICT_1CH == 0
+	// if _STRICT_1CH == 0, we will receive messags from the TTN gateway presumably on 
+	//	the freq it is sended in RX1 and on SF9/869.5MHz for RX2
+	// And since the Gateway is a single channel gateway, and its nodes are probably
+	// single channel too. They will not listen to that frequency at all.
+	// Please note that this parameter is more for nodes (that cannot change freqs)
+	// than for gateways.
+	// In this case we will probably answer in RX with RF==12 and use special answer frequency
+	//
+	LoraDown.powe	= root["txpk"]["powe"];				// The server determines the power
+	const float ff	= root["txpk"]["freq"];				// eg 868.1 (RX1) or 869.525 (RX2)
+	//mPrint("v sendPacket:: _STRICT_1CH==0, json freq="+String(ff));
+	// convert double frequency (MHz) into uint32_t frequency in Hz.
+	LoraDown.freq	= (uint32_t) freqs[gwayConfig.ch].dwnFreq;
+	//mPrint("v sendPacket:: _STRICT_1CH==0, down freq="+String(LoraDown.freq));
+
+
+#elif _STRICT_1CH == 1
 	// RX1 is requested frequency
 	// RX2 is SF _RX2_SF probably SF9
 	// If possible use RX1 timeslot as this is our frequency.
 	// Do not use RX2 or JOIN2 as they contain other frequencies (aka 868.5 MHz)
 
 	if (LoraDown.powe>14) LoraDown.powe=14;				// On all freqs except 869.5MHz power is limited
+
 	//LoraDown.freq	= ((double)freqs[gwayConfig.ch].dwnFreq)/1000000;		// Use the requestor Down frequency (always)
 	const uint32_t ff = (uint32_t) (freqs[gwayConfig.ch].dwnFreq);
 	LoraDown.freq = (uint32_t)(ff & 0xFFFFFFFF);
 	
-	Serial.print("v MMM _STRICT_1CH==1 done, freq=");
+	Serial.print("v _STRICT_1CH==1 done, freq=");
 	Serial.print(LoraDown.freq);
 	Serial.print(", HEX=");
 	uint32_t effe = LoraDown.freq;
@@ -187,39 +306,36 @@ int sendPacket(uint8_t *buf, uint8_t len)
 	Serial.println();
 
 #elif _STRICT_1CH == 2
-	// Semi:: We transmit only on ONE channel but the sensor end-node listens to
-	// the special channel too.
-	// So, not change to SF (arranged by server) or frequency, as long as it is CH.
+	// Semi:: Gateway listens only on ONE channel and transmits on RX2. 
+	// The sensor end-node listens to the special channel too. 
+	// And Server is also capable of transmitting on more channels.
+	// So, not change to SF (arranged by server) or frequency, as long as it is RX1 or RX2.
 
 	uint32_t fff	= (uint32_t)(root["txpk"]["freq"].as<double>() * 1000000);
 	
 	if (abs(freqs[gwayConfig.ch].dwnFreq - fff) < 100000) {
 		LoraDown.freq = (uint32_t) (freqs[gwayConfig.ch].dwnFreq) & 0xFFFFFFFF ;
+		if ((debug>=2) && (pdebug & P_TX)) {
+			mPrint("v sendPacket:: _STRICT_1CH="+String(_STRICT_1CH)+", fff="+String(fff)+", abs");
+		}
 	}
 	else {
 		LoraDown.freq = fff & 0xFFFFFFFF;
+		if ((debug>=2) && (pdebug & P_TX)) {
+			mPrint("v sendPacket:: _STRICT_1CH="+String(_STRICT_1CH)+", fff="+String(fff)+", fff");
+		}
 	}
+		
 
-	Serial.print("v _STRICT_1CH==2, freq=");
-	Serial.print(LoraDown.freq);
-	Serial.println();
-
-#else
-// elif _STRICT_1CH == 0, we will receive messags from the TTN gateway presumably on 
-//	the freq it is sended in RX1 and on SF9/869.5MHz for RX2
-// And since the Gateway is a single channel gateway, and its nodes are probably
-// single channel too. They will not listen to that frequency at all.
-// Please note that this parameter is more for nodes (that cannot change freqs)
-// than for gateways.
-// We will probably answer in RX with RF==12 and use special answer frequency
-//
-	LoraDown.powe	= root["txpk"]["powe"];				// The server determines the power
-	const float ff	= root["txpk"]["freq"];				// eg 868.1 (RX1) or 869.525 (RX2)
-	// convert double frequency (MHz) into uint32_t frequency in Hz.
-	//LoraDown.freq = (uint32_t) ((uint32_t)((ff+0.000015)*1000)) * 1000;		// MMM Not correct
-	LoraDown.freq = (uint32_t) freqs[gwayConfig.ch].dwnFreq;
-
+#else 
+	mPrint("sendPacket:: ERROR: _STRICT_1CH value="+String(_STRICT_1CH)+" unknown");
 #endif //_STRICT_1CH
+
+#	if	_MONITOR>=1
+	if ((debug>=2) && (pdebug & P_TX)) {
+			mPrint("v sendPacket:: _STRICT_1CH="+String(_STRICT_1CH)+", freq="+String(LoraDown.freq)+", sf="+String(LoraDown.sf));
+	}
+#	endif //_MONITOR
 
 	yield();			
 
@@ -230,17 +346,6 @@ int sendPacket(uint8_t *buf, uint8_t len)
 		}
 #		endif //_MONITOR
 	}
-
-#	if _MONITOR>=1
-	else if ((debug >= 2) && (pdebug & P_TX)) {	
-		Serial.print(F("v Payload="));
-		for (i=0; i<LoraDown.size; i++) {
-			Serial.print(LoraDown.payLoad[i],HEX); 
-			Serial.print(':'); 
-		}
-		Serial.println();
-	}
-#	endif //_MONITOR
 
 	// Update downstream statistics
 	statc.msg_down++;
@@ -271,7 +376,7 @@ int sendPacket(uint8_t *buf, uint8_t len)
 // parameters:
 // 	tmst:		Timestamp to include in the upstream message
 // 	buff_up:	The buffer that is generated for upstream for the server
-//	LoraUP:		ptr to Structure describing the message received from device
+//	LoraUp:		ptr to Structure describing the message received from device
 // 	internal:	Boolean value to indicate whether the local sensor is processed
 //
 // returns:
@@ -290,10 +395,10 @@ int buildPacket(uint8_t *buff_up, struct LoraUp *LoraUp, bool internal)
 	uint8_t *message = LoraUp->payLoad;
 	char messageLength = LoraUp->size;
 		
-#if _CHECK_MIC==1
-	unsigned char NwkSKey[16] = _NWKSKEY;
-	checkMic(message, messageLength, NwkSKey);
-#endif //_CHECK_MIC
+#	if _CHECK_MIC==1
+		unsigned char NwkSKey[16] = _NWKSKEY;
+		checkMic(message, messageLength, NwkSKey);
+#	endif //_CHECK_MIC
 
 	// Read SNR and RSSI from the register. Note: Not for internal sensors!
 	// For internal sensor we fake these values as we cannot read a register
@@ -317,12 +422,13 @@ int buildPacket(uint8_t *buff_up, struct LoraUp *LoraUp, bool internal)
 	for (int m=( gwayConfig.maxStat -1); m>0; m--) statr[m]= statr[m-1];
 	
 	// From now on we can fill statr[0] with sensor data
-#if _LOCALSERVER>=1
+#	if _LOCALSERVER>=1
 	statr[0].datal=0;
 	int index;
 	if ((index = inDecodes((char *)(LoraUp->payLoad+1))) >=0 ) {
 
-		uint16_t frameCount=LoraUp->payLoad[7]*256 + LoraUp->payLoad[6];
+		//LoraUp->fcnt=LoraUp->payLoad[7]*256 + LoraUp->payLoad[6];
+		LoraUp->fcnt=LoraUp->payLoad[7]<<8 | LoraUp->payLoad[6];
 		
 		for (int k=0; (k<LoraUp->size) && (k<23); k++) {
 			statr[0].data[k] = LoraUp->payLoad[k+9];
@@ -337,26 +443,27 @@ int buildPacket(uint8_t *buff_up, struct LoraUp *LoraUp, bool internal)
 		DevAddr[2]= LoraUp->payLoad[2];
 		DevAddr[3]= LoraUp->payLoad[1];
 
-		statr[0].datal = encodePacket((uint8_t *)(statr[0].data), 
+		statr[0].datal = encodePacket(							// actualy, decodePacket
+								(uint8_t *)(statr[0].data), 
 								LoraUp->size -9 -4, 
-								(uint16_t)frameCount, 
+								(uint16_t)LoraUp->fcnt, 
 								DevAddr, 
 								decodes[index].appKey, 
 								0);
 	}
-#endif //_LOCALSERVER
+#	endif //_LOCALSERVER
 
 	statr[0].time	= now();							// Not a real timestamp. but the current time
-	statr[0].ch		=	gwayConfig.ch;					// Lora Channel
+	statr[0].ch		= gwayConfig.ch;					// Lora Channel
 	statr[0].prssi	= prssi - rssicorr;
-	statr[0].sf		=	LoraUp->sf;						// spreading factor
+	statr[0].sf		= LoraUp->sf;						// spreading factor
 	statr[0].upDown = 0;								// Uplink
 	statr[0].node	= ( message[1]<<24 | message[2]<<16 | message[3]<<8 | message[4] );	
 #	if RSSI==1
 	statr[0].rssi	= _rssi - rssicorr;
-#	endif // RSII
+#	endif // RSSI
 
-#if _STATISTICS >= 2
+#	if _STATISTICS >= 2
 	// Fill in the statistics that we will also need for the GUI.
 	// So 
 	switch (statr[0].sf) {
@@ -367,9 +474,9 @@ int buildPacket(uint8_t *buff_up, struct LoraUp *LoraUp, bool internal)
 		case SF11: statc.sf11++; break;
 		case SF12: statc.sf12++; break;
 	}
-#endif //_STATISTICS >= 2
+#	endif //_STATISTICS >= 2
 
-#if _STATISTICS >= 3
+#	if _STATISTICS >= 3
 	if (statr[0].ch == 0) {
 		statc.msg_ttl_0++;								// Increase #message received channel 0
 		switch (statr[0].sf) {
@@ -405,11 +512,11 @@ int buildPacket(uint8_t *buff_up, struct LoraUp *LoraUp, bool internal)
 			case SF12: statc.sf12_2++; break;
 		}
 	}
-#endif //_STATISTICS >= 3
+#	endif //_STATISTICS>=3
 
-#endif //_STATISTICS >= 1
+#endif //_STATISTICS>=1
 
-#if _MONITOR>=1	
+#	if _MONITOR>=1	
 	if ((debug>=2) && (pdebug & P_RADIO)) {
 		Serial.print(F("R buildPacket:: pRSSI="));
 		Serial.print(prssi-rssicorr);
@@ -420,18 +527,17 @@ int buildPacket(uint8_t *buff_up, struct LoraUp *LoraUp, bool internal)
 		Serial.print(F(" Length: "));
 		Serial.print((int)messageLength);
 		Serial.print(F(" -> "));
-		int i;
-		for (i=0; i< messageLength; i++) {
+		for (int i=0; i< messageLength; i++) {
 					Serial.print(message[i],HEX);
 					Serial.print(' ');
 		}
 		Serial.println();
 		yield();										// only if debug>=2
 	}
-#endif //_MONITOR
+#	endif //_MONITOR
 
-// Show received message status on Oled display
-#if _OLED>=1
+	// Show received message status on Oled display
+#	if _OLED>=1
     char timBuff[20];
     sprintf(timBuff, "%02i:%02i:%02i", hour(), minute(), second());
 	
@@ -459,7 +565,7 @@ int buildPacket(uint8_t *buff_up, struct LoraUp *LoraUp, bool internal)
     display.drawString(40, 48, String((int)messageLength) );
     display.display();
 
-#endif //_OLED>=1
+#	endif //_OLED>=1
 
 
 	// XXX Base64 library is no-pad. So we may have to add padding characters until
@@ -491,7 +597,7 @@ int buildPacket(uint8_t *buff_up, struct LoraUp *LoraUp, bool internal)
 
 	// PUSH DATA, see para. 5.2.1 of Semtech Gateway to Server Interface document
 	// 	Mind that we only PUSH here
-	buff_up[0] = PROTOCOL_VERSION;						// 0x01 still
+	buff_up[0] = protocol;								// 0x01 or 0x02
 	buff_up[1] = (uint8_t)token_h;						// Arbitrary token
 	buff_up[2] = (uint8_t)token_l;
 	buff_up[3] = PUSH_DATA;								// 0x00
@@ -609,7 +715,7 @@ int buildPacket(uint8_t *buff_up, struct LoraUp *LoraUp, bool internal)
 
 #	if _MONITOR>=1
 	if ((debug>=1) && (pdebug & P_RX)) {			// debug: display JSON payload
-		mPrint("^ PUSH_DATA:: token="+String(token_h*256+token_l)+", data="+String((char *)(buff_up + 12))+", Buff_up Length="+String(buff_index));		
+		mPrint("^ PUSH_DATA:: token="+String(token_h<<8 | token_l)+", data="+String((char *)(buff_up + 12))+", Buff_up Length="+String(buff_index));		
 	}
 #	endif
 
@@ -666,6 +772,7 @@ int receivePacket()
 			}
 #			endif //_REPEATER
 
+#	if _GWAYSCAN==0
 #			ifdef _TTNSERVER	
 			// This is one of the potential problem areas.
 			// If possible, USB traffic should be left out of interrupt routines
@@ -696,7 +803,9 @@ int receivePacket()
 			}
 #			endif //_THINGSERVER
 
-#if _LOCALSERVER>=1
+#	endif //_GWAYSCAN
+
+#	if _LOCALSERVER>=1
 			// Or special case, we do not use a local server to receive
 			// and decode the server. We use buildPacket() to call decode
 			// and use statr[0] information to store decoded message
@@ -727,9 +836,9 @@ int receivePacket()
 				DevAddr[1]= LoraUp.payLoad[3];
 				DevAddr[2]= LoraUp.payLoad[2];
 				DevAddr[3]= LoraUp.payLoad[1];
-				//uint16_t frameCount=LoraUp.payLoad[7]*256 + LoraUp.payLoad[6];
+				//uint16_t LoraUp.fcnt=LoraUp.payLoad[7]*256 + LoraUp.payLoad[6];
 
-#if				_DUSB>=1
+#				if _DUSB>=1
 				if ((debug>=2) && (pdebug & P_RX)) {
 					Serial.print(F("UP receivePacket:: Ind="));
 					Serial.print(index);
@@ -757,7 +866,7 @@ int receivePacket()
 					mPrint("receivePacket:: No Index");
 			}
 #			endif //_MONITOR
-#endif //_LOCALSERVER
+#	endif //_LOCALSERVER
 
 			// Reset the message area
 			LoraUp.size = 0;
@@ -769,4 +878,3 @@ int receivePacket()
 	return(0);											// failure no message read
 
 }//receivePacket
-

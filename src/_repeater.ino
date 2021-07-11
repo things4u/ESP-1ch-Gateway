@@ -1,5 +1,5 @@
 // 1-channel LoRa Gateway for ESP8266 and ESP32
-// Copyright (c) 2016-2020 Maarten Westenberg
+// Copyright (c) 2016-2021 Maarten Westenberg
 //
 // All rights reserved. This program and the accompanying materials
 // are made available under the terms of the MIT License
@@ -21,6 +21,7 @@
 #ifdef _TTNSERVER
 #	error "Please undefine _TTNSERVER, for _REPEATER"
 #endif //_TTNSERVER
+
 #ifdef _THINGSERVER
 #	error "Please undefine _THINGSERVER, for _REPEATER"
 #endif //_THINGSERVER
@@ -54,7 +55,7 @@ int repeatLora(struct LoraUp * LUP) {
 	LDWN->size		= LUP->size;
 	LDWN->sf		= LUP->sf;
 	LDWN->powe		= 14;								// Default for normal frequencies
-	LDWN->crc		= 1;
+	LDWN->crc		= 0;
 	LDWN->iiq		= 0x27;								// 0x40 when ipol true or 0x27 when false
 	LDWN->imme		= false;
 
@@ -80,6 +81,8 @@ int repeatLora(struct LoraUp * LUP) {
 	writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) 0x00);			// MMM 200407 Reset
 	writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);				// reset interrupt flags
 	txLoraModem(LDWN);
+
+	txDones=0;
 	_event=1;
 	_state=S_TXDONE;
 

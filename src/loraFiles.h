@@ -1,5 +1,5 @@
 // 1-channel LoRa Gateway for ESP8266 and ESP32
-// Copyright (c) 2016-2020 Maarten Westenberg version for ESP mcu's
+// Copyright (c) 2016-2021 Maarten Westenberg version for ESP mcu's
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -60,7 +60,8 @@ struct espGwayConfig {
 	int32_t txDelay;			// Init 0 at setup
 	uint32_t ntpErrTime;		// Record the time of the last NTP error
 
-	uint16_t fcnt;				// =0 as init value	XXX Could be 32 bit in size
+	uint16_t u_fcnt;			// =0 as init value	XXX It could be 32 bit in size
+	uint16_t d_fcnt;			// LoraDown.fcnt framecount value
 	uint16_t boots;				// Number of restarts made by the gateway after reset
 	uint16_t resets;			// Number of statistics resets
 	uint16_t views;				// Number of sendWebPage() calls

@@ -1,5 +1,5 @@
 // 1-channel LoRa Gateway for ESP8266 and ESP32
-// Copyright (c) 2016-2020 Maarten Westenberg version for ESP8266
+// Copyright (c) 2016-2021 Maarten Westenberg version for ESP8266
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -79,7 +79,7 @@ void stateMachine()
 
 #	if _MONITOR>=1
 	if (intr != flags) {
-		String response = "stateMachine:: Error: flags="+String(flags,HEX)+", ";
+		String response = "stateMachine:: ERROR: Int=0x"+String(intr,HEX)+", flags=0x"+String(flags,HEX)+", ";
 		mStat(intr, response);
 		mPrint(response);
 	}
@@ -91,6 +91,8 @@ void stateMachine()
 	//
 	if ((gwayConfig.hop) && (intr == 0x00))
 	{
+		mPrint("state:: hop==1");
+		
 		// eventWait is the time since we have had a CDDETD event (preamble detected).
 		// If we are not in scanning state, and there will be an interrupt coming,
 		// In state S_RX it could be RXDONE in which case allow kernel time
@@ -101,13 +103,24 @@ void stateMachine()
 
 			uint32_t eventWait = EVENT_WAIT;
 			switch (_state) {
-				case S_INIT:	eventWait = 0; break;
+				case S_INIT:	eventWait = 0; 
+					break;
 				// Next two are most important
-				case S_SCAN:	eventWait = EVENT_WAIT * 1; break;
-				case S_CAD:		eventWait = EVENT_WAIT * 1; break;
-				case S_RX:		eventWait = EVENT_WAIT * 8; break;
-				case S_TX:		eventWait = EVENT_WAIT * 1; break;
-				case S_TXDONE:	eventWait = EVENT_WAIT * 4; break;
+				case S_SCAN:	eventWait = EVENT_WAIT * 1;
+								mPrint("SCAN");
+					break;
+				case S_CAD:		eventWait = EVENT_WAIT * 1;
+								mPrint("CAD");
+					break;
+				case S_RX:		eventWait = EVENT_WAIT * 8;
+								mPrint("RX");
+					break;
+				case S_TX:		eventWait = EVENT_WAIT * 1; 
+								mPrint("TX"); 
+					break;
+				case S_TXDONE:	eventWait = EVENT_WAIT * 4; 
+								mPrint("TXDONE"); 
+					break;
 				default:
 					eventWait=0;
 #					if _MONITOR>=1
@@ -208,7 +221,6 @@ void stateMachine()
 		yield();										// if hopping is enabled
 
 	}// intr==0 && gwayConfig.hop
-
 
 
 	// ==========================================================================================
@@ -518,7 +530,7 @@ void stateMachine()
 		else if (intr == 0x00) {
 #			if _MONITOR>=1
 			if ((debug>=3) && (pdebug & P_CAD)) {
-				mPrint ("CAD:: intr is 0x00");
+				mPrint("CAD:: intr is 0x00");
 			}
 #			endif //_MONITOR
 			//_event=1;												// Stay in CAD _state until real interrupt
@@ -651,10 +663,10 @@ void stateMachine()
 			LoraUp.prssi = readRegister(REG_PKT_RSSI);				// read register 0x1A, packet rssi
 
 			// Correction of RSSI value based on chip used.	
-			if (sx1272) {											// Is it a sx1272 radio?
-				LoraUp.rssicorr = 139;
-			} else {												// Probably SX1276 or RFM95
+			if (sx1276) {											// If it is a sx1276 or TFM95 radio
 				LoraUp.rssicorr = 157;
+			} else {												// Probably SX1272 or RFM92
+				LoraUp.rssicorr = 139;
 			}
 
 			LoraUp.sf = readRegister(REG_MODEM_CONFIG2) >> 4;
@@ -773,8 +785,8 @@ void stateMachine()
 
 	  // ----------------------------------------------------------------------------------------
 	  // Start the transmission of a message in state S-TX (DOWN)
-	  // This is not an interrupt state, we use this state to start transmission
-	  // the interrupt TX-DONE tells us that the transmission was successful.
+	  // This is not an interrupt state, we use this state to start transmission.
+	  // The interrupt TXDONE tells us that the transmission was successful.
 	  // It therefore is no use to set _event==1 as transmission might
 	  // not be finished in the next loop iteration
 	  //
@@ -785,13 +797,14 @@ void stateMachine()
 		// we have a timeout in the main program (Keep Alive)
 		if (intr == 0x00) {
 #			if _MONITOR>=1
-			if ((debug>=2) && (pdebug & P_TX)) {
+			if ((debug>=3) && (pdebug & P_TX)) {
 				mPrint("TX:: 0x00");
 			}
 #			endif //_MONITOR
 			_event= 1;
 		}
 
+		txDones=0;
 		_state=S_TXDONE;
 		_event=1;													// Or remove the break below
 
@@ -815,18 +828,19 @@ void stateMachine()
 	  // send Packet switch back to scanner mode after transmission finished OK
 	  //
 	  case S_TXDONE:
+
 		if (intr & IRQ_LORA_TXDONE_MASK) {
 
 #			if _MONITOR>=1
 			if ((debug>=1) && (pdebug & P_TX)) {
 				String response =  "v OK, stateMachine TXDONE: rcvd=";
 				printInt(micros(),response);
+				response += ", done= ";
 				if (micros() < LoraDown.tmst) {
-					response += ", diff=- " ;
+					response += "-" ;
 					printInt(LoraDown.tmst - micros(), response );
 				}
 				else {
-					response += ", diff=";
 					printInt(micros()-LoraDown.tmst, response);
 				}
 				mPrint(response);
@@ -847,27 +861,39 @@ void stateMachine()
 
 			_event=0;
 
-			if (protocol == 1) {							// Got from the downstream message
-#				if _MONITOR>=1
-				if ((debug>=2) && (pdebug & P_TX)) {
-					mPrint("^ TX_ACK:: readUdp: protocol version 1");
-				}
-#				endif
-				break;										// return
+			switch (protocol) {
+				case 1:
+#					if _MONITOR>=1
+					if ((debug>=3) && (pdebug & P_TX)) {
+						mPrint("^ TX_ACK:: readUdp: protocol version 1");
+					}
+#					endif
+					break;
+				case 2:
+#					if _MONITOR>=1
+					if ((debug>=3) && (pdebug & P_TX)) {
+						mPrint("^ TX_ACK:: readUDP: protocol version 2+");
+					}
+#					endif //_MONITOR
+					break;
+				default:
+#					if _MONITOR>=1
+					if ((debug>=1) && (pdebug & P_TX)) {
+						mPrint("^ TX_ACK:: readUDP: protocol version unknown");
+					}
+#					endif
 			}
 
-#			if _MONITOR>=1
-			if ((debug>=2) && (pdebug & P_TX)) {
-				mPrint("^ TX_ACK:: readUDP: protocol version 2+");
-			}
-#			endif //_MONITOR
-
+			yield();
+			
 			// UP: Now respond with an TX_ACK
-			// Byte 3 is 0x05; see para 5.2.6 of spec
+			// Byte 3 == 0x05; see para 5.2.6 of spec
 			buff[0]= buff_down[0];							// As read from the Network Server
 			buff[1]= buff_down[1];							// Token 1, copied from downstream
 			buff[2]= buff_down[2];							// Token 2
 			buff[3]= TX_ACK;								// ident == 0x05;
+			// MMMM Missing Gateway MAC Address 8 bytes
+			// MMMM
 			buff[4]= 0;										// Not error means "\0"
 			// If it is an error, please look at para 6.1.2
 
@@ -903,7 +929,7 @@ void stateMachine()
 			yield();
 		}
 
-		// If a soft _event==0 interrupt and no transmission finished:
+		// If a soft _event==0 interrupt and no transmission yet finished:
 		else if ( intr != 0 ) {
 #			if _MONITOR>=1
 			if ((debug>=0) && (pdebug & P_TX)) {
@@ -919,12 +945,12 @@ void stateMachine()
 		}
 
 		// intr == 0
-		// TX_DONE interrupt is not received in time
+		// TX_DONE interrupt maybe not received in time
 		else {
 
-			// Increase timer. If timer exceeds certain value (7 seconds!), reset
+			// Increase timer. If timer exceeds certain value (7.5 seconds!), reset
 			// After sending a message with S_TX, we have to receive a TXDONE interrupt
-			// within 7 seconds according to spec, or there is a problem.
+			// within 7.5 seconds according to spec, or there is a problem.
 			if ( sendTime > micros() ) {
 				sendTime = 0;				// This could be omitted for usigned ints
 #				if _MONITOR>=1
@@ -933,13 +959,19 @@ void stateMachine()
 				}
 #				endif //_MONITOR
 			}
-			if (( _state == S_TXDONE ) && (( micros() - sendTime) > 8000000 )) {
+			// No reaction within 7.5 seconds, timeout
+			else if(( _state == S_TXDONE ) && (( micros() - sendTime) > 7500000 )) {
 #				if _MONITOR>=1
 				if ((debug>=1) && (pdebug & P_TX)) {
-					mPrint("v Warning:: TXDONE not received, reset receiver");
+					mPrint("v Warning:: TXDONE not received, resetting receiver");
 				}
 #				endif //_MONITOR
 				startReceiver();
+			}
+			else if ((debug>=2) && (pdebug & P_TX)) {
+				// next loop until txDone or timeout.
+				if ((++txDones)%10==0)
+					mPrint("stateMachine:: TXDONE, txDones="+String(txDones)+", uSecs elapsed="+String( micros() - sendTime));
 			}
 		}
 
@@ -973,7 +1005,7 @@ void stateMachine()
 		if ((gwayConfig.cad) || (gwayConfig.hop)) {
 #			if _MONITOR>=1
 			if (debug>=0) {
-				String response = "default:: Unknown _state ";
+				String response = "default:: ERROR: Unknown _state=";
 				mStat(intr, response);
 				mPrint(response);
 			}

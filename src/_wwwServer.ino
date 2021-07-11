@@ -1,5 +1,5 @@
 // 1-channel LoRa Gateway for ESP8266 and ESP32
-// Copyright (c) 2016-2020 Maarten Westenberg version for ESP8266
+// Copyright (c) 2016-2021 Maarten Westenberg version for ESP8266
 //
 // 	based on work done by many people and making use of several libraries.
 //
@@ -91,6 +91,30 @@ boolean YesNo()
 	return(ret);
 }
 
+// --------------------------------------------------------------------------------
+// Go On
+// Print a small button at the bottom of the page and wait for it to be pressed
+// --------------------------------------------------------------------------------
+boolean GoOn()
+{
+	boolean ret = false;
+	String response = "";
+	response += "<script>";
+	
+	response += "var ch = \"\"; ";								// Init choice
+	response += "function doContinue(s,y) {";
+	response += "  try { adddlert(s); }";
+	response += "  catch(err) {";
+	response += "    ch  = \" \" + s + \".\\n\\n\"; ";
+	response += "    ch += \"Click Continue to get back to the page\\n\"; ";
+	response += "    alert(ch); ";
+	response += "  }";
+	response += "}";
+	response += "</script>";
+	server.sendContent(response);
+	
+	return(ret);
+}
 
 // --------------------------------------------------------------------------------
 // WWWFILE
@@ -181,6 +205,59 @@ void buttonDocu()
 }
 
 
+// --------------------------------------------------------------------------------
+// Button function Regs, display the register value
+// This is a button on the top of the GUI screen.
+//
+//	When reloading the webpage, the function gets reloaded with write settings
+//	For getting read settings, make sure to load different settings in the
+//	struct registers [i] . regvalue.
+// --------------------------------------------------------------------------------
+void buttonRegs()
+{
+	String response = "";
+	uint8_t j, k;
+	response += "<script>";
+
+	response += "var txt = \"\";";
+	response += "function showRegs() {";
+	response += "  try { adddlert(\"Registers,\"); }";
+	response += "  catch(err) {";
+
+	response += 	"	txt = \"\"; ";							// Init function, necessary IN the function
+	response += 	"	txt += \"<div style='font-size:24px;'>\\n\"; ";
+	
+	for (int i=0; i< _REG_AMOUNT; i++) {
+		response += 	"	txt += \"";
+		response +=		registers[i].name;
+		response +=		"  (0x";
+		j= registers[i].regid;
+		response +=		(j<16 ? "0" : "");
+		response +=		String(j,HEX);
+		response +=		") = 0x";
+		k = registers[i].regvalue;
+		response +=		(k<16 ? "0" : "");
+		response +=		String(k,HEX);
+		response += 	" \\n \"; ";
+	}
+
+	response += "  	 txt += \"\\n\\n\"; ";
+	response += "    txt += \"Click OK to read register value for reading,\\n\"; ";
+	response += "    txt += \"or Cancel to return to the home page.\\n\\n\"; ";
+	response += "    alert(txt); ";
+			// If OK read the registers for reading
+			// For writing, these values are automatically overwritten each time 
+			// a message is transmitted down
+			for (int i=0; i< _REG_AMOUNT; i++) {registers[i].regvalue= readRegister(registers[i].regid); }
+	response += " txt += \"</div>\"; ";
+	response += "  }";								// catch err
+
+	response += "}";								// function
+	response += "</script>";
+	server.sendContent(response);
+
+	return;
+}
 
 
 // --------------------------------------------------------------------------------
@@ -223,19 +300,26 @@ static void wwwButtons()
 	YesNo();												// Init the Yes/No function
 	buttonDocu();
 
+	buttonRegs();
+
 	response += "<input type=\"button\" value=\"Documentation\" onclick=\"showDocu()\" >";
+	
+	response += "<input type=\"button\" value=\"Register\" onclick=\"showRegs()\" >";
+	
 #	if _STAT_LOG == 1
 	response += "<a href=\"LOG\" download><button type=\"button\">Log Files</button></a>";
 #	endif //__STAT_LOG
 
-	response += "<a href=\"EXPERT\" download><button type=\"button\">" + mode + "</button></a>";
+	response += "<a href=\"EXPERT\"><button>"+ mode +"</button></a>";
+		
 #	if _MONITOR>=1
-	response += "<a href=\"MONITOR\" download><button type=\"button\">" +moni+ "</button></a>";
+	response += "<a href=\"MONITOR\"><button>"+ moni +"</button></a>";
 #	endif //_MONITOR
 
 #	if _MAXSEEN>=1
-	response += "<a href=\"SEEN\" download><button type=\"button\">" +seen+ "</button></a>";
+	response += "<a href=\"SEEN\"><button>"+ seen +"</button></a>";
 #	endif //_MAXSEEN
+
 	server.sendContent(response);							// Send to the screen
 	
 	return;
@@ -348,23 +432,29 @@ static void setVariables(const char *cmd, const char *arg)
 	if (strcmp(cmd, "HELP")==0)    { Serial.println(F("Display Help Topics")); }
 	
 	// Node
-#if _GATEWAYNODE==1
+#	if _GATEWAYNODE==1
 	if (strcmp(cmd, "NODE")==0) {									// Set node on=1 or off=0
 		gwayConfig.isNode =(bool)atoi(arg);
 		writeGwayCfg(_CONFIGFILE, &gwayConfig );					// Save configuration to file
 	}
 	
-	// File Counter//
+	// Frame Counter//
 	if (strcmp(cmd, "FCNT")==0)   { 
-		frameCount=0; 
+		LoraUp.fcnt=0;
+		LoraDown.fcnt=0;
 		rxLoraModem();												// Reset the radio with the new frequency
 		writeGwayCfg(_CONFIGFILE, &gwayConfig );
 	}
-#endif
+	if (strcmp(cmd, "DCNT")==0)   { 
+		LoraDown.fcnt=0; 
+		rxLoraModem();												// Reset the radio with the new frequency
+		writeGwayCfg(_CONFIGFILE, &gwayConfig );
+	}
+#	endif //_GATEWAYNODE
 	
 	// WiFi Manager
 	//
-#if _WIFIMANAGER==1
+#	if _WIFIMANAGER==1
 	if (strcmp(cmd, "NEWSSID")==0) {
 	
 		//and goes into a blocking loop awaiting configuration
@@ -390,24 +480,24 @@ static void setVariables(const char *cmd, const char *arg)
 
 		// wifiManager.startConfigPortal( ssid.c_str(), AP_PASSWD );
 	}
-#endif //_WIFIMANAGER
+#	endif //_WIFIMANAGER
 
 	// Update the software (from User Interface)
-#if _OTA==1
+#	if _OTA==1
 	if (strcmp(cmd, "UPDATE")==0) {
 		if (atoi(arg) == 1) {
 			updateOtaa();
 			writeGwayCfg(_CONFIGFILE, &gwayConfig );
 		}
 	}
-#endif
+#	endif
 
-#if _REFRESH==1
+#	if _REFRESH==1
 	if (strcmp(cmd, "REFR")==0) {									// Set refresh on=1 or off=0
 		gwayConfig.refresh =(bool)atoi(arg);
 		writeGwayCfg(_CONFIGFILE, &gwayConfig );					// Save configuration to file
 	}
-#endif
+#	endif
 
 }
 
@@ -558,7 +648,7 @@ static void gatewaySettings()
 
 	// Debugging options, only when _DUSB or _MONITOR is set, otherwise no
 	// serial or minotoring activity
-#if _DUSB>=1 || _MONITOR>=1
+#if _MONITOR>=1
 	response +="<tr><td class=\"cell\">Debug Level</td><td class=\"cell\" colspan=\"2\">"; 
 	response +=debug; 
 	response +="</td>";
@@ -662,7 +752,7 @@ static void gatewaySettings()
 #if _GATEWAYNODE==1
 	response +="<tr><td class=\"cell\">Framecounter Internal Sensor</td>";
 	response +="<td class=\"cell\" colspan=\"2\">";
-	response +=frameCount;
+	response +=LoraUp.fcnt;
 	response +="</td><td colspan=\"2\" style=\"border: 1px solid black;\">";
 	response +="<button><a href=\"/FCNT\">RESET   </a></button></td>";
 	response +="</tr>";
@@ -675,7 +765,7 @@ static void gatewaySettings()
 	response +="<td style=\"border: 1px solid black; width:40px;\"><a href=\"NODE=1\"><button>ON</button></a></td>";
 	response +="<td style=\"border: 1px solid black; width:40px;\"><a href=\"NODE=0\"><button>OFF</button></a></td>";
 	response +="</tr>";
-#endif
+#endif //_GATEWAYNODE
 
 #if _REPEATER>=0
 	// Show repeater setting
@@ -687,7 +777,7 @@ static void gatewaySettings()
 	//response +="<td style=\"border: 1px solid black; width:40px;\"><a href=\"REPT=0\"><button>OFF</button></a></td>";
 	//response +="<td style=\"border: 1px solid black; width:40px;\"><a href=\"REPT=1\"><button>ON</button></a></td>";
 	response +="</tr>";
-#endif
+#endif //_REPEATER
 
 	// Format the Filesystem
 	response +="<tr><td class=\"cell\">Format SPIFFS</td>";
@@ -915,7 +1005,7 @@ static void messageHistory()
 	}
 #endif
 
-	// Print of Heads is ober.Now print all the rows
+	// Print of Heads is over. Now print all the rows
 	response += "</tr>";
 	server.sendContent(response);
 
@@ -941,13 +1031,13 @@ static void messageHistory()
 				printHex(statr[i].node,' ',response); 
 				break;
 			case 1: 
-				if (SerialName(statr[i].node, response) < 0) {
+				if (SerialName(statr[i].node, response) < 0) {				// If name not known, print only HXX
 					printHex(statr[i].node,' ',response);
 				};
 				break;
 			case 2: 
-				if (SerialName(statr[i].node, response) < 0) {
-					continue;
+				if (SerialName(statr[i].node, response) < 0) {				// If name not known, print only HXX
+					continue;												// And do not lookup or print name
 				};
 				break;
 			case 3: // Value and we do not print unless also defined for LOCAL_SERVER
@@ -1157,14 +1247,14 @@ static void wifiConfig()
 
 		response +="<tr><th class=\"thead\">Parameter</th><th class=\"thead\">Value</th></tr>";
 	
-		response +="<tr><td class=\"cell\">WiFi host</td><td class=\"cell\">"; 
-#if defined(ESP32_ARCH)
+		response +="<tr><td class=\"cell\">WiFi Host Name</td><td class=\"cell\">"; 
+#	if defined(ESP32_ARCH)
 		response +=WiFi.getHostname(); response+="</tr>";
-#else
+#	else
 		response +=wifi_station_get_hostname(); response+="</tr>";
-#endif
+#	endif
 
-		response +="<tr><td class=\"cell\">WiFi SSID</td><td class=\"cell\">"; 
+		response +="<tr><td class=\"cell\">WiFi Host SSID</td><td class=\"cell\">"; 
 		response +=WiFi.SSID(); response+="</tr>";
 	
 		response +="<tr><td class=\"cell\">IP Address</td><td class=\"cell\">"; 
@@ -1173,20 +1263,22 @@ static void wifiConfig()
 		response +="<tr><td class=\"cell\">IP Gateway</td><td class=\"cell\">"; 
 		printIP((IPAddress)WiFi.gatewayIP(),'.',response); 
 		response +="</tr>";
-#ifdef _TTNSERVER
+#if _GWAYSCAN==0
+#	ifdef _TTNSERVER
 		response +="<tr><td class=\"cell\">NTP Server</td><td class=\"cell\">"; response+=NTP_TIMESERVER; response+="</tr>";
 		response +="<tr><td class=\"cell\">LoRa Router</td><td class=\"cell\">"; response+=_TTNSERVER; response+="</tr>";
 		response +="<tr><td class=\"cell\">LoRa Router IP</td><td class=\"cell\">"; 
 		printIP((IPAddress)ttnServer,'.',response); 
 		response +="</tr>";
-#endif //_TTNSERVER
-#ifdef _THINGSERVER
+#	endif //_TTNSERVER
+#	ifdef _THINGSERVER
 		response +="<tr><td class=\"cell\">LoRa Router 2</td><td class=\"cell\">"; response+=_THINGSERVER; 
 		response += String() + ":" + _THINGPORT + "</tr>";
 		response +="<tr><td class=\"cell\">LoRa Router 2 IP</td><td class=\"cell\">"; 
 		printIP((IPAddress)thingServer,'.',response);
 		response +="</tr>";
-#endif //_THINGSERVER
+#	endif //_THINGSERVER
+#endif //_GWAYSCAN
 
 		response +="</table>";
 
@@ -1552,18 +1644,18 @@ void setupWWW()
 	// Reset the boot counter, and other system specific counters
 	server.on("/BOOT", []() {
 		mPrint("BOOT");
-#if _STATISTICS >= 2		
-		gwayConfig.wifis = 0;
-		gwayConfig.views = 0;
-		gwayConfig.ntpErr = 0;					// NTP errors
-		gwayConfig.ntpErrTime = 0;				// NTP last error time
-		gwayConfig.ntps = 0;					// Number of NTP calls
-#endif
+#		if _STATISTICS >= 2		
+			gwayConfig.wifis = 0;
+			gwayConfig.views = 0;
+			gwayConfig.ntpErr = 0;					// NTP errors
+			gwayConfig.ntpErrTime = 0;				// NTP last error time
+			gwayConfig.ntps = 0;					// Number of NTP calls
+#		endif
 		gwayConfig.boots = 0;					//
 		gwayConfig.reents = 0;					// Re-entrance
 		
 		writeGwayCfg(_CONFIGFILE, &gwayConfig );
-#if		_MONITOR>=1
+#		if _MONITOR>=1
 		if ((debug>=2) && (pdebug & P_GUI)) {
 			mPrint("wwwServer:: BOOT: config written");
 		}
@@ -1739,8 +1831,7 @@ void setupWWW()
 #if _GATEWAYNODE==1	
 	// Framecounter of the Gateway node
 	server.on("/FCNT", []() {
-
-		frameCount=0; 
+		LoraUp.fcnt=0; 
 		rxLoraModem();							// Reset the radio with the new frequency
 		writeGwayCfg(_CONFIGFILE, &gwayConfig );
 
@@ -1748,7 +1839,7 @@ void setupWWW()
 		server.sendHeader("Location", String("/"), true);
 		server.send( 302, "text/plain", "");
 	});
-#endif
+#endif //_GATEWAYNODE
 
 	// WWW Page refresh function
 	server.on("/REFR=1", []() {					// WWW page auto refresh ON
@@ -1829,6 +1920,14 @@ void setupWWW()
 
 		server.sendHeader("Location", String("/"), true);
 		buttonDocu();
+		server.send( 302, "text/plain", "");
+	});
+
+	// Display Register pages
+	server.on("/REGS", []() {
+		buttonRegs();
+		server.sendHeader("Location", String("/"), true);
+
 		server.send( 302, "text/plain", "");
 	});
 

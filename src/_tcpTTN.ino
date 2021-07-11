@@ -1,5 +1,5 @@
 // 1-channel LoRa Gateway for ESP8266 and ESP32
-// Copyright (c) 2016-2020 Maarten Westenberg version for ESP8266
+// Copyright (c) 2016-2021 Maarten Westenberg version for ESP8266
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -31,10 +31,11 @@
 //
 // ========================================================================================
 
-#if defined(_TTNROUTER)
-#if defined(_UDPROUTER)
+#ifdef _TTNROUTER
+
+#ifdef _UDPROUTER
 #	error "Error: Please undefine _UDPROUTER if you like to use _TTNROUTER"
-#endif
+#endif //_UDPROUTER
 
 // The following functions ae defined in this modue:
 //
@@ -57,9 +58,5 @@ int readTtn(int Packetsize) {
 int sendTtn(IPAddress server, int port, uint8_t *msg, int length) {
 #error "Error: Please define and use _UDPROUTER instead of _TTNROUTER"
 }
-
-
-
-
 
 #endif //_TTNROUTER

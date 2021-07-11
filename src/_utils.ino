@@ -1,5 +1,5 @@
 // 1-channel LoRa Gateway for ESP8266 and ESP32
-// Copyright (c) 2016-2020 Maarten Westenberg version for ESP8266
+// Copyright (c) 2016-2021 Maarten Westenberg version for ESP8266
 //
 // 	based on work done by Thomas Telkamp for Raspberry PI 1ch gateway
 //	and many others.
@@ -41,41 +41,43 @@ void printInt (uint32_t i, String & response)
 // PRINT REGS
 //  Print the register settings
 // --------------------------------------------------------------------------------
-#define printReg(x) {int i=readRegister(x); if(i<=0x0F) Serial.print('0'); Serial.println(i,HEX);}
+#define printReg(x) {int i=readRegister(x); if(i<=0x0F) Serial.print('0'); Serial.print(i,HEX);}
 
 void printRegs(struct LoraDown *LoraDown, String & response)
 {
-	response += "v FIFO (0x00)=0x" + String(readRegister(REG_FIFO),HEX);
-	response += "v OPMODE (0x01)=0x" + String(readRegister(REG_OPMODE),HEX);
+	response += "v FIFO(0x00)=0x" + String(readRegister(REG_FIFO),HEX);
+	response += "v OPMODE(0x01)=0x" + String(readRegister(REG_OPMODE),HEX);
+	response += "v FRF(0x06)=0x" + String(readRegister(REG_FRF_MSB),HEX);  
+	response += "     (0x07)=0x" + String(readRegister(REG_FRF_MID),HEX);
+	response += "     (0x08)=0x" + String(readRegister(REG_FRF_LSB),HEX);
+	
+	response += "v PREAMBLE_MSB (0x20)=0x" + String(readRegister(REG_PREAMBLE_MSB),HEX);
+	response += "v PREAMBLE_LSB (0x21)=0x" + String(readRegister(REG_PREAMBLE_LSB),HEX);
 	
 #	if _DUSB>=1
 	if (debug>=1) {
-		Serial.print("v FIFO                 (0x00)\t=0x"); printReg(REG_FIFO);
-		Serial.print("v OPMODE               (0x01)\t=0x"); printReg(REG_OPMODE);
-		Serial.print("v FRF                  (0x06)\t=0x"); printReg(REG_FRF_MSB); 
-			Serial.print("  "); printReg(REG_FRF_MID); 
-			Serial.print("  "); printReg(REG_FRF_LSB);
-		Serial.print("v PAC                  (0x09)\t=0x"); printReg(REG_PAC);
-		Serial.print("v PARAMP               (0x0A)\t=0x"); printReg(REG_PARAMP);
-		Serial.print("v REG_OCP              (0x0B)\t=0x"); printReg(REG_OCP);
-		Serial.print("v LNA                  (0x0C)\t=0x"); printReg(REG_LNA);
-		Serial.print("v FIFO_ADDR_PTR        (0x0D)\t=0x"); printReg(REG_FIFO_ADDR_PTR);
-		Serial.print("v FIFO_TX_BASE_AD      (0x0E)\t=0x"); printReg(REG_FIFO_TX_BASE_AD);
-		Serial.print("v FIFO_RX_BASE_AD      (0x0F)\t=0x"); printReg(REG_FIFO_RX_BASE_AD);
 
-		Serial.print("v FIFO_RX_CURRENT_ADDR (0x10)\t=0x"); printReg(REG_FIFO_RX_CURRENT_ADDR);
-		Serial.print("v IRQ_FLAGS_MASK       (0x11)\t=0x"); printReg(REG_IRQ_FLAGS_MASK);
-		Serial.print("v IRQ_FLAGS            (0x12)\t=0x"); printReg(REG_IRQ_FLAGS);
-		Serial.print("v MODEM_CONFIG1        (0x1D)\t=0x"); printReg(REG_MODEM_CONFIG1);
-		Serial.print("v MODEM_CONFIG2        (0x1E)\t=0x"); printReg(REG_MODEM_CONFIG2);
-		Serial.print("v MODEM_CONFIG3        (0x26)\t=0x"); printReg(REG_MODEM_CONFIG3);
+		Serial.print("v PAC                  (0x09)\t=0x"); printReg(REG_PAC); Serial.println();
+		Serial.print("v PARAMP               (0x0A)\t=0x"); printReg(REG_PARAMP); Serial.println();
+		Serial.print("v REG_OCP              (0x0B)\t=0x"); printReg(REG_OCP); Serial.println();
+		Serial.print("v LNA                  (0x0C)\t=0x"); printReg(REG_LNA); Serial.println();
+		Serial.print("v FIFO_ADDR_PTR        (0x0D)\t=0x"); printReg(REG_FIFO_ADDR_PTR); Serial.println();
+		Serial.print("v FIFO_TX/RX_BASE_AD   (0x0E/0x0F)\t=0x"); printReg(REG_FIFO_TX_BASE_AD); 
+			Serial.print("/"); printReg(REG_FIFO_RX_BASE_AD); Serial.println();
 
-		Serial.print("v PREAMBLE_MSB         (0x20)\t=0x"); printReg(REG_PREAMBLE_MSB);
-		Serial.print("v PREAMBLE_LSB         (0x21)\t=0x"); printReg(REG_PREAMBLE_LSB);		
-		Serial.print("v PAYLOAD_LENGTH       (0x22)\t="); Serial.println(readRegister(REG_PAYLOAD_LENGTH));
+		Serial.print("v FIFO_RX_CURRENT_ADDR (0x10)\t=0x"); printReg(REG_FIFO_RX_CURRENT_ADDR); Serial.println();
+		//Serial.print("v IRQ_FLAGS_MASK       (0x11)\t=0x"); printReg(REG_IRQ_FLAGS_MASK); Serial.println();
+		//Serial.print("v IRQ_FLAGS            (0x12)\t=0x"); printReg(REG_IRQ_FLAGS); Serial.println();
+		//Serial.print("v MODEM_CONFIG1        (0x1D)\t=0x"); printReg(REG_MODEM_CONFIG1); Serial.println();
+		//Serial.print("v MODEM_CONFIG2        (0x1E)\t=0x"); printReg(REG_MODEM_CONFIG2); Serial.println();
+		//Serial.print("v MODEM_CONFIG3        (0x26)\t=0x"); printReg(REG_MODEM_CONFIG3); Serial.println();
+
+		Serial.print("v PREAMBLE_MSB         (0x20)\t=0x"); printReg(REG_PREAMBLE_MSB); Serial.println();
+		Serial.print("v PREAMBLE_LSB         (0x21)\t=0x"); printReg(REG_PREAMBLE_LSB); Serial.println();
+		Serial.print("v REG_PAYLOAD_LENGTH   (0x22)\t="); Serial.println(readRegister(REG_PAYLOAD_LENGTH));
 		Serial.print("v MAX_PAYLOAD_LENGTH   (0x23)\t="); Serial.println(readRegister(REG_MAX_PAYLOAD_LENGTH));
-		Serial.print("v HOP_PERIOD           (0x24)\t="); Serial.println(readRegister(REG_HOP_PERIOD));
-		Serial.print("v FIFO_RX_BYTE_ADDR_PTR(0x25)\t=0x"); printReg(REG_FIFO_RX_BYTE_ADDR_PTR);
+		Serial.print("v REG_HOP_PERIOD       (0x24)\t="); Serial.println(readRegister(REG_HOP_PERIOD));
+		Serial.print("v FIFO_RX_BYTE_ADDR_PTR(0x25)\t=0x"); printReg(REG_FIFO_RX_BYTE_ADDR_PTR); Serial.println();
 
 		Serial.println("");
 	}
@@ -99,8 +101,8 @@ void printRegs(struct LoraDown *LoraDown, String & response)
 // --------------------------------------------------------------------------------
 void printDwn(struct LoraDown *LoraDown, String & response)
 {
-	uint32_t i= LoraDown->tmst;
-	uint32_t m= micros();
+	uint32_t i= LoraDown->tmst;						// Time to start transmitting
+	uint32_t m= LoraDown->usec;						// Now time
 	
 	response += "micr=";	printInt(m, response);
 	response += ", tmst=";	printInt(i, response);
@@ -118,6 +120,7 @@ void printDwn(struct LoraDown *LoraDown, String & response)
 	response += ", freq="	+String(LoraDown->freq);
 	response += ", sf="		+String(LoraDown->sf);
 	response += ", bw="		+String(LoraDown->bw);
+	response += ", datr="	+String(LoraDown->datr);
 	response += ", powe="	+String(LoraDown->powe);
 	response += ", crc="	+String(LoraDown->crc);
 	response += ", imme="	+String(LoraDown->imme);
@@ -135,7 +138,7 @@ void printDwn(struct LoraDown *LoraDown, String & response)
 		DevAddr[2] = LoraDown->payLoad[2];
 		DevAddr[3] = LoraDown->payLoad[1];
 	printHex((IPAddress)DevAddr, ':', response);
-
+	
 	yield();
 
 	return;
@@ -155,9 +158,9 @@ void printDwn(struct LoraDown *LoraDown, String & response)
 // --------------------------------------------------------------------------------
 void printIP(IPAddress ipa, const char sep, String & response)
 {
-	response += (String)ipa[0]; response += sep;
-	response += (String)ipa[1]; response += sep;
-	response += (String)ipa[2]; response += sep;
+	response += (String)ipa[0] + sep;
+	response += (String)ipa[1] + sep;
+	response += (String)ipa[2] + sep;
 	response += (String)ipa[3];
 }
 
@@ -175,10 +178,10 @@ void printHex(uint32_t hexa, const char sep, String & response)
 
 	uint8_t * h = (uint8_t *)(& hexa);
 
-	if (h[0]<016) response += '0'; response += String(h[0], HEX);  response+=sep;
-	if (h[1]<016) response += '0'; response += String(h[1], HEX);  response+=sep;
-	if (h[2]<016) response += '0'; response += String(h[2], HEX);  response+=sep;
-	if (h[3]<016) response += '0'; response += String(h[3], HEX);  response+=sep;
+	if (h[0]<016) response += '0'; response += String(h[0], HEX) + sep;
+	if (h[1]<016) response += '0'; response += String(h[1], HEX) + sep;
+	if (h[2]<016) response += '0'; response += String(h[2], HEX) + sep;
+	if (h[3]<016) response += '0'; response += String(h[3], HEX) + sep;
 }
 
 // ----------------------------------------------------------------------------
@@ -190,7 +193,6 @@ void printHexDigit(uint8_t digit, String & response)
     if(digit < 0x10)
         response += '0';
     response += String(digit,HEX);
-
 }
 
 // ========================= MONITOR FUNCTIONS ============================================
@@ -250,7 +252,7 @@ void mPrint(String txt)
 // ----------------------------------------------------------------------------
 int mStat(uint8_t intr, String & response) 
 {
-#if _MONITOR>=1
+#	if _MONITOR>=1
 
 	if (debug>=0) {
 	
@@ -267,7 +269,7 @@ int mStat(uint8_t intr, String & response)
 
 		if (intr == 0x00) response += "  --  ";
 			
-		response += ", F=" + String(gwayConfig.ch);
+		response += ", CH=" + String(gwayConfig.ch);
 		
 		response += ", SF=" + String(sf);
 		
@@ -276,22 +278,22 @@ int mStat(uint8_t intr, String & response)
 		response += ", S=";
 		switch (_state) {
 			case S_TXDONE:
-				response += "TXDONE";
+				response += "S_TXDONE";
 			break;
 			case S_INIT:
-				response += "INIT ";
+				response += "S_INIT ";
 			break;
 			case S_SCAN:
-				response += "SCAN ";
+				response += "S_SCAN ";
 			break;
 			case S_CAD:
-				response += "CAD  ";
+				response += "S_CAD  ";
 			break;
 			case S_RX:
-				response += "RX   ";
+				response += "S_RX   ";
 			break;
 			case S_TX:
-				response += "TX   ";
+				response += "S_TX   ";
 			break;
 			default:
 				response += " -- ";
@@ -302,7 +304,7 @@ int mStat(uint8_t intr, String & response)
 		response += ", dT=";
 		response += String( micros() - doneTime );
 	}
-#endif //_MONITOR
+#	endif //_MONITOR
 	return(1);
 }
 
@@ -525,7 +527,7 @@ int getNtpTime(time_t *t)
 // ----------------------------------------------------------------------------
 // Set up regular synchronization of NTP server and the local time.
 // ----------------------------------------------------------------------------
-#if NTP_INTR==1
+#if _NTP_INTR==1
 void setupTime() 
 {
   time_t t;
@@ -533,7 +535,7 @@ void setupTime()
   setSyncProvider(t);
   setSyncInterval(_NTP_INTERVAL);
 }
-#endif //NTP_INTR
+#endif //_NTP_INTR
 
 
 

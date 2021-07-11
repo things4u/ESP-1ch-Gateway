@@ -1,6 +1,6 @@
 # Single Channel LoRaWAN Gateway
 
-Version 6.2.4, February 29, 2020 
+Version 6.2.8, May 5, 2021 
 Author: M. Westenberg (mw12554@hotmail.com)  
 Copyright: M. Westenberg (mw12554@hotmail.com)  
 
@@ -15,6 +15,18 @@ Maintained by Maarten Westenberg (mw12554@hotmail.com)
 
 
 # Release Notes
+
+Release 6.2.8 (July 11, 2021)
+- Change buttons on top of web screen to work with Firefox without displaying a menu
+- Added South Korea country to loraModem.h
+- Removed superfluous comments in all files
+- Removed lots of superfluous mPrint and other debug lines
+- Show register values (menu top of web page)
+- repair syntax errors
+- Add configurable parameters to platformIO and other IDE in configGateway.h
+- Make more and detailed documentation available
+- In configGway.h change default server to TTN v3. 
+	#	define _TTNSERVER "eu1.cloud.thethings.network"
 
 Features  release 6.2.7 (October 30, 2020)
 - Further repair timing
