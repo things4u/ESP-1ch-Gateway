@@ -389,12 +389,12 @@ static void stringTime(time_t t, String & response)
 	time_t eTime = t;
 	
 	// Rest is standard
-	byte _hour   = hour(eTime);
-	byte _minute = minute(eTime);
-	byte _second = second(eTime);
+	uint8_t _hour   = hour(eTime);
+	uint8_t _minute = minute(eTime);
+	uint8_t _second = second(eTime);
 	
-	byte _month = month(eTime);
-	byte _day = day(eTime);
+	uint8_t _month	= month(eTime);
+	uint8_t _day 	= day(eTime);
 	
 	switch(weekday(eTime)) {
 		case 1: response += "Sun "; break;
@@ -421,7 +421,7 @@ static void stringTime(time_t t, String & response)
 int sendNtpRequest(IPAddress timeServerIP) 
 {
 	const int NTP_PACKET_SIZE = 48;							// Fixed size of NTP record
-	byte packetBuffer[NTP_PACKET_SIZE];
+	uint8_t packetBuffer[NTP_PACKET_SIZE];
 
 	memset(packetBuffer, 0, NTP_PACKET_SIZE);				// Zero the buffer.
 	

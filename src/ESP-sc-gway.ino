@@ -143,9 +143,10 @@ uint32_t txDones=0;											// Count the number of TXDONE calls in stateMachin
 #endif //_GATEWAYNODE
 
 using namespace std;
-byte 		currentMode = 0x81;
+
 bool		sx1276 = true;									// Actually we use sx1276/RFM95
 uint8_t		MAC_array[6];
+uint8_t		currentMode = 0x81;
 
 // ----------------------------------------------------------------------------
 //
@@ -450,14 +451,14 @@ void setup() {
 	delay(500);
 	// If we are here we are connected to WLAN
 	
-#	if defined(_UDPROUTER)
+#	if _UDPROUTER==1
 		// So now test the UDP function
 		if (!connectUdp()) {
 #			if _MONITOR>=1
 				mPrint("Error connectUdp");
 #			endif //_MONITOR
 		}
-#	elif defined(_TTNROUTER)
+#	elif _TTNROUTER==1
 		if (!connectTtn()) {
 #			if _MONITOR>=1
 				mPrint("Error connectTtn");
@@ -465,7 +466,7 @@ void setup() {
 		}
 #	else
 #		if _MONITOR>=1
-			mPrint("Setup:: ERROR, No UDP or TCP Connection");
+			mPrint("Setup:: ERROR, No Router Connection defined");
 #		endif //_MONITOR	
 #	endif //_UDPROUTER
 

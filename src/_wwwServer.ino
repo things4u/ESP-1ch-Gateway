@@ -189,12 +189,14 @@ void buttonDocu()
 	response += "function showDocu() {";
 	response += "  try { adddlert(\"Welcome,\"); }";
 	response += "  catch(err) {";
-	response += "    txt  = \"Do you want the documentation page.\\n\\n\"; ";
-	response += "    txt += \"Click OK to continue viewing documentation,\\n\"; ";
-	response += "    txt += \"or Cancel to return to the home page.\\n\\n\"; ";
-	response += "    if(confirm(txt)) { ";
-	response += "      document.location.href = \"https://things4u.github.io/Projects/SingleChannelGateway/index.html\"; ";
-	response += "    }";
+//	response += "    txt  = \"Do you want the documentation page.\\n\\n\"; ";		// Open in same page as the Gateway Gui
+//	response += "    txt += \"Click OK to continue viewing documentation,\\n\"; ";
+//	response += "    txt += \"or Cancel to return to the home page.\\n\\n\"; ";
+//	response += "    if(confirm(txt)) { ";
+//	response += "		document.location.href = \"https://things4u.github.io/Projects/SingleChannelGateway/index.html\"; ";
+//	response += "    }";
+	// Open in separate tab or window
+    response += "	 window.open(	\"https://things4u.github.io/Projects/SingleChannelGateway/index.html\",\"_blank\" ) "; 
 	response += "  }";
 	response += "}";
 	

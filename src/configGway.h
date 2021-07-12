@@ -353,8 +353,9 @@
 
 // Will we use Mutex or not?
 // +SPI is input for SPI, SPO is output for SPI
-#define _MUTEX 0
-
+#if !defined _MUTEX
+#	define _MUTEX 0
+#endif //MUTEX
 
 // Read server/gateway traffic
 #if !defined _GWAYSCAN

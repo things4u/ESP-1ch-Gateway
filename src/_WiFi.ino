@@ -326,7 +326,7 @@ IPAddress resolveHost(String svrName, int maxTry)
 #		if defined(ESP32_ARCH)
 			svrName=svrName.substring(0,svrName.length()-6);
 			svrIP = MDNS.queryHost(svrName);
-			for (byte i=0; i<maxTry; i++) {						// Try 5 times MDNS
+			for (uint8_t i=0; i<maxTry; i++) {						// Try 5 times MDNS
 				svrIP = MDNS.queryHost(svrName);
 				if (svrIP.toString() != "0.0.0.0") break;
 #				if (_MONITOR>=1)
@@ -339,7 +339,7 @@ IPAddress resolveHost(String svrName, int maxTry)
 			strncpy(cc, svrName.c_str(),svrName.length());
 			cc[svrName.length()]=0;
 		
-			for (byte i=0; i<maxTry; i++) {
+			for (uint8_t i=0; i<maxTry; i++) {
 				if (!WiFi.hostByName(cc, svrIP)) 					// Use DNS to get server IP once
 				{
 					mPrint("resolveHost:: ERROR hostByName="+ String(cc)+", len=" + String(sizeof(cc)));
@@ -359,7 +359,7 @@ IPAddress resolveHost(String svrName, int maxTry)
 		strncpy(cc, svrName.c_str(),svrName.length());
 		cc[svrName.length()]=0;
 		
-		for (byte i=0; i<maxTry; i++) {
+		for (uint8_t i=0; i<maxTry; i++) {
 			if (WiFi.hostByName(cc, svrIP)) 					// Use DNS to get server IP once
 			{
 #				if _MONITOR>=1
