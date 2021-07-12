@@ -1,7 +1,7 @@
 // 1-channel LoRa Gateway for ESP32 and ESP8266
 // Copyright (c) Maarten Westenberg 2016-2021 
 
-#define VERSION "V.6.2.8.EU868; PlatformIO 210711 a; GIT"
+#define VERSION "V.6.2.8.EU868; PlatformIO 210712 a; GIT"
 
 //
 // Based on work done by Thomas Telkamp for Raspberry PI 1ch gateway and many others.
