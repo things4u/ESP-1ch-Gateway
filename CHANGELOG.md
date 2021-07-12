@@ -1,6 +1,6 @@
 # Single Channel LoRaWAN Gateway
 
-Version 6.2.8, May 5, 2021 
+Version 6.2.8, July 11, 2021 
 Author: M. Westenberg (mw12554@hotmail.com)  
 Copyright: M. Westenberg (mw12554@hotmail.com)  
 
@@ -27,6 +27,7 @@ Release 6.2.8 (July 11, 2021)
 - Make more and detailed documentation available
 - In configGway.h change default server to TTN v3. 
 	#	define _TTNSERVER "eu1.cloud.thethings.network"
+- Change the Documentation option for the GUI such that clicking it will open a separate tab/window.
 
 Features  release 6.2.7 (October 30, 2020)
 - Further repair timing
