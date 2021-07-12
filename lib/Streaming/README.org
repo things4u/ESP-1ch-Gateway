@@ -1,0 +1,20 @@
+#+TITLE: Streaming
+#+AUTHOR: Mikal Hart
+#+EMAIL: peterpolidoro@gmail.com
+
+* Library Information
+  - Name :: Streaming
+  - Version :: 5.0.0
+  - License :: GNU LGPL
+  - URL :: https://github.com/janelia-arduino/Streaming
+  - Author :: Mikal Hart
+  - Maintainer :: Peter Polidoro
+  - Email :: peterpolidoro@gmail.com
+
+** Description
+
+   Streaming C++-style Output with Operator <<
+
+* Source
+
+  [[http://arduiniana.org/libraries/streaming/]]
