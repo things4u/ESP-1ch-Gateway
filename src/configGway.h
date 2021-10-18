@@ -309,7 +309,7 @@
 // Maximum number of Message History statistics records gathered. 20 is a good maximum 
 // (memory intensive). For ESP32 maybe 30 could be used as well
 #if !defined _MAXSTAT
-#	define _MAXSTAT 20
+#	define _MAXSTAT 30
 #endif
 
 
@@ -321,7 +321,7 @@
 // The initial version _NUMMAX stores max this many nodes, please make
 // _MAXSEEN==0 when not used
 #if !defined _MAXSEEN
-#	define _MAXSEEN 20
+#	define _MAXSEEN 15
 #endif
 #define _SEENFILE "/gwaySeen.txt"
 
