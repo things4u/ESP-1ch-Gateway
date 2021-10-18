@@ -794,7 +794,7 @@ int loraWait(struct LoraDown *LoraDown)
 //	crc is set to 0x00 for TX
 //	iiq is set to 0x40 down (or 0x40 up based on ipol value in txpkt)
 //
-//	1. opmode Lora (only in Sleep mode)
+//	1. opmode Lora (only in Sleep mode), set to 0x00
 //	2. opmode StandBY
 //	3. Configure Modem
 //	4. Configure Channel
@@ -811,7 +811,16 @@ int loraWait(struct LoraDown *LoraDown)
 // 15. Wait until the right time to transmit has arrived
 // 16. opmode TX, start actual transmission
 //
-// Transmission to the device not is not done often, but is time critical.
+// Transmission to the device is not done often, but is time critical. 
+// The following registers are set (AN1200.24 para 2.1):
+//
+//  REG_OPMODE 			= (OPMODE_LORA | 0x03)	Transmit
+//	REG_PARAMP 			= 0x08					50 uSec
+//	REG_MODEM_CONFIG1	= 0x72
+//	REG_MODEM_CONFIG2	= 0x70					Switch CRC off
+//	REG_MODEM_CONFIG3	= 0x00 (or 0x01 depending on spreading factor >= 11)
+//	REG_SYNC_WORD		= 0x34
+// 
 // ----------------------------------------------------------------------------------------
 
 void txLoraModem(struct LoraDown *LoraDown)
@@ -819,66 +828,69 @@ void txLoraModem(struct LoraDown *LoraDown)
 	_state = S_TX;
 		
 	// 1. Select LoRa modem from sleep mode
-	opmode(OPMODE_SLEEP);											// set 0x01
-	//opmode(OPMODE_LORA);											// set 0x01 to 0x80
+	opmode(OPMODE_SLEEP);												// set 0x01
+	delayMicroseconds(100);
+	opmode(OPMODE_LORA | 0x03);;										// set 0x01 to 0x80
 	
 	// Assert the value of the current mode
 	ASSERT((readRegister(REG_OPMODE) & OPMODE_LORA) != 0);
 	
 	// 2. enter standby mode (required for FIFO loading))
-	opmode(OPMODE_STANDBY);											// set 0x01 to 0x01
+	opmode(OPMODE_STANDBY);												// set 0x01 to 0x01
 	
 	// 3. Init spreading factor and other Modem setting
 	setRate(LoraDown->sf, LoraDown->crc);
 	
 	// Frequency hopping
-	//writeRegister(REG_HOP_PERIOD, (uint8_t) 0x00);				// set 0x24 to 0x00 only for receivers
+	//writeRegister(REG_HOP_PERIOD, (uint8_t) 0x00);					// set 0x24 to 0x00 only for receivers
 	
 	// 4. Init Frequency, config channel
 	setFreq(LoraDown->freq);
 
 	//writeRegister(REG_PREAMBLE_LSB, (uint8_t) LoraDown->prea & 0xFF);	// Leave to default
 	
-	writeRegister(REG_SYNC_WORD, (uint8_t) 0x34);					// set 0x39 to 0x34==LORA_MAC_PREAMBLE
-	writeRegister(REG_PARAMP, (readRegister(REG_PARAMP) & 0xF0) | 0x08); // set 0x08  ramp-up time 50 uSec
-	//writeRegister(REG_PADAC_SX1276,  0x84); 						// set 0x4D (PADAC) to 0x84
+	writeRegister(REG_SYNC_WORD, (uint8_t) 0x34);						// set 0x39 to 0x34==LORA_MAC_PREAMBLE
+	writeRegister(REG_PARAMP,(readRegister(REG_PARAMP) & 0xF0) | 0x08); // set 0x08  ramp-up time 50 uSec
+	//writeRegister(REG_PADAC_SX1276,  0x84); 							// set 0x4D (PADAC) to 0x84
 	//writeRegister(REG_DET_TRESH, 0x0A);								// 210117 Detection Treshhold
-	writeRegister(REG_LNA, (uint8_t) LNA_MAX_GAIN);  				// set reg 0x0C to 0x23
+	writeRegister(REG_LNA, (uint8_t) LNA_MAX_GAIN);  					// set reg 0x0C to 0x23
 	
 	// 6. Set power level, REG_PAC
 	setPow(LoraDown->powe);
 	
 	// 7. prevent node to node communication
-	//writeRegister(REG_INVERTIQ, readRegister(REG_INVERTIQ) | (uint8_t)(LoraDown->iiq));	// set 0x33, (0x27 up or |0x40 down)
-	writeRegister(REG_INVERTIQ, readRegister(REG_INVERTIQ) | 0x40); // set 0x33 to (0x27 (reserved) | 0x40) for downstream
+	//writeRegister(REG_INVERTIQ, readRegister(REG_INVERTIQ) | (uint8_t)(LoraDown->iiq));	
+																		// set 0x33, (0x27 up or |0x40 down)
+	writeRegister(REG_INVERTIQ, readRegister(REG_INVERTIQ) | 0x40); 	// set 0x33 to (0x27 (reserved) | 0x40) for downstream
 	writeRegister(REG_INVERTIQ2, 0x19);
 	
-	// 8. set the IRQ mapping DIO0=TxDone DIO1=NOP DIO2=NOP (or less for 1ch gateway)
+	// 8. set the IRQ mapping DIO0=TxDone, DIO1=NOP, DIO2=NOP (for 1ch gateway)
     writeRegister(REG_DIO_MAPPING_1, (uint8_t)(
 		MAP_DIO0_LORA_TXDONE | 
 		MAP_DIO1_LORA_NOP | 
 		MAP_DIO2_LORA_NOP |
-		MAP_DIO3_LORA_NOP));										// was MAP_DIO3_LORA_CRC
+		MAP_DIO3_LORA_NOP));											// was MAP_DIO3_LORA_CRC
 
 	// 9. mask all IRQs but TxDone
     writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) ~IRQ_LORA_TXDONE_MASK);
 	
 	// 10. clear all radio IRQ flags
     writeRegister(REG_IRQ_FLAGS, (uint8_t) 0xFF);
-	//writeRegister(REG_IRQ_FLAGS, (uint8_t) IRQ_LORA_TXDONE_MASK);	// set reg 0x12 to 0x08, clear TXDONE
+	//writeRegister(REG_IRQ_FLAGS, (uint8_t) IRQ_LORA_TXDONE_MASK);		// set reg 0x12 to 0x08, clear TXDONE
 
 	// FSTX setting
-	opmode(OPMODE_FSTX);											// set reg 0x01 to 0x02 (actual value becomes 0x82)
-	delay(1);														// MMM
+	//opmode(OPMODE_FSTX);												// set reg 0x01 to 0x02 (actual value becomes 0x82)
+	//delay(1);															// MMM
 
 	//Set the base addres of the transmit buffer in FIFO
-	writeRegister(REG_FIFO_ADDR_PTR, (uint8_t) readRegister(REG_FIFO_TX_BASE_AD));	// set 0x0D to 0x0F (contains 0x80);	
+	writeRegister(REG_FIFO_ADDR_PTR, (uint8_t) readRegister(REG_FIFO_TX_BASE_AD));	
+																		// set 0x0D to 0x0F (contains 0x80);	
 
 	//For TX we have to set the PAYLOAD_LENGTH
-	writeRegister(REG_PAYLOAD_LENGTH, (uint8_t) LoraDown->size);	// set reg 0x22 to  0x40==64Byte long
+	writeRegister(REG_PAYLOAD_LENGTH, (uint8_t) LoraDown->size);		// set reg 0x22 to  0x40==64Byte long
 
 	//For TX we have to set the MAX_PAYLOAD_LENGTH
-	writeRegister(REG_MAX_PAYLOAD_LENGTH, (uint8_t) MAX_PAYLOAD_LENGTH);	// set reg 0x22, max 0x40==64Byte long
+	writeRegister(REG_MAX_PAYLOAD_LENGTH, (uint8_t) MAX_PAYLOAD_LENGTH);// set reg 0x22, max 0x40==64Byte long
 
 #	if _MONITOR >= 1
 			if ((debug>=2) && (pdebug & P_TX)) {
@@ -917,11 +929,12 @@ void txLoraModem(struct LoraDown *LoraDown)
 	}
 
 	// 16. Initiate actual transmission of FiFo, after opmode TX it switches to standby mode
-	delayMicroseconds(WAIT_CORRECTION>>1);							// q0 milliseconds
+	delayMicroseconds(WAIT_CORRECTION);								// q0 milliseconds
 	opmode(OPMODE_TX);												// set reg 0x01 to 0x03 (actual value becomes 0x83)
-	delayMicroseconds(WAIT_CORRECTION>>1);							// q0 milliseconds
 	
 	// After message transmitted the sender switches to STANDBY state, and issues TXDONE
+
+	yield();														// MMM 210720
 
 }// txLoraModem
 

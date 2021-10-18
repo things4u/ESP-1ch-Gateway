@@ -264,7 +264,7 @@ int sendPacket(uint8_t *buf, uint8_t len)
 		return(-1);
 	}
 
-	// _STRICT_1CH determines how we will react on downstream messages.
+	// _STRICT_1CH determines how we will react for downstream messages.
 	//
 #if _STRICT_1CH == 0
 	// if _STRICT_1CH == 0, we will receive messags from the TTN gateway presumably on 

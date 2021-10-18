@@ -816,6 +816,8 @@ void stateMachine()
 		}
 #		endif //_MONITOR
 
+		yield();													// MMM 210720
+
 	  break; // S_TX
 
 
@@ -838,10 +840,10 @@ void stateMachine()
 				response += ", done= ";
 				if (micros() < LoraDown.tmst) {
 					response += "-" ;
-					printInt(LoraDown.tmst - micros(), response );
+					printInt((LoraDown.tmst-micros())/1000000, response );
 				}
 				else {
-					printInt(micros()-LoraDown.tmst, response);
+					printInt((micros()-LoraDown.tmst)/1000000, response);
 				}
 				mPrint(response);
 			}
@@ -871,7 +873,7 @@ void stateMachine()
 					break;
 				case 2:
 #					if _MONITOR>=1
-					if ((debug>=3) && (pdebug & P_TX)) {
+					if ((debug>=1) && (pdebug & P_TX)) {
 						mPrint("^ TX_ACK:: readUDP: protocol version 2+");
 					}
 #					endif //_MONITOR
@@ -913,7 +915,7 @@ void stateMachine()
 			}
 			else {
 #				if _MONITOR>=1
-				if ((debug>=2) && (pdebug & P_TX)) {
+				if ((debug>=1) && (pdebug & P_TX)) {
 					mPrint("^ readUdp:: TX_ACK: micros="+String(micros()));
 				}
 #				endif //_MONITOR
@@ -926,6 +928,11 @@ void stateMachine()
 				}
 #				endif //_MONITOR
 			}
+
+			// Transmission finifhed. Reset the all flags in the registers
+			writeRegister(REG_IRQ_FLAGS_MASK, (uint8_t) 0xFF);
+			writeRegister(REG_IRQ_FLAGS, (uint8_t) 0x00);
+
 			yield();
 		}
 

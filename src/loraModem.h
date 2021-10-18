@@ -220,8 +220,8 @@ struct pins {
 	uint8_t dio0=5;		// GPIO5 / D1. Dio0 used for one frequency and one SF
 	uint8_t dio1=4;		// GPIO4 / D2. Used for CAD, may or not be shared with DIO0
 	uint8_t dio2=0;		// GPIO0 / D3. Used for frequency hopping, don't care
-	uint8_t ss=15;		// GPIO15 / D8. Select pin connected to GPIO15
-	uint8_t rst=0;		// GPIO0  / D3. Reset pin not used	
+	uint8_t ss=15;		// GPIO15/ D8. Select pin connected to GPIO15
+	uint8_t rst=0;		// GPIO0 / D3. Reset pin not used	
 } pins;
 
 
@@ -381,7 +381,7 @@ uint8_t payLoad[128];						// Payload i
 
 // ====================================================================
 // PACKET FORWARDER
-// Smetech Specification
+// Semtech Specification
 // https://github.com/Lora-net/packet_forwarder/blob/master/PROTOCOL.TXT
 // Some parts are included both at Upstram and Downstream since
 // the gateway can also be used as a repeater
@@ -401,7 +401,7 @@ struct LoraDown {
 	uint8_t		bw;							// through datr
 	
 	bool		ipol;
-	uint8_t		powe;						// transmit power, normally 14, except when using special channel
+	uint8_t		powe;						// transmit power == 14, except when using special channel
 	uint8_t		crc;
 	uint8_t		iiq;						// message inverted or not for node-node communiction
 	uint8_t		imme;						// Immediate transfer execution
@@ -551,7 +551,7 @@ struct LoraUp {
 // ----------------------------------------
 // LOW NOISE AMPLIFIER
 
-#define LNA_MAX_GAIN                0x23		// Max gain 0x20 | Boost 0x03
+#define LNA_MAX_GAIN                0x23			// Max gain 0x20 | Boost 0x03
 #define LNA_OFF_GAIN                0x00
 #define LNA_LOW_GAIN		    	0x20
 
@@ -606,9 +606,9 @@ struct LoraUp {
 #define MAP_DIO1_LORA_NOP      		0x30  // --11----
 
 #define MAP_DIO2_LORA_FCC0      	0x00  // ----00-- bit 3 and 2
-#define MAP_DIO2_LORA_FCC1      	0x04  // ----01-- bit 3 and 2
-#define MAP_DIO2_LORA_FCC2      	0x08  // ----10-- bit 3 and 2
-#define MAP_DIO2_LORA_NOP      		0x0C  // ----11-- bit 3 and 2
+#define MAP_DIO2_LORA_FCC1      	0x04  // ----01--
+#define MAP_DIO2_LORA_FCC2      	0x08  // ----10--
+#define MAP_DIO2_LORA_NOP      		0x0C  // ----11--
 
 #define MAP_DIO3_LORA_CADDONE  		0x00  // ------00 bit 1 and 0
 #define MAP_DIO3_LORA_HEADER		0x01  // ------01

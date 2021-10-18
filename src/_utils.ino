@@ -24,7 +24,7 @@
 
 // --------------------------------------------------------------------------------
 // PRINT INT
-// The function printInt prints a number with Thousands seperator
+// The function printInt prints a number with uSec seperator
 // Paraneters:
 //	i:			Integer containing Microseconds
 //	response:	String & value containing the converted number

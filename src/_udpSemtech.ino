@@ -86,7 +86,7 @@ bool connectUdp()
 //	Packetsize: size of the buffer to read, as read by loop() calling function
 //
 //	Byte 0: 	Contains Protocol Version
-//	Byte 1+2:	Contain Token
+//	Byte 1+2:	Contains Token
 //	Byte 3:		Contains PULL_RESP or other identifier
 //	Byte 4-n: 	Contains payload (or Gateway EUI 8 bytes first)
 //
@@ -292,14 +292,14 @@ int readUdp(int packetSize)
 #			ifdef _PROFILER
 			if ((debug>=1) && (pdebug & P_TX)) {
 				char res[128];			
-				sprintf(res, "v PULL_RESP:: token=%u, size=%u, IP=%d.%d.%d.%d, port=%d, prot=%u, mics=%lu",
+				sprintf(res, "v PULL_RESP:: token=%u, size=%u, IP=%d.%d.%d.%d, port=%d, prot=%u, secs=%lu",
 					token,
 					(uint16_t) LoraDown.fcnt,
 					//packetSize,
 					remoteIpNo[0], remoteIpNo[1], remoteIpNo[2], remoteIpNo[3],
 					remotePortNo,
 					protocol,
-					(unsigned long) micros()
+					(unsigned long) micros()/1000000
 				);
 				mPrint(res);
 			}

@@ -629,7 +629,7 @@ void setup() {
 	LoraUp.payLoad[0]= 0;
 	LoraUp.size = 0;										// Init the length to 0
 
-	// init interrupt handlers, which are shared for GPIO15 / D8, 
+	// init interrupt handlers, which are shared for GPIO15 == D8, 
 	// we switch on HIGH interrupts
 	if (pins.dio0 == pins.dio1) {
 		attachInterrupt(pins.dio0, Interrupt_0, RISING);	// Share interrupts
