@@ -464,6 +464,8 @@ For convenience, the libraries are also found in this github repository in the l
 Please note that they are NOT part of the ESP 1channel gateway and may have their own licensing.
 However, these libraries are not part of the single-channel Gateway software.
 
+# Connect to TTN
+When creating a new Gateway on TTN, select checkbox "I'm using the legacy packet forwarder". The ID field changes and expect a Gateway ID. Gateway ID is hex string of length 16 chars. The gateway id is generated from the MAC address. You can find the Gateway ID in the web interface of your gateway. You may need to click button "Expert mode" first.
 
 # Pin Connections
 
