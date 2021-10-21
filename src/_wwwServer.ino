@@ -1307,7 +1307,7 @@ static void systemStatus()
 		response +="<th colspan=\"2\" class=\"thead width:120px;\">Set</th>";
 		response +="</tr>";
 	
-		response +="<tr><td style=\"border: 1px solid black;\">Gateway ID</td>";
+		response +="<tr><td style=\"border: 1px solid black;\">Gateway EUI</td>";
 		response +="<td class=\"cell\">";	
 		if (MAC_array[0]< 0x10) response +='0'; response +=String(MAC_array[0],HEX);	// The MAC array is always returned in lowercase
 		if (MAC_array[1]< 0x10) response +='0'; response +=String(MAC_array[1],HEX);
