@@ -313,6 +313,21 @@ int mStat(uint8_t intr, String & response)
 
 // ============== NUMBER FUNCTIONS ============================================
 
+// ----------------------------------------------------------------------------
+// Convert the given LoRa frequency, in Hz, to Mhz in a string
+// It does not use float conversion, as float isnt accurate.
+// Parameters:
+//	freq is the freq to convert, from 100000000 to 999999999 Hz
+//	*out is the strinf buffer, minimum 11 chars.
+// ----------------------------------------------------------------------------
+void __freqToCharMhz(uint32_t freq, char *out) {
+  itoa(freq, out, 10);
+
+  for (int i = 10; i > 2; i--){
+    out[i] = out[i-1];
+  }
+  out[3] = '.';
+}
 
 // ----------------------------------------------------------------------------
 // Convert a float to string for printing
