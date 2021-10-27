@@ -322,8 +322,8 @@ int mStat(uint8_t intr, String & response)
 // ----------------------------------------------------------------------------
 void __freqToCharMhz(uint32_t freq, char *out) {
   itoa(freq, out, 10);
-  int i=10;
-  for (i = 10; i > 2; i--){
+
+  for (int i = 10; i > 2; i--){
     out[i] = out[i-1];
   }
   out[3] = '.';
