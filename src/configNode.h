@@ -98,6 +98,7 @@ struct wpas {
 // below. This is needed to get the gateway working
 //
 wpas wpa[] = {
+
 };
 
 
@@ -114,17 +115,17 @@ wpas wpa[] = {
 // Define the name of the accesspoint if the gateway is in accesspoint mode (is
 // getting WiFi SSID and password using WiFiManager). 
 // If you do not need them, comment out.
-//#define AP_NAME ""
-//#define AP_PASSWD ""
+#define AP_NAME "ESPGW"
+#define AP_PASSWD "1234"
 
 
-// Gateway Ident definitions. Where is the gateway located?
+// Gateway Ident definitions. Where is the gateway located?------------------May change for your needs
 #define _DESCRIPTION "ESP Gateway"			// Name of the gateway
 #define _EMAIL "mw12554@hotmail.com"		// Owner
 #define _PLATFORM "ESP8266"
 #define _LAT 52.237367
 #define _LON 5.978654
-#define _ALT 14								// Altitude
+#define _ALT 14									// Altitude
 
 
 // For asserting and testing the following defines are used.

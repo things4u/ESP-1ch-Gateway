@@ -138,6 +138,21 @@ vector freqs [] = {
 	{ 917500000, 500, 8,  8,         0,   0, 0,  0}	  			// Channel 8, 917.5 SF8BW500 MHz Optional Uplink
 };
 
+#elif defined(AS920_923)                                                  //Changed
+// Singapore/japan/Malaysia plan for TTN frequencies (Japan regulation may be different and to be tested)
+vector freqs [] = { 
+  { 923200000, 125, 7, 12, 923200000, 125, 7, 12},      // Channel 0, 923.2 MHz 
+  { 923400000, 125, 7, 12, 923400000, 125, 7, 12},      // Channel 1, 923.4 MHz 
+  { 922200000, 125, 7, 12, 922200000, 125, 7, 12},      // Channel 2, 922.2 MHz 
+  { 922400000, 125, 7, 12, 922400000, 125, 7, 12},      // Channel 3, 922.4 MHz 
+  { 922600000, 125, 7, 12, 922600000, 125, 7, 12},      // Channel 4, 922.6 MHz 
+  { 922800000, 125, 7, 12, 922800000, 125, 7, 12},      // Channel 5, 922.8 MHz 
+  { 923000000, 125, 7, 12, 923000000, 125, 7, 12},      // Channel 6, 923.0 MHz  
+  { 922000000, 125, 7, 12, 922000000, 125, 7, 12},      // Channel 7, 922.0 MHz 
+  { 922100000, 250, 7,  0,         0,   0, 0,  0}       // Channel 8, 922.1 SF7BW250 MHz //Not sure about this
+};
+
+
 #elif defined(CN470_510)
 // China plan for TTN frequencies
 vector freqs [] = { 
@@ -291,6 +306,22 @@ struct pins {
 #define RST 14				// Check
 #define SS 18
 
+#elif _PIN_OUT==6
+// -------------------------------------------------------------------------------------------------------------------------------------//------------
+//  ESP32 Devkit + RFM95 -Recommended wiring pin out as below
+
+struct pins {
+  uint8_t dio0=2;    // GPIO2 / Dio0 used for one frequency and one SF
+  uint8_t dio1=35;    // GPIO35 / Used for CAD, may or not be shared with DIO0
+  uint8_t dio2=34;    // GPIO34 / Used for frequency hopping, don't care
+  uint8_t ss=5;      // GPIO18 / Dx. Select pin connected to GPIO18
+  uint8_t rst=14;     // GPIO0 / D3. Reset pin not used 
+} pins;
+#define SCK 18      // Check
+#define MISO 19       // Check
+#define MOSI 23       // Check
+#define RST 14        // Check
+#define SS 5
 
 #else
 // ----------------------------------------------------------------------------
@@ -737,4 +768,3 @@ regs registers [] = {
 	{ "PADAC_1276",		REG_PADAC_SX1276,	1, 0 },			// 0x4D
 	{ "PADAC",			REG_PADAC,			1, 0 }			// 0x4D
 };
-
