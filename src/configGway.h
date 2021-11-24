@@ -45,7 +45,7 @@
 
 // Allows configuration through WifiManager AP setup. Must be 0 or 1	
 #if !defined _WIFIMANAGER				
-#	define _WIFIMANAGER 0
+#	define _WIFIMANAGER 1
 #endif
 
 
@@ -84,10 +84,11 @@
 // CN779-787	(Not Used)
 // EU433		Europe
 // KR920    	South Korea
-// AS923		(Not Used)
+// AS923_923	// added frequency support for Singapore,Malaysia japan as recommended (refer TTN website AS920-923 (“AS1”))
 // You can find the definitions in "loraModem.h" and frequencies in
 // See https://www.thethingsnetwork.org/docs/lorawan/frequency-plans.html
-#define EU863_870 1
+
+#define AS920_923 1 //config added at loraModem.h 
  
 
 // Define the CLASS mode of the gateway
@@ -117,7 +118,7 @@
 // the webserver and it will be stored in SPIFF
 // NOTE: The frequency is set in the loraModem.h file and is default 868100000 Hz.
 #if !defined _SPREADING
-#	define _SPREADING SF9
+#	define _SPREADING SF7
 #endif
 
 // Channel Activity Detection
@@ -127,7 +128,7 @@
 // continuous listen mode.
 // Using this function means that we HAVE to use more dio pins on the RFM95/sx1276
 // device and also connect enable dio1 to detect this state. 
-#define _CAD 1
+#define _CAD 1 //changed from 0 to 1 to match the ESP+RFM95 wiring
 
 
 // CRCCHECK
@@ -167,7 +168,7 @@
 //	4: ESP32, Heltec and TTGO pin out (should work for Heltec, 433 and Oled too).
 //	5: Other, define your own in loraModem.h (does not include GPS Code)
 #if !defined _PIN_OUT
-#	define _PIN_OUT 1
+#	define _PIN_OUT 6  // added PIN_OUT Config at loraModem.h and change this to 6 to match with ESP32+RFM wiring
 #endif
 
 
@@ -218,7 +219,7 @@
 // _OLED==1;	0.9" Oled Screen based on SSD1306
 // _OLED==2;	1.3" Oled screens for Wemos, 128x64 SH1106
 #if !defined _OLED
-#	define _OLED 1
+#	define _OLED 0      // changed to 0
 #endif
 
 
@@ -376,6 +377,6 @@
 //#	define _TTNSERVER "router.eu.thethings.network"
 //
 // TTN Version 3:
-#	define _TTNSERVER "eu1.cloud.thethings.network"	
+#	define _TTNSERVER "au1.cloud.thethings.network"	
 #	define _TTNPORT 1700							// Standard port for TTN
 #endif
