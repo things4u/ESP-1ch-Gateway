@@ -225,11 +225,11 @@ void setRate(uint8_t sf, uint8_t crc)
 		}
     }
 	else {
-		mc1= 0x0A;							// SX1272_MC1_BW_250 0x80 | SX1272_MC1_CR_4_5 0x02 (MMM define BW)
+		mc1= 0x82;							// SX1272_MC1_BW_250 0x80 | SX1272_MC1_CR_4_5 0x02 (MMM define BW)
 		mc2= ((sf<<4) | crc) % 0xFF;
 		// SX1276_MC1_BW_250 0x80 | SX1276_MC1_CR_4_5 0x02 | SX1276_MC1_IMPLICIT_HEADER_MODE_ON 0x01
         if (sf == SF11 || sf == SF12) { 
-			mc1= 0x0B; 
+			mc1= 0x83; 
 		}
 #		if _MONITOR>=1
 		if ((debug>=1) &&(pdebug & P_MAIN)) {
