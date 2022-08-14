@@ -654,7 +654,11 @@ int buildPacket(uint8_t *buff_up, struct LoraUp *LoraUp, bool internal)
 #else 
 // _JSONENCODE undefined, this is default
 // ---------------------------------------
-	ftoa((double)freqs[gwayConfig.ch].upFreq / 1000000, cfreq, 6);		// XXX This can be done better
+	// Fixed wrong frequency (json) & upload for TTN V3 and ChirpStack
+	// https://github.com/things4u/ESP-1ch-Gateway/pull/72
+	// ftoa((double)freqs[gwayConfig.ch].upFreq / 1000000, cfreq, 6);		// XXX This can be done better
+	dtostrf((double)freqs[gwayConfig.ch].upFreq / 1000000, 6, 3, cfreq);
+	
 	if ((LoraUp->sf<6) || (LoraUp->sf>12)) { 							// Lora datarate & bandwidth SF6-SF12, 16-19 useful chars */
 		LoraUp->sf=7;
 	}			
