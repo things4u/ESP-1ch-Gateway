@@ -1115,10 +1115,12 @@ void initLoraModem()
 {
 	_state = S_INIT;
 #if defined(ESP32_ARCH)
+  pinMode(pins.rst, OUTPUT);  // To set pinMode before digitalWrite
 	digitalWrite(pins.rst, LOW);
 	delayMicroseconds(10000);
     digitalWrite(pins.rst, HIGH);
 	delayMicroseconds(10000);
+  pinMode(pins.ss, OUTPUT);   // To set pinMode before digitalWrite
 	digitalWrite(pins.ss, HIGH);
 #else
 	// Reset the transceiver chip with a pulse of 10 mSec
