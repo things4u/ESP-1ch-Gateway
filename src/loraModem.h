@@ -171,6 +171,19 @@ vector freqs [] = {
 	{         0,   0, 0,  0, 866550000, 125, 10, 10}			// RX2
 };
 
+#elif defined(AS923_2)
+// Vietnam and Indonesia plan
+vector freqs [] = { 
+  { 921400000, 125, 7, 12, 921400000, 125, 7, 12},      // Channel 0, Default OTAA - RX2
+  { 921600000, 125, 7, 12, 921600000, 125, 7, 12},      // Channel 1, Default OTAA
+  { 921800000, 125, 7, 12, 921800000, 125, 7, 12},      // Channel 2, Optional
+  { 922000000, 125, 7, 12, 922000000, 125, 7, 12},      // Channel 3, Optional
+  { 922200000, 125, 7, 12, 922200000, 125, 7, 12},      // Channel 4, Optional
+  { 922400000, 125, 7, 12, 922400000, 125, 7, 12},      // Channel 5, Optional
+  { 922600000, 125, 7, 12, 922600000, 125, 7, 12},      // Channel 6, Optional 
+  { 922800000, 125, 7, 12, 922800000, 125, 7, 12}       // Channel 7, Optional
+};
+
 #else
 vector freqs [] = {
 	// Print an Error, Not supported
