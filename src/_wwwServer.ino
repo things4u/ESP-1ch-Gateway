@@ -796,6 +796,11 @@ static void gatewaySettings()
 	response +="<tr><td class=\"cell\">Boots and Resets</td>";
 	response +=String() + "<td class=\"cell\" colspan=\"2\" >"+gwayConfig.boots+"</td>";
 	response +="<td style=\"width:30px;\" colspan=\"2\" class=\"cell\" ><input type=\"button\" value=\"BOOT    \" onclick=\"ynDialog(\'Do you want to reset boots?\',\'BOOT\')\" /></td></tr>";
+	
+	// Reboot
+	response +="<tr><td class=\"cell\">Reboot</td>";
+	response +=String() + "<td class=\"cell\" colspan=\"2\" >"+""+"</td>";
+	response +="<td style=\"width:30px;\" colspan=\"2\" class=\"cell\" ><input type=\"button\" value=\"REBOOT    \" onclick=\"ynDialog(\'Do you want to reboot?\',\'REBOOT\')\" /></td></tr>";
 #endif //_STATISTICS
 
 	response +="</table>";

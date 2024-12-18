@@ -654,7 +654,8 @@ int buildPacket(uint8_t *buff_up, struct LoraUp *LoraUp, bool internal)
 #else 
 // _JSONENCODE undefined, this is default
 // ---------------------------------------
-	ftoa((double)freqs[gwayConfig.ch].upFreq / 1000000, cfreq, 6);		// XXX This can be done better
+	//ftoa((double)freqs[gwayConfig.ch].upFreq / 1000000, cfreq, 6);		// XXX This can be done better
+	__freqToCharMhz(freqs[gwayConfig.ch].upFreq, cfreq);
 	if ((LoraUp->sf<6) || (LoraUp->sf>12)) { 							// Lora datarate & bandwidth SF6-SF12, 16-19 useful chars */
 		LoraUp->sf=7;
 	}			
